@@ -5,6 +5,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 // ── Services ───────────────────────────────────────────────────────────────
 builder.Services.AddControllers();
+builder.Services.AddRazorPages();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
@@ -20,9 +21,12 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
+app.UseStaticFiles();
+
 app.UseAuthorization();
 
 app.MapControllers();
+app.MapRazorPages();
 
 // ── Health Check (simple) ──────────────────────────────────────────────────
 app.MapGet("/health", () => Results.Ok(new { status = "healthy" }));

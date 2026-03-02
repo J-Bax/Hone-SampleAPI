@@ -1,0 +1,94 @@
+@page
+@model SampleApi.Pages.Orders.IndexModel
+@{
+    ViewData["Title"] = "Order History";
+}
+
+<h2><i class="bi bi-receipt"></i> Order History</h2>
+
+<!-- Customer Lookup -->
+<form method="get" class="mb-4">
+    <div class="input-group" style="max-width: 400px;">
+        <input type="text" name="customer" value="@Model.CustomerFilter"
+               class="form-control" placeholder="Enter customer name..." />
+        <button type="submit" class="btn btn-primary">
+            <i class="bi bi-search"></i> Look Up
+        </button>
+    </div>
+</form>
+
+@if (!string.IsNullOrEmpty(Model.CustomerFilter))
+{
+    <h5>Orders for <strong>@Model.CustomerFilter</strong></h5>
+
+    @if (!Model.Orders.Any())
+    {
+        <div class="alert alert-info">No orders found for "@Model.CustomerFilter".</div>
+    }
+    else
+    {
+        <div class="accordion" id="ordersAccordion">
+            @foreach (var order in Model.Orders)
+            {
+                <div class="accordion-item">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button collapsed" type="button"
+                                data-bs-toggle="collapse" data-bs-target="#order-@order.Id">
+                            <span class="me-3">Order #@order.Id</span>
+                            <span class="badge bg-@(order.Status == "Delivered" ? "success" : order.Status == "Shipped" ? "primary" : "warning") me-3">
+                                @order.Status
+                            </span>
+                            <span class="me-3">$@order.TotalAmount.ToString("N2")</span>
+                            <small class="text-muted">@order.OrderDate.ToString("MMM dd, yyyy")</small>
+                        </button>
+                    </h2>
+                    <div id="order-@order.Id" class="accordion-collapse collapse">
+                        <div class="accordion-body">
+                            @{
+                                var items = Model.OrderItemsMap.ContainsKey(order.Id)
+                                    ? Model.OrderItemsMap[order.Id]
+                                    : new List<SampleApi.Pages.Orders.IndexModel.OrderItemView>();
+                            }
+                            @if (items.Any())
+                            {
+                                <table class="table table-sm">
+                                    <thead>
+                                        <tr>
+                                            <th>Product</th>
+                                            <th>Qty</th>
+                                            <th>Unit Price</th>
+                                            <th>Subtotal</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var item in items)
+                                        {
+                                            <tr>
+                                                <td>
+                                                    <a asp-page="/Products/Detail" asp-route-id="@item.ProductId">
+                                                        @item.ProductName
+                                                    </a>
+                                                </td>
+                                                <td>@item.Quantity</td>
+                                                <td>$@item.UnitPrice.ToString("N2")</td>
+                                                <td>$@item.Subtotal.ToString("N2")</td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            }
+                            else
+                            {
+                                <p class="text-muted">No items found.</p>
+                            }
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+}
+else
+{
+    <p class="text-muted">Enter a customer name to look up their orders.</p>
+}

@@ -1,0 +1,79 @@
+@page
+@model SampleApi.Pages.IndexModel
+@{
+    ViewData["Title"] = "Home";
+}
+
+<div class="row">
+    <div class="col-12 mb-4">
+        <div class="p-5 bg-light rounded-3">
+            <h1 class="display-5 fw-bold">Welcome to the Marketplace</h1>
+            <p class="lead">Browse <strong>@Model.TotalProducts</strong> products across
+                <strong>@Model.TotalCategories</strong> categories. Read reviews, add items to
+                your cart, and place orders.</p>
+            <a class="btn btn-primary btn-lg" asp-page="/Products/Index">Browse Products</a>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Featured Products -->
+    <div class="col-md-8">
+        <h3 class="mb-3"><i class="bi bi-star-fill text-warning"></i> Featured Products</h3>
+        <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 g-3">
+            @foreach (var product in Model.FeaturedProducts)
+            {
+                <div class="col">
+                    <div class="card product-card h-100">
+                        <div class="card-body">
+                            <h6 class="card-title">@product.Name</h6>
+                            <p class="card-text text-muted small">@product.Category</p>
+                            <p class="card-text fw-bold text-success">$@product.Price.ToString("N2")</p>
+                        </div>
+                        <div class="card-footer bg-transparent">
+                            <a asp-page="/Products/Detail" asp-route-id="@product.Id"
+                               class="btn btn-outline-primary btn-sm w-100">View</a>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+
+    <!-- Categories Sidebar -->
+    <div class="col-md-4">
+        <h3 class="mb-3"><i class="bi bi-tags"></i> Categories</h3>
+        <div class="list-group category-list">
+            @foreach (var cat in Model.Categories)
+            {
+                <a asp-page="/Products/Index" asp-route-category="@cat.Name"
+                   class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                    @cat.Name
+                </a>
+            }
+        </div>
+
+        <h3 class="mt-4 mb-3"><i class="bi bi-chat-quote"></i> Recent Reviews</h3>
+        @foreach (var review in Model.RecentReviews)
+        {
+            <div class="card mb-2">
+                <div class="card-body py-2 px-3">
+                    <div class="d-flex justify-content-between">
+                        <small class="fw-bold">@review.CustomerName</small>
+                        <small class="stars">
+                            @for (int i = 0; i < review.Rating; i++)
+                            {
+                                <i class="bi bi-star-fill"></i>
+                            }
+                            @for (int i = review.Rating; i < 5; i++)
+                            {
+                                <i class="bi bi-star empty"></i>
+                            }
+                        </small>
+                    </div>
+                    <small class="text-muted">@(review.Comment?.Length > 60 ? review.Comment.Substring(0, 60) + "…" : review.Comment)</small>
+                </div>
+            </div>
+        }
+    </div>
+</div>

@@ -1,0 +1,77 @@
+@page
+@model SampleApi.Pages.Checkout.IndexModel
+@{
+    ViewData["Title"] = "Checkout";
+}
+
+<h2><i class="bi bi-bag-check"></i> Checkout</h2>
+
+@if (Model.OrderPlaced)
+{
+    <div class="alert alert-success">
+        <h4><i class="bi bi-check-circle"></i> Order Placed Successfully!</h4>
+        <p>Thank you, <strong>@Model.CustomerName</strong>! Your order #<strong>@Model.OrderId</strong>
+            has been placed with a total of <strong>$@Model.OrderTotal.ToString("N2")</strong>.</p>
+        <a asp-page="/Orders/Index" class="btn btn-primary">View Orders</a>
+        <a asp-page="/Products/Index" class="btn btn-outline-secondary">Continue Shopping</a>
+    </div>
+}
+else if (!Model.CartItems.Any())
+{
+    <div class="alert alert-info">
+        Your cart is empty. <a asp-page="/Products/Index">Browse products</a> to add items first.
+    </div>
+}
+else
+{
+    <div class="row">
+        <div class="col-md-7">
+            <h5>Order Summary</h5>
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Product</th>
+                        <th>Qty</th>
+                        <th>Price</th>
+                        <th>Subtotal</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in Model.CartItems)
+                    {
+                        <tr>
+                            <td>@item.ProductName</td>
+                            <td>@item.Quantity</td>
+                            <td>$@item.ProductPrice.ToString("N2")</td>
+                            <td>$@item.Subtotal.ToString("N2")</td>
+                        </tr>
+                    }
+                </tbody>
+                <tfoot>
+                    <tr class="table-light">
+                        <td colspan="3" class="text-end fw-bold">Total:</td>
+                        <td class="fw-bold text-success">$@Model.Total.ToString("N2")</td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+
+        <div class="col-md-5">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Place Order</h5>
+                    <form method="post">
+                        <div class="mb-3">
+                            <label for="customerName" class="form-label">Your Name</label>
+                            <input type="text" id="customerName" name="customerName"
+                                   class="form-control" required placeholder="Enter your name" />
+                        </div>
+                        <button type="submit" class="btn btn-success w-100">
+                            <i class="bi bi-credit-card"></i> Place Order ($@Model.Total.ToString("N2"))
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+}

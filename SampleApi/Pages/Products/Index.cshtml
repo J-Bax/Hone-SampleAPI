@@ -1,0 +1,88 @@
+@page
+@model SampleApi.Pages.Products.IndexModel
+@{
+    ViewData["Title"] = string.IsNullOrEmpty(Model.SelectedCategory) ? "Products" : $"Products — {Model.SelectedCategory}";
+}
+
+<div class="row">
+    <!-- Category Sidebar -->
+    <div class="col-md-3">
+        <h5>Categories</h5>
+        <div class="list-group category-list mb-3">
+            <a asp-page="/Products/Index"
+               class="list-group-item list-group-item-action @(string.IsNullOrEmpty(Model.SelectedCategory) ? "active" : "")">
+                All Categories
+            </a>
+            @foreach (var cat in Model.Categories)
+            {
+                <a asp-page="/Products/Index" asp-route-category="@cat.Name"
+                   class="list-group-item list-group-item-action @(Model.SelectedCategory == cat.Name ? "active" : "")">
+                    @cat.Name
+                </a>
+            }
+        </div>
+    </div>
+
+    <!-- Product Grid -->
+    <div class="col-md-9">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h3>@ViewData["Title"]</h3>
+            <span class="badge bg-secondary">@Model.Products.Count products</span>
+        </div>
+
+        <!-- Search -->
+        <form method="get" class="mb-3">
+            <div class="input-group">
+                <input type="text" name="q" value="@Model.SearchQuery" class="form-control"
+                       placeholder="Search products..." />
+                @if (!string.IsNullOrEmpty(Model.SelectedCategory))
+                {
+                    <input type="hidden" name="category" value="@Model.SelectedCategory" />
+                }
+                <button type="submit" class="btn btn-outline-primary">
+                    <i class="bi bi-search"></i> Search
+                </button>
+            </div>
+        </form>
+
+        <!-- Pagination -->
+        <nav>
+            <ul class="pagination pagination-sm justify-content-center">
+                @for (int p = 1; p <= Model.TotalPages; p++)
+                {
+                    <li class="page-item @(p == Model.CurrentPage ? "active" : "")">
+                        <a class="page-link" asp-page="/Products/Index"
+                           asp-route-page="@p"
+                           asp-route-category="@Model.SelectedCategory"
+                           asp-route-q="@Model.SearchQuery">@p</a>
+                    </li>
+                }
+            </ul>
+        </nav>
+
+        <div class="row row-cols-1 row-cols-sm-2 row-cols-lg-3 g-3">
+            @foreach (var product in Model.Products)
+            {
+                <div class="col">
+                    <div class="card product-card h-100">
+                        <div class="card-body">
+                            <h6 class="card-title">@product.Name</h6>
+                            <p class="text-muted small mb-1">@product.Category</p>
+                            <p class="fw-bold text-success mb-1">$@product.Price.ToString("N2")</p>
+                            <p class="card-text small text-truncate">@product.Description</p>
+                        </div>
+                        <div class="card-footer bg-transparent">
+                            <a asp-page="/Products/Detail" asp-route-id="@product.Id"
+                               class="btn btn-outline-primary btn-sm w-100">View Details</a>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+
+        @if (!Model.Products.Any())
+        {
+            <div class="alert alert-info text-center">No products found.</div>
+        }
+    </div>
+</div>

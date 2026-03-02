@@ -7,10 +7,12 @@ namespace SampleApi.Tests;
 
 /// <summary>
 /// E2E tests for the Products endpoints.
-/// These tests use WebApplicationFactory so no running server is needed.
+/// These tests run against a real SQL Server LocalDB database that is seeded
+/// with 10 categories and 1,000 products by SampleApiFactory before any test runs.
 /// They serve as the regression gate in the Autotune optimization loop.
 /// </summary>
-public class ProductsEndpointTests : IClassFixture<SampleApiFactory>
+[Collection("SampleApi")]
+public class ProductsEndpointTests
 {
     private readonly HttpClient _client;
 
@@ -22,50 +24,29 @@ public class ProductsEndpointTests : IClassFixture<SampleApiFactory>
     [Fact]
     public async Task GetProducts_ReturnsOkWithProducts()
     {
-        // Ensure at least one product exists
-        var newProduct = new Product
-        {
-            Name = "List Test Product",
-            Description = "For list test",
-            Price = 9.99m,
-            Category = "Electronics"
-        };
-        await _client.PostAsJsonAsync("/api/products", newProduct);
-
         var response = await _client.GetAsync("/api/products");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
         var products = await response.Content.ReadFromJsonAsync<List<Product>>();
         Assert.NotNull(products);
-        Assert.NotEmpty(products!);
+        // Seeded data: 1,000 products minimum (tests may add more)
+        Assert.True(products!.Count >= 1000,
+            $"Expected at least 1000 seeded products, got {products.Count}");
     }
 
     [Fact]
     public async Task GetProduct_WithValidId_ReturnsOk()
     {
-        // First, create a product to ensure we have one
-        var newProduct = new Product
-        {
-            Name = "Test Product",
-            Description = "A test product",
-            Price = 19.99m,
-            Category = "Electronics"
-        };
+        // Product ID 1 always exists from seed data
+        var response = await _client.GetAsync("/api/products/1");
 
-        var createResponse = await _client.PostAsJsonAsync("/api/products", newProduct);
-        Assert.Equal(HttpStatusCode.Created, createResponse.StatusCode);
-
-        var created = await createResponse.Content.ReadFromJsonAsync<Product>();
-        Assert.NotNull(created);
-
-        // Now fetch it
-        var response = await _client.GetAsync($"/api/products/{created!.Id}");
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
         var product = await response.Content.ReadFromJsonAsync<Product>();
         Assert.NotNull(product);
-        Assert.Equal("Test Product", product!.Name);
+        Assert.Equal(1, product!.Id);
+        Assert.StartsWith("Product 0001", product.Name);
     }
 
     [Fact]
@@ -101,7 +82,7 @@ public class ProductsEndpointTests : IClassFixture<SampleApiFactory>
     [Fact]
     public async Task UpdateProduct_ReturnsNoContent()
     {
-        // Create a product first
+        // Create a dedicated product for this test
         var newProduct = new Product
         {
             Name = "Update Me",
@@ -122,7 +103,7 @@ public class ProductsEndpointTests : IClassFixture<SampleApiFactory>
 
         Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
 
-        // Verify the update
+        // Verify the update persisted
         var getResponse = await _client.GetAsync($"/api/products/{created.Id}");
         var updated = await getResponse.Content.ReadFromJsonAsync<Product>();
         Assert.NotNull(updated);
@@ -133,7 +114,7 @@ public class ProductsEndpointTests : IClassFixture<SampleApiFactory>
     [Fact]
     public async Task DeleteProduct_ReturnsNoContent()
     {
-        // Create a product first
+        // Create a dedicated product for this test so deletion doesn't affect others
         var newProduct = new Product
         {
             Name = "Delete Me",
@@ -166,69 +147,74 @@ public class ProductsEndpointTests : IClassFixture<SampleApiFactory>
     [Fact]
     public async Task GetProductsByCategory_ReturnsFilteredProducts()
     {
-        // Create products in a specific category
-        var product = new Product
-        {
-            Name = "Category Test Product",
-            Description = "For category filtering test",
-            Price = 25.00m,
-            Category = "Electronics"
-        };
-
-        await _client.PostAsJsonAsync("/api/products", product);
-
+        // "Electronics" is one of the 10 seeded categories
         var response = await _client.GetAsync("/api/products/by-category/Electronics");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
         var products = await response.Content.ReadFromJsonAsync<List<Product>>();
         Assert.NotNull(products);
+        Assert.NotEmpty(products!);
         Assert.All(products!, p => Assert.Equal("Electronics", p.Category));
+    }
+
+    [Fact]
+    public async Task GetProductsByCategory_WithInvalidCategory_ReturnsNotFound()
+    {
+        var response = await _client.GetAsync("/api/products/by-category/NonExistent");
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
     [Fact]
     public async Task SearchProducts_WithQuery_ReturnsMatchingProducts()
     {
-        // Create a product with a unique name
-        var product = new Product
-        {
-            Name = "UniqueSearchTerm Widget",
-            Description = "For search test",
-            Price = 30.00m,
-            Category = "Electronics"
-        };
-
-        await _client.PostAsJsonAsync("/api/products", product);
-
-        var response = await _client.GetAsync("/api/products/search?q=UniqueSearchTerm");
+        // Seeded products are named "Product NNNN - Category"
+        var response = await _client.GetAsync("/api/products/search?q=Product 0001");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
         var products = await response.Content.ReadFromJsonAsync<List<Product>>();
         Assert.NotNull(products);
-        Assert.Contains(products!, p => p.Name.Contains("UniqueSearchTerm"));
+        Assert.Contains(products!, p => p.Name.Contains("Product 0001"));
     }
 
     [Fact]
     public async Task SearchProducts_WithoutQuery_ReturnsAllProducts()
     {
-        // Ensure at least one product exists
-        var product = new Product
-        {
-            Name = "Search All Test",
-            Description = "For search all test",
-            Price = 5.00m,
-            Category = "Books"
-        };
-        await _client.PostAsJsonAsync("/api/products", product);
-
         var response = await _client.GetAsync("/api/products/search");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
         var products = await response.Content.ReadFromJsonAsync<List<Product>>();
         Assert.NotNull(products);
-        Assert.NotEmpty(products!);
+        Assert.True(products!.Count >= 1000,
+            $"Expected at least 1000 seeded products, got {products.Count}");
+    }
+
+    [Fact]
+    public async Task GetCategories_ReturnsSeededCategories()
+    {
+        var response = await _client.GetAsync("/api/categories");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var categories = await response.Content.ReadFromJsonAsync<List<Category>>();
+        Assert.NotNull(categories);
+        Assert.True(categories!.Count >= 10,
+            $"Expected at least 10 seeded categories, got {categories.Count}");
+    }
+
+    [Fact]
+    public async Task GetCategory_ReturnsProductsInCategory()
+    {
+        // Category ID 1 always exists from seed data
+        var response = await _client.GetAsync("/api/categories/1");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var content = await response.Content.ReadAsStringAsync();
+        Assert.Contains("\"products\"", content.ToLower());
     }
 
     [Fact]

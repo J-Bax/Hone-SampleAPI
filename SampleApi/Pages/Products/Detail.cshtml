@@ -1,0 +1,136 @@
+@page "{id:int}"
+@model SampleApi.Pages.Products.DetailModel
+@{
+    ViewData["Title"] = Model.Product?.Name ?? "Product Not Found";
+}
+
+@if (Model.Product == null)
+{
+    <div class="alert alert-danger">Product not found.</div>
+}
+else
+{
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a asp-page="/Products/Index">Products</a></li>
+            <li class="breadcrumb-item">
+                <a asp-page="/Products/Index" asp-route-category="@Model.Product.Category">@Model.Product.Category</a>
+            </li>
+            <li class="breadcrumb-item active">@Model.Product.Name</li>
+        </ol>
+    </nav>
+
+    <div class="row">
+        <div class="col-md-8">
+            <h2>@Model.Product.Name</h2>
+            <p class="text-muted">@Model.Product.Category</p>
+            <h3 class="text-success">$@Model.Product.Price.ToString("N2")</h3>
+            <p>@Model.Product.Description</p>
+
+            <!-- Add to Cart -->
+            <form method="post">
+                <input type="hidden" name="productId" value="@Model.Product.Id" />
+                <div class="input-group mb-3" style="max-width: 240px;">
+                    <input type="number" name="quantity" value="1" min="1" max="99"
+                           class="form-control" />
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-cart-plus"></i> Add to Cart
+                    </button>
+                </div>
+            </form>
+
+            @if (!string.IsNullOrEmpty(Model.CartMessage))
+            {
+                <div class="alert alert-success alert-dismissible fade show">
+                    @Model.CartMessage
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            }
+        </div>
+
+        <!-- Product Meta -->
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body">
+                    <h6 class="card-title">Product Info</h6>
+                    <ul class="list-unstyled small">
+                        <li><strong>ID:</strong> @Model.Product.Id</li>
+                        <li><strong>Category:</strong> @Model.Product.Category</li>
+                        <li><strong>Listed:</strong> @Model.Product.CreatedAt.ToString("MMM dd, yyyy")</li>
+                        @if (Model.AverageRating > 0)
+                        {
+                            <li>
+                                <strong>Rating:</strong>
+                                <span class="stars">
+                                    @for (int i = 0; i < (int)Math.Round(Model.AverageRating); i++)
+                                    {
+                                        <i class="bi bi-star-fill"></i>
+                                    }
+                                </span>
+                                (@Model.AverageRating.ToString("N1") / 5, @Model.Reviews.Count reviews)
+                            </li>
+                        }
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Reviews Section -->
+    <hr />
+    <h4>Reviews (@Model.Reviews.Count)</h4>
+
+    @if (Model.Reviews.Any())
+    {
+        @foreach (var review in Model.Reviews)
+        {
+            <div class="card mb-2">
+                <div class="card-body py-2">
+                    <div class="d-flex justify-content-between">
+                        <strong>@review.CustomerName</strong>
+                        <span class="stars">
+                            @for (int i = 0; i < review.Rating; i++)
+                            {
+                                <i class="bi bi-star-fill"></i>
+                            }
+                            @for (int i = review.Rating; i < 5; i++)
+                            {
+                                <i class="bi bi-star empty"></i>
+                            }
+                        </span>
+                    </div>
+                    <p class="mb-0 small text-muted">@review.Comment</p>
+                    <small class="text-muted">@review.CreatedAt.ToString("MMM dd, yyyy")</small>
+                </div>
+            </div>
+        }
+    }
+    else
+    {
+        <p class="text-muted">No reviews yet.</p>
+    }
+
+    <!-- Related Products -->
+    @if (Model.RelatedProducts.Any())
+    {
+        <hr />
+        <h4>Related Products</h4>
+        <div class="row row-cols-1 row-cols-sm-2 row-cols-md-4 g-3">
+            @foreach (var related in Model.RelatedProducts)
+            {
+                <div class="col">
+                    <div class="card product-card h-100">
+                        <div class="card-body">
+                            <h6 class="card-title small">@related.Name</h6>
+                            <p class="fw-bold text-success small mb-0">$@related.Price.ToString("N2")</p>
+                        </div>
+                        <div class="card-footer bg-transparent">
+                            <a asp-page="/Products/Detail" asp-route-id="@related.Id"
+                               class="btn btn-outline-primary btn-sm w-100">View</a>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+}

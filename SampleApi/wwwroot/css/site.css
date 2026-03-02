@@ -1,0 +1,44 @@
+/* Autotune Marketplace — minimal site styles */
+
+body {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+main.container {
+    flex: 1;
+}
+
+/* Product card hover effect */
+.product-card {
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.product-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+}
+
+/* Star rating display */
+.stars {
+    color: #ffc107;
+    letter-spacing: 2px;
+}
+
+.stars .empty {
+    color: #dee2e6;
+}
+
+/* Category sidebar */
+.category-list .list-group-item.active {
+    background-color: #0d6efd;
+    border-color: #0d6efd;
+}
+
+/* Cart badge */
+.cart-badge {
+    position: relative;
+    top: -8px;
+    font-size: 0.65rem;
+}
