@@ -14,7 +14,7 @@ namespace SampleApi.Tests;
 /// </summary>
 public class SampleApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
 {
-    private const string TestDbName = "AutotuneSampleDb_Tests";
+    private const string TestDbName = "HoneSampleDb_Tests";
     private const string TestConnectionString =
         $"Server=(localdb)\\MSSQLLocalDB;Database={TestDbName};Trusted_Connection=True;MultipleActiveResultSets=true";
 

@@ -1,6 +1,6 @@
 # Sample API
 
-A .NET 6 Web API and Razor Pages marketplace that serves as the **optimization target** for the Autotune harness. It exposes a product catalog, reviews, orders, and shopping cart — all backed by SQL Server LocalDB and Entity Framework Core 6.
+A .NET 6 Web API and Razor Pages marketplace that serves as the **optimization target** for the Hone harness. It exposes a product catalog, reviews, orders, and shopping cart — all backed by SQL Server LocalDB and Entity Framework Core 6.
 
 This API **intentionally contains suboptimal patterns** — N+1 queries, missing indexes, no caching, no pagination, one-by-one deletes — so the agentic loop has real performance issues to discover and fix.
 
@@ -80,7 +80,7 @@ The API starts at `http://localhost:5000`. Swagger UI is available at `/swagger`
 
 ## Test
 
-E2E tests use `WebApplicationFactory` with a dedicated test database (`AutotuneSampleDb_Tests`):
+E2E tests use `WebApplicationFactory` with a dedicated test database (`HoneSampleDb_Tests`):
 
 ```powershell
 dotnet test SampleApi.Tests/
@@ -117,7 +117,7 @@ Category 1──* Product 1──* Review
 
 ## Intentional Performance Issues
 
-These exist as optimization targets for the Autotune harness:
+These exist as optimization targets for the Hone harness:
 
 - **N+1 queries** — `by-category` loads all categories then all products; order detail fetches each product individually; cart does individual product lookups per item
 - **No indexes** — only primary keys; no indexes on foreign keys (`ProductId`, `OrderId`), `Category`, or `Name`

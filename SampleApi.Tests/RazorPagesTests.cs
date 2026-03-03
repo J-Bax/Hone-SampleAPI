@@ -24,7 +24,7 @@ public class RazorPagesTests
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
         var content = await response.Content.ReadAsStringAsync();
-        Assert.Contains("Autotune Marketplace", content);
+        Assert.Contains("Hone Marketplace", content);
         Assert.Contains("Featured Products", content);
     }
 

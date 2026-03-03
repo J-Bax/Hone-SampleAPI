@@ -9,7 +9,7 @@ namespace SampleApi.Tests;
 /// E2E tests for the Products endpoints.
 /// These tests run against a real SQL Server LocalDB database that is seeded
 /// with 10 categories and 1,000 products by SampleApiFactory before any test runs.
-/// They serve as the regression gate in the Autotune optimization loop.
+/// They serve as the regression gate in the Hone optimization loop.
 /// </summary>
 [Collection("SampleApi")]
 public class ProductsEndpointTests
