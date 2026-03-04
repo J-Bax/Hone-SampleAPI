@@ -44,15 +44,12 @@ Desktop.ini
 .DS_Store
 
 # ----- Results -----
-# Baselines, k6 summaries, and run metadata are committed for review.
-# Counters, Copilot logs, dashboard, and operational files are gitignored.
+# All result artifacts are committed for review.
 results/*
 !results/.gitkeep
 !results/baseline.json
 !results/baseline-*.json
 !results/run-metadata.json
+!results/hone.jsonl
 !results/metadata/
 !results/iteration-*/
-results/iteration-*/*
-!results/iteration-*/k6-summary*.json
-!results/iteration-*/root-cause.md
