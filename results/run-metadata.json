@@ -10,7 +10,7 @@
     },
     "Memory": {
       "TotalGB": 31.8,
-      "AvailableGB": 16.0
+      "AvailableGB": 17.6
     },
     "OS": {
       "Description": "Microsoft Windows 10.0.19045",
@@ -22,11 +22,11 @@
       "DotnetSdkVersion": "8.0.418",
       "ClrVersion": ".NET 8.0.21"
     },
-    "CollectedAt": "2026-03-04T17:04:34.0401547+11:00"
+    "CollectedAt": "2026-03-05T05:05:06.0948318+11:00"
   },
   "BaselineRun": {
-    "StartedAt": "2026-03-04T17:04:34.0401547+11:00",
-    "CompletedAt": "2026-03-04T17:08:03.2120299+11:00"
+    "StartedAt": "2026-03-05T05:05:06.0948318+11:00",
+    "CompletedAt": "2026-03-05T05:08:50.6021305+11:00"
   },
   "Iterations": []
 }
