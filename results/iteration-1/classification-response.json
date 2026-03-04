@@ -1,0 +1,6 @@
+```json
+{
+  "scope": "narrow",
+  "reasoning": "The GetCart method contains in-memory filtering and N+1 queries that can be optimized to a single server-side query with eager loadingΓÇöall changes are internal logic within this one controller method file, requiring no schema changes, dependencies, or API contract modifications."
+}
+```
