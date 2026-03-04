@@ -1,8 +1,10 @@
 import http from 'k6/http';
 import { check, sleep } from 'k6';
 
-// Baseline scenario: steady-state load test
-// 50 virtual users for 30 seconds
+// Baseline scenario: pure steady-state load test.
+// Warmup (JIT, DB, connection pool) is handled externally by warmup.js
+// so this scenario measures ONLY steady-state performance.
+// No ramp-up/down stages — every request is under identical load.
 export const options = {
   vus: 50,
   duration: '30s',
@@ -24,7 +26,7 @@ function seededId(max, salt) {
 export default function () {
   // ── Product endpoints ──
 
-  // GET /api/products — list all products (intentionally slow, no pagination)
+  // GET /api/products — list all products
   const listRes = http.get(`${BASE_URL}/api/products`);
   check(listRes, {
     'list products: status 200': (r) => r.status === 200,
@@ -45,7 +47,7 @@ export default function () {
 
   sleep(0.5);
 
-  // GET /api/products/search?q=Product — search products (intentionally loads all)
+  // GET /api/products/search?q=Product — search products
   const searchRes = http.get(`${BASE_URL}/api/products/search?q=Product`);
   check(searchRes, {
     'search: status 200': (r) => r.status === 200,
@@ -53,7 +55,7 @@ export default function () {
 
   sleep(0.5);
 
-  // GET /api/products/by-category/Electronics — filter by category (N+1 pattern)
+  // GET /api/products/by-category/Electronics — filter by category
   const categoryRes = http.get(`${BASE_URL}/api/products/by-category/Electronics`);
   check(categoryRes, {
     'category filter: status 200': (r) => r.status === 200,
@@ -63,7 +65,7 @@ export default function () {
 
   // ── Review endpoints ──
 
-  // GET /api/reviews/by-product/{id} — reviews for a product (loads all, filters in memory)
+  // GET /api/reviews/by-product/{id} — reviews for a product
   const reviewProductId = seededId(500, 2);
   const reviewsRes = http.get(`${BASE_URL}/api/reviews/by-product/${reviewProductId}`);
   check(reviewsRes, {
@@ -72,7 +74,7 @@ export default function () {
 
   sleep(0.3);
 
-  // GET /api/reviews/average/{id} — average rating (loads all reviews for product)
+  // GET /api/reviews/average/{id} — average rating
   const avgRes = http.get(`${BASE_URL}/api/reviews/average/${reviewProductId}`);
   check(avgRes, {
     'average rating: status 200': (r) => r.status === 200,
@@ -95,7 +97,7 @@ export default function () {
 
   sleep(0.3);
 
-  // GET /api/cart/{sessionId} — get cart with N+1 product lookups
+  // GET /api/cart/{sessionId} — get cart contents
   const cartRes = http.get(`${BASE_URL}/api/cart/${sessionId}`);
   check(cartRes, {
     'get cart: status 200': (r) => r.status === 200,
@@ -103,14 +105,14 @@ export default function () {
 
   sleep(0.3);
 
-  // DELETE /api/cart/session/{sessionId} — clear cart (one-by-one deletes)
+  // DELETE /api/cart/session/{sessionId} — clear cart
   http.del(`${BASE_URL}/api/cart/session/${sessionId}`);
 
   sleep(0.3);
 
   // ── Order flow ──
 
-  // POST /api/orders — create order (N+1 product price lookups)
+  // POST /api/orders — create order
   const orderRes = http.post(`${BASE_URL}/api/orders`,
     JSON.stringify({
       customerName: `k6-user-${__VU}`,

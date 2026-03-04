@@ -39,7 +39,7 @@ export default function () {
     'search: status 200': (r) => r.status === 200,
   });
 
-  // Reviews — heavy N+1 endpoint
+  // Reviews
   const reviewsRes = http.get(`${BASE_URL}/api/reviews/by-product/${randomId}`);
   check(reviewsRes, {
     'reviews: status 200': (r) => r.status === 200,

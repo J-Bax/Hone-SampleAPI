@@ -8,8 +8,6 @@ namespace SampleApi.Pages.Products;
 
 /// <summary>
 /// Product browsing page with optional category filter and search.
-/// NOTE: Intentionally loads ALL products then filters/paginates in memory.
-/// This is a performance optimization target.
 /// </summary>
 public class IndexModel : PageModel
 {
@@ -34,7 +32,6 @@ public class IndexModel : PageModel
         SearchQuery = q;
         CurrentPage = page < 1 ? 1 : page;
 
-        // INTENTIONAL PERF ISSUE: Loads ALL products into memory
         var allProducts = await _context.Products.ToListAsync();
 
         // Filter by category in memory
@@ -57,7 +54,6 @@ public class IndexModel : PageModel
         if (TotalPages < 1) TotalPages = 1;
         if (CurrentPage > TotalPages) CurrentPage = TotalPages;
 
-        // INTENTIONAL PERF ISSUE: In-memory pagination
         Products = allProducts
             .Skip((CurrentPage - 1) * PageSize)
             .Take(PageSize)

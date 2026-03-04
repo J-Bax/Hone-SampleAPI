@@ -8,9 +8,6 @@ namespace SampleApi.Pages.Products;
 
 /// <summary>
 /// Product detail page — shows product info, reviews, and related products.
-/// NOTE: Intentionally fires separate queries for product, reviews, and related products.
-/// Each query loads its entire table and filters in memory.
-/// This is a performance optimization target.
 /// </summary>
 public class DetailModel : PageModel
 {
@@ -34,7 +31,6 @@ public class DetailModel : PageModel
         if (Product == null)
             return Page();
 
-        // INTENTIONAL PERF ISSUE: Query 2 — loads ALL reviews then filters
         var allReviews = await _context.Reviews.ToListAsync();
         Reviews = allReviews.Where(r => r.ProductId == id)
                             .OrderByDescending(r => r.CreatedAt)
@@ -42,7 +38,6 @@ public class DetailModel : PageModel
 
         AverageRating = Reviews.Any() ? Math.Round(Reviews.Average(r => r.Rating), 1) : 0;
 
-        // INTENTIONAL PERF ISSUE: Query 3 — loads ALL products then filters for related
         var allProducts = await _context.Products.ToListAsync();
         RelatedProducts = allProducts
             .Where(p => p.Category == Product.Category && p.Id != id)
@@ -67,7 +62,6 @@ public class DetailModel : PageModel
             });
         }
 
-        // INTENTIONAL PERF ISSUE: Load ALL cart items to find existing
         var allCartItems = await _context.CartItems.ToListAsync();
         var existing = allCartItems.FirstOrDefault(c =>
             c.SessionId == sessionId && c.ProductId == productId);

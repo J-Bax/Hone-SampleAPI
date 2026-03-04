@@ -1,8 +1,7 @@
 namespace SampleApi.Models;
 
 /// <summary>
-/// Line item within an order. References Order and Product by ID only
-/// (no navigation properties) — forces separate lookups, an optimization target.
+/// Line item within an order. References Order and Product by ID only.
 /// </summary>
 public class OrderItem
 {

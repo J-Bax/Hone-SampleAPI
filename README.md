@@ -2,18 +2,16 @@
 
 A .NET 6 Web API and Razor Pages marketplace that serves as the **optimization target** for the Hone harness. It exposes a product catalog, reviews, orders, and shopping cart — all backed by SQL Server LocalDB and Entity Framework Core 6.
 
-This API **intentionally contains suboptimal patterns** — N+1 queries, missing indexes, no caching, no pagination, one-by-one deletes — so the agentic loop has real performance issues to discover and fix.
-
 ## API Endpoints
 
 ### Products & Categories
 
 | Method | Route | Description |
 |--------|-------|-------------|
-| GET | `/api/products` | List all products (no pagination) |
+| GET | `/api/products` | List all products |
 | GET | `/api/products/{id}` | Get a single product |
-| GET | `/api/products/by-category/{name}` | Filter by category (N+1 pattern) |
-| GET | `/api/products/search?q=term` | Search products (in-memory filter) |
+| GET | `/api/products/by-category/{name}` | Filter by category |
+| GET | `/api/products/search?q=term` | Search products |
 | POST | `/api/products` | Create a product |
 | PUT | `/api/products/{id}` | Update a product |
 | DELETE | `/api/products/{id}` | Delete a product |
@@ -25,10 +23,10 @@ This API **intentionally contains suboptimal patterns** — N+1 queries, missing
 
 | Method | Route | Description |
 |--------|-------|-------------|
-| GET | `/api/reviews` | List all reviews (no pagination) |
+| GET | `/api/reviews` | List all reviews |
 | GET | `/api/reviews/{id}` | Get a single review |
-| GET | `/api/reviews/by-product/{productId}` | Reviews for a product (loads all, filters in memory) |
-| GET | `/api/reviews/average/{productId}` | Average rating (loads all reviews to compute) |
+| GET | `/api/reviews/by-product/{productId}` | Reviews for a product |
+| GET | `/api/reviews/average/{productId}` | Average rating |
 | POST | `/api/reviews` | Create a review |
 | DELETE | `/api/reviews/{id}` | Delete a review |
 
@@ -36,21 +34,21 @@ This API **intentionally contains suboptimal patterns** — N+1 queries, missing
 
 | Method | Route | Description |
 |--------|-------|-------------|
-| GET | `/api/orders` | List all orders (no pagination) |
-| GET | `/api/orders/{id}` | Order with items (N+1 product lookups) |
-| GET | `/api/orders/by-customer/{name}` | Orders by customer (loads all, filters in memory) |
-| POST | `/api/orders` | Create order (N+1 price lookups) |
+| GET | `/api/orders` | List all orders |
+| GET | `/api/orders/{id}` | Order with items |
+| GET | `/api/orders/by-customer/{name}` | Orders by customer |
+| POST | `/api/orders` | Create order |
 | PUT | `/api/orders/{id}/status` | Update order status |
 
 ### Cart
 
 | Method | Route | Description |
 |--------|-------|-------------|
-| GET | `/api/cart/{sessionId}` | Get cart items (N+1 product lookups) |
-| POST | `/api/cart` | Add item to cart (loads all to check duplicates) |
+| GET | `/api/cart/{sessionId}` | Get cart items |
+| POST | `/api/cart` | Add item to cart |
 | PUT | `/api/cart/{id}` | Update item quantity |
 | DELETE | `/api/cart/{id}` | Remove single cart item |
-| DELETE | `/api/cart/session/{sessionId}` | Clear cart (deletes one-by-one) |
+| DELETE | `/api/cart/session/{sessionId}` | Clear cart |
 
 ## Razor Pages (Web Frontend)
 
@@ -115,15 +113,3 @@ Category 1──* Product 1──* Review
                   └──* CartItem (keyed by SessionId)
 ```
 
-## Intentional Performance Issues
-
-These exist as optimization targets for the Hone harness:
-
-- **N+1 queries** — `by-category` loads all categories then all products; order detail fetches each product individually; cart does individual product lookups per item
-- **No indexes** — only primary keys; no indexes on foreign keys (`ProductId`, `OrderId`), `Category`, or `Name`
-- **No caching** — every request hits the database
-- **No pagination** — `GET /api/products`, `GET /api/reviews`, `GET /api/orders` return all rows
-- **In-memory filtering** — search, by-category, by-product, and by-customer all load full tables then filter in C#
-- **One-by-one deletes** — clearing a cart calls `SaveChanges()` per item instead of batch delete
-- **Redundant recomputation** — creating a review triggers a full average recompute
-- **No eager loading** — related data fetched via separate queries instead of `.Include()`

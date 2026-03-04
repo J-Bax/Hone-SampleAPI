@@ -1,8 +1,7 @@
 namespace SampleApi.Models;
 
 /// <summary>
-/// Product review entity. References Product by ID only (no navigation property)
-/// to force separate queries — an intentional optimization target.
+/// Product review entity. References Product by ID only.
 /// </summary>
 public class Review
 {

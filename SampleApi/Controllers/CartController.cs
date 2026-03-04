@@ -18,17 +18,13 @@ public class CartController : ControllerBase
 
     /// <summary>
     /// Get cart contents for a session.
-    /// NOTE: Intentionally loads ALL cart items then filters, plus N+1 for product details.
-    /// This is a performance optimization target.
     /// </summary>
     [HttpGet("{sessionId}")]
     public async Task<ActionResult<object>> GetCart(string sessionId)
     {
-        // INTENTIONAL PERF ISSUE: Loads ALL cart items then filters in memory
         var allItems = await _context.CartItems.ToListAsync();
         var sessionItems = allItems.Where(c => c.SessionId == sessionId).ToList();
 
-        // INTENTIONAL PERF ISSUE: N+1 — load each product individually
         var cartDetails = new List<object>();
         decimal total = 0m;
 
@@ -70,7 +66,6 @@ public class CartController : ControllerBase
         if (product == null)
             return NotFound(new { message = $"Product with ID {request.ProductId} not found" });
 
-        // INTENTIONAL PERF ISSUE: Load all cart items to check for existing
         var allItems = await _context.CartItems.ToListAsync();
         var existing = allItems.FirstOrDefault(c =>
             c.SessionId == request.SessionId && c.ProductId == request.ProductId);
@@ -138,18 +133,13 @@ public class CartController : ControllerBase
 
     /// <summary>
     /// Clear all items from a session's cart.
-    /// NOTE: Intentionally loads ALL cart items, filters in memory,
-    /// then removes one-by-one instead of bulk delete.
-    /// This is a performance optimization target.
     /// </summary>
     [HttpDelete("session/{sessionId}")]
     public async Task<IActionResult> ClearCart(string sessionId)
     {
-        // INTENTIONAL PERF ISSUE: Load ALL cart items, filter in memory
         var allItems = await _context.CartItems.ToListAsync();
         var sessionItems = allItems.Where(c => c.SessionId == sessionId).ToList();
 
-        // INTENTIONAL PERF ISSUE: Remove one-by-one instead of bulk delete
         foreach (var item in sessionItems)
         {
             _context.CartItems.Remove(item);

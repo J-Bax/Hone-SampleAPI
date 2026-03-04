@@ -8,9 +8,6 @@ namespace SampleApi.Pages.Checkout;
 
 /// <summary>
 /// Checkout page — shows order summary and places order from cart.
-/// NOTE: Intentionally uses N+1 queries for product lookups and
-/// saves each order item individually.
-/// This is a performance optimization target.
 /// </summary>
 public class IndexModel : PageModel
 {
@@ -61,7 +58,6 @@ public class IndexModel : PageModel
     {
         var sessionId = GetSessionId();
 
-        // INTENTIONAL PERF ISSUE: Load ALL cart items, filter in memory
         var allCartItems = await _context.CartItems.ToListAsync();
         var sessionItems = allCartItems.Where(c => c.SessionId == sessionId).ToList();
 
@@ -85,7 +81,6 @@ public class IndexModel : PageModel
 
         decimal total = 0m;
 
-        // INTENTIONAL PERF ISSUE: N+1 — look up each product individually
         foreach (var cartItem in sessionItems)
         {
             var product = await _context.Products.FindAsync(cartItem.ProductId);
@@ -101,7 +96,6 @@ public class IndexModel : PageModel
 
             total += price * cartItem.Quantity;
 
-            // INTENTIONAL PERF ISSUE: Save each item individually
             await _context.SaveChangesAsync();
         }
 
@@ -127,14 +121,12 @@ public class IndexModel : PageModel
     {
         var sessionId = GetSessionId();
 
-        // INTENTIONAL PERF ISSUE: Load ALL cart items, filter in memory
         var allItems = await _context.CartItems.ToListAsync();
         var sessionItems = allItems.Where(c => c.SessionId == sessionId).ToList();
 
         CartItems = new List<CartItemView>();
         Total = 0m;
 
-        // INTENTIONAL PERF ISSUE: N+1 product lookups
         foreach (var item in sessionItems)
         {
             var product = await _context.Products.FindAsync(item.ProductId);

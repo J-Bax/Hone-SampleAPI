@@ -18,26 +18,20 @@ public class OrdersController : ControllerBase
 
     /// <summary>
     /// Get all orders.
-    /// NOTE: Intentionally returns ALL orders with no pagination.
-    /// This is a performance optimization target.
     /// </summary>
     [HttpGet]
     public async Task<ActionResult<IEnumerable<Order>>> GetOrders()
     {
-        // INTENTIONAL PERF ISSUE: No pagination, returns entire table
         var orders = await _context.Orders.ToListAsync();
         return Ok(orders);
     }
 
     /// <summary>
     /// Get orders by customer name.
-    /// NOTE: Intentionally loads ALL orders then filters in memory.
-    /// This is a performance optimization target.
     /// </summary>
     [HttpGet("by-customer/{customerName}")]
     public async Task<ActionResult<IEnumerable<Order>>> GetOrdersByCustomer(string customerName)
     {
-        // INTENTIONAL PERF ISSUE: Loads ALL orders then filters in memory
         var allOrders = await _context.Orders.ToListAsync();
         var filtered = allOrders.Where(o =>
             o.CustomerName.Equals(customerName, StringComparison.OrdinalIgnoreCase)).ToList();
@@ -47,8 +41,6 @@ public class OrdersController : ControllerBase
 
     /// <summary>
     /// Get order by ID with its items and product details.
-    /// NOTE: Intentionally queries items separately, then each product individually (N+1).
-    /// This is a performance optimization target.
     /// </summary>
     [HttpGet("{id}")]
     public async Task<ActionResult<object>> GetOrder(int id)
@@ -57,11 +49,9 @@ public class OrdersController : ControllerBase
         if (order == null)
             return NotFound();
 
-        // INTENTIONAL PERF ISSUE: Separate query for items instead of .Include()
         var allItems = await _context.OrderItems.ToListAsync();
         var items = allItems.Where(i => i.OrderId == id).ToList();
 
-        // INTENTIONAL PERF ISSUE: N+1 — load each product individually
         var itemDetails = new List<object>();
         foreach (var item in items)
         {
@@ -90,8 +80,6 @@ public class OrdersController : ControllerBase
 
     /// <summary>
     /// Create a new order.
-    /// NOTE: Intentionally looks up each product price individually (N+1).
-    /// This is a performance optimization target.
     /// </summary>
     [HttpPost]
     public async Task<ActionResult<object>> CreateOrder(CreateOrderRequest request)
@@ -112,7 +100,6 @@ public class OrdersController : ControllerBase
 
         decimal total = 0m;
 
-        // INTENTIONAL PERF ISSUE: N+1 — look up each product individually
         foreach (var itemReq in request.Items)
         {
             var product = await _context.Products.FindAsync(itemReq.ProductId);

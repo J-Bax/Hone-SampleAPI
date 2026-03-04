@@ -31,6 +31,17 @@ app.MapRazorPages();
 // ── Health Check (simple) ──────────────────────────────────────────────────
 app.MapGet("/health", () => Results.Ok(new { status = "healthy" }));
 
+// ── Diagnostic: force GC (perf-testing only) ──────────────────────────────
+// Allows the harness to trigger a full blocking GC between measured runs
+// so heap pressure from run N doesn't contaminate run N+1.
+app.MapPost("/diag/gc", () =>
+{
+    GC.Collect(2, GCCollectionMode.Forced, blocking: true);
+    GC.WaitForPendingFinalizers();
+    GC.Collect(2, GCCollectionMode.Forced, blocking: true);
+    return Results.Ok(new { collected = true, totalMemoryMB = GC.GetTotalMemory(false) / 1024.0 / 1024.0 });
+});
+
 // ── Database Initialization ────────────────────────────────────────────────
 using (var scope = app.Services.CreateScope())
 {

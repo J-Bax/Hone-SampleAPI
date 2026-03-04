@@ -18,13 +18,10 @@ public class ProductsController : ControllerBase
 
     /// <summary>
     /// Get all products.
-    /// NOTE: Intentionally returns ALL products with no pagination.
-    /// This is a performance optimization target.
     /// </summary>
     [HttpGet]
     public async Task<ActionResult<IEnumerable<Product>>> GetProducts()
     {
-        // INTENTIONAL PERF ISSUE: No pagination, returns entire table
         var products = await _context.Products.ToListAsync();
         return Ok(products);
     }
@@ -45,15 +42,10 @@ public class ProductsController : ControllerBase
 
     /// <summary>
     /// Get products by category.
-    /// NOTE: Intentionally uses N+1 pattern — fetches all categories,
-    /// then queries products one-by-one per category match.
-    /// This is a performance optimization target.
     /// </summary>
     [HttpGet("by-category/{categoryName}")]
     public async Task<ActionResult<IEnumerable<Product>>> GetProductsByCategory(string categoryName)
     {
-        // INTENTIONAL PERF ISSUE: N+1 query pattern
-        // First, get all categories to find the matching one
         var categories = await _context.Categories.ToListAsync();
         var matchingCategory = categories.FirstOrDefault(c =>
             c.Name.Equals(categoryName, StringComparison.OrdinalIgnoreCase));
@@ -61,7 +53,6 @@ public class ProductsController : ControllerBase
         if (matchingCategory == null)
             return NotFound(new { message = $"Category '{categoryName}' not found" });
 
-        // INTENTIONAL PERF ISSUE: Loads ALL products then filters in memory
         var allProducts = await _context.Products.ToListAsync();
         var filtered = allProducts.Where(p =>
             p.Category.Equals(categoryName, StringComparison.OrdinalIgnoreCase)).ToList();
@@ -71,13 +62,10 @@ public class ProductsController : ControllerBase
 
     /// <summary>
     /// Search products by name.
-    /// NOTE: Intentionally loads all products then filters in memory.
-    /// This is a performance optimization target.
     /// </summary>
     [HttpGet("search")]
     public async Task<ActionResult<IEnumerable<Product>>> SearchProducts([FromQuery] string? q)
     {
-        // INTENTIONAL PERF ISSUE: Loads all products, filters in memory
         var allProducts = await _context.Products.ToListAsync();
 
         if (!string.IsNullOrWhiteSpace(q))

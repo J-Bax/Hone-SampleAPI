@@ -8,8 +8,6 @@ namespace SampleApi.Pages.Cart;
 
 /// <summary>
 /// Cart page — displays cart contents with product details.
-/// NOTE: Intentionally loads ALL cart items then filters, plus N+1 for product lookups.
-/// This is a performance optimization target.
 /// </summary>
 public class IndexModel : PageModel
 {
@@ -90,7 +88,6 @@ public class IndexModel : PageModel
     {
         var sessionId = GetSessionId();
 
-        // INTENTIONAL PERF ISSUE: Load ALL cart items, filter in memory, delete one-by-one
         var allItems = await _context.CartItems.ToListAsync();
         var sessionItems = allItems.Where(c => c.SessionId == sessionId).ToList();
 
@@ -109,14 +106,12 @@ public class IndexModel : PageModel
     {
         var sessionId = GetSessionId();
 
-        // INTENTIONAL PERF ISSUE: Load ALL cart items into memory then filter
         var allItems = await _context.CartItems.ToListAsync();
         var sessionItems = allItems.Where(c => c.SessionId == sessionId).ToList();
 
         CartItems = new List<CartItemViewModel>();
         Total = 0m;
 
-        // INTENTIONAL PERF ISSUE: N+1 — load each product individually
         foreach (var item in sessionItems)
         {
             var product = await _context.Products.FindAsync(item.ProductId);

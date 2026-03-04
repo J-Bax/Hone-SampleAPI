@@ -1,8 +1,7 @@
 namespace SampleApi.Models;
 
 /// <summary>
-/// Order entity. Does NOT have a navigation collection of OrderItems —
-/// forces controllers to issue separate queries (N+1 optimization target).
+/// Order entity.
 /// </summary>
 public class Order
 {

@@ -2,7 +2,7 @@ namespace SampleApi.Models;
 
 /// <summary>
 /// Shopping-cart item keyed by a session GUID (no authentication required).
-/// References Product by ID only — forces separate lookups, an optimization target.
+/// References Product by ID only.
 /// </summary>
 public class CartItem
 {

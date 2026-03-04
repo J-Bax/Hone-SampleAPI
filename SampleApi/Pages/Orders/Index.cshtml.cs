@@ -7,9 +7,6 @@ namespace SampleApi.Pages.Orders;
 
 /// <summary>
 /// Order history page — looks up orders by customer name.
-/// NOTE: Intentionally loads ALL orders then filters in memory,
-/// then for each order loads ALL items and ALL products (N+1).
-/// This is a performance optimization target.
 /// </summary>
 public class IndexModel : PageModel
 {
@@ -40,14 +37,12 @@ public class IndexModel : PageModel
         if (string.IsNullOrWhiteSpace(customer))
             return;
 
-        // INTENTIONAL PERF ISSUE: Load ALL orders then filter in memory
         var allOrders = await _context.Orders.ToListAsync();
         Orders = allOrders
             .Where(o => o.CustomerName.Equals(customer, StringComparison.OrdinalIgnoreCase))
             .OrderByDescending(o => o.OrderDate)
             .ToList();
 
-        // INTENTIONAL PERF ISSUE: For each order, load ALL items and filter
         var allItems = await _context.OrderItems.ToListAsync();
 
         foreach (var order in Orders)
@@ -55,7 +50,6 @@ public class IndexModel : PageModel
             var items = allItems.Where(i => i.OrderId == order.Id).ToList();
             var itemViews = new List<OrderItemView>();
 
-            // INTENTIONAL PERF ISSUE: N+1 — load each product individually
             foreach (var item in items)
             {
                 var product = await _context.Products.FindAsync(item.ProductId);

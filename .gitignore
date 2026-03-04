@@ -44,6 +44,15 @@ Desktop.ini
 .DS_Store
 
 # ----- Results -----
-# Performance results, logs, and reports are generated per-run
+# Baselines, k6 summaries, and run metadata are committed for review.
+# Counters, Copilot logs, dashboard, and operational files are gitignored.
 results/*
 !results/.gitkeep
+!results/baseline.json
+!results/baseline-*.json
+!results/run-metadata.json
+!results/metadata/
+!results/iteration-*/
+results/iteration-*/*
+!results/iteration-*/k6-summary*.json
+!results/iteration-*/root-cause.md
