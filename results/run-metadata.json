@@ -1,0 +1,32 @@
+{
+  "Machine": {
+    "MachineName": "REDACTED",
+    "Cpu": {
+      "Name": "11th Gen Intel(R) Core(TM) i7-1165G7 @ 2.80GHz",
+      "PhysicalCores": 4,
+      "LogicalProcessors": 8,
+      "MaxClockSpeedMHz": 2803,
+      "Architecture": "X64"
+    },
+    "Memory": {
+      "TotalGB": 31.8,
+      "AvailableGB": 25.0
+    },
+    "OS": {
+      "Description": "Windows 10",
+      "Platform": "Windows",
+      "Version": "Windows 10"
+    },
+    "Runtime": {
+      "PowerShellVersion": "7.4.13",
+      "DotnetSdkVersion": "8.0.418",
+      "ClrVersion": ".NET 8.0.21"
+    },
+    "CollectedAt": "2026-03-06T02:04:01.8574778Z"
+  },
+  "BaselineRun": {
+    "StartedAt": "2026-03-06T02:04:01.8574778Z",
+    "CompletedAt": "2026-03-06T02:07:46.6805535Z"
+  },
+  "Iterations": []
+}
