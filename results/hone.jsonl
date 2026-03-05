@@ -1,0 +1,72 @@
+{"timestamp":"2026-03-06T02:03:59.9554491+11:00","iteration":0,"phase":"baseline","level":"info","message":"Establishing performance baseline","data":{}}
+{"timestamp":"2026-03-06T02:04:01.8832848+11:00","iteration":0,"phase":"build","level":"info","message":"Building solution: C:\\Projects\\Hone\\sample-api\\SampleApi.sln","data":{}}
+{"timestamp":"2026-03-06T02:04:10.7128740+11:00","iteration":0,"phase":"build","level":"info","message":"Build succeeded","data":{}}
+{"timestamp":"2026-03-06T02:04:10.7379466+11:00","iteration":0,"phase":"measure","level":"info","message":"Resetting database for clean iteration state","data":{}}
+{"timestamp":"2026-03-06T02:04:14.9646595+11:00","iteration":0,"phase":"measure","level":"info","message":"Database 'HoneSampleDb' dropped — will be recreated on next API startup","data":{}}
+{"timestamp":"2026-03-06T02:04:14.9866338+11:00","iteration":0,"phase":"measure","level":"info","message":"Starting API from: C:\\Projects\\Hone\\sample-api\\SampleApi","data":{}}
+{"timestamp":"2026-03-06T02:04:23.3180242+11:00","iteration":0,"phase":"measure","level":"info","message":"API is healthy at http://localhost:5000 (took 3s)","data":{}}
+{"timestamp":"2026-03-06T02:04:23.3537226+11:00","iteration":0,"phase":"measure","level":"info","message":"Running k6 scenario: C:\\Projects\\Hone\\sample-api\\scale-tests\\scenarios\\baseline.js against http://localhost:5000","data":{}}
+{"timestamp":"2026-03-06T02:04:23.3749182+11:00","iteration":0,"phase":"measure","level":"info","message":"Running warmup pass","data":{}}
+{"timestamp":"2026-03-06T02:04:33.8251396+11:00","iteration":0,"phase":"measure","level":"info","message":"Cooldown 3s — after warmup","data":{}}
+{"timestamp":"2026-03-06T02:04:37.7596622+11:00","iteration":0,"phase":"measure","level":"info","message":"Starting dotnet-counters collection for PID 3380 (providers: System.Runtime,Microsoft.AspNetCore.Hosting,Microsoft.AspNetCore.Http.Connections,System.Net.Http)","data":{}}
+{"timestamp":"2026-03-06T02:04:39.7878596+11:00","iteration":0,"phase":"measure","level":"info","message":"dotnet-counters collecting (PID: 7684) → C:\\Projects\\Hone\\sample-api\\results\\iteration-0\\dotnet-counters.csv","data":{}}
+{"timestamp":"2026-03-06T02:04:39.8016842+11:00","iteration":0,"phase":"measure","level":"info","message":"Measured run 1 / 5","data":{}}
+{"timestamp":"2026-03-06T02:05:11.2512929+11:00","iteration":0,"phase":"measure","level":"info","message":"Run 1 — p95: 136.157935ms, RPS: 125.4","data":{"rps":125.44931683229204,"errorRate":0,"run":1,"p95":136.1579349999998}}
+{"timestamp":"2026-03-06T02:05:11.2808332+11:00","iteration":0,"phase":"measure","level":"info","message":"Cooldown 3s — between runs","data":{}}
+{"timestamp":"2026-03-06T02:05:14.3019817+11:00","iteration":0,"phase":"measure","level":"info","message":"Measured run 2 / 5","data":{}}
+{"timestamp":"2026-03-06T02:05:49.4792983+11:00","iteration":0,"phase":"measure","level":"info","message":"Run 2 — p95: 117.13884ms, RPS: 112.2","data":{"rps":112.17818342519952,"errorRate":0,"run":2,"p95":117.1388399999999}}
+{"timestamp":"2026-03-06T02:05:49.5207509+11:00","iteration":0,"phase":"measure","level":"info","message":"Cooldown 3s — between runs","data":{}}
+{"timestamp":"2026-03-06T02:05:52.5336246+11:00","iteration":0,"phase":"measure","level":"info","message":"Measured run 3 / 5","data":{}}
+{"timestamp":"2026-03-06T02:06:27.6978439+11:00","iteration":0,"phase":"measure","level":"info","message":"Run 3 — p95: 97.1663299999999ms, RPS: 115.6","data":{"rps":115.57842467318423,"errorRate":0,"run":3,"p95":97.16632999999993}}
+{"timestamp":"2026-03-06T02:06:27.7458950+11:00","iteration":0,"phase":"measure","level":"info","message":"Cooldown 3s — between runs","data":{}}
+{"timestamp":"2026-03-06T02:06:30.7710512+11:00","iteration":0,"phase":"measure","level":"info","message":"Measured run 4 / 5","data":{}}
+{"timestamp":"2026-03-06T02:07:06.0029340+11:00","iteration":0,"phase":"measure","level":"info","message":"Run 4 — p95: 92.05842ms, RPS: 116.5","data":{"rps":116.47217311759731,"errorRate":0,"run":4,"p95":92.05841999999996}}
+{"timestamp":"2026-03-06T02:07:06.0474159+11:00","iteration":0,"phase":"measure","level":"info","message":"Cooldown 3s — between runs","data":{}}
+{"timestamp":"2026-03-06T02:07:09.0564380+11:00","iteration":0,"phase":"measure","level":"info","message":"Measured run 5 / 5","data":{}}
+{"timestamp":"2026-03-06T02:07:44.2236369+11:00","iteration":0,"phase":"measure","level":"info","message":"Run 5 — p95: 101.1372ms, RPS: 113.7","data":{"rps":113.70017155219529,"errorRate":0,"run":5,"p95":101.13719999999985}}
+{"timestamp":"2026-03-06T02:07:44.2415744+11:00","iteration":0,"phase":"measure","level":"info","message":"Median selected: run 5 — p95: 101.13719999999985ms (from 5 runs: 92.05841999999996ms, 97.16632999999993ms, 101.13719999999985ms, 117.1388399999999ms, 136.1579349999998ms)","data":{}}
+{"timestamp":"2026-03-06T02:07:44.2640829+11:00","iteration":0,"phase":"measure","level":"info","message":"k6 completed — p95: 101.1372ms, RPS: 113.7","data":{"rps":113.70017155219529,"errorRate":0,"p95":101.13719999999985,"runs":5}}
+{"timestamp":"2026-03-06T02:07:44.2833514+11:00","iteration":0,"phase":"measure","level":"info","message":"Stopping dotnet-counters collection","data":{}}
+{"timestamp":"2026-03-06T02:07:44.3029807+11:00","iteration":0,"phase":"measure","level":"info","message":"dotnet-counters process stopped (PID: 7684)","data":{}}
+{"timestamp":"2026-03-06T02:07:46.6622310+11:00","iteration":0,"phase":"measure","level":"info","message":"Counter summary — CPU avg: 17.98%, GC heap max: 1135MB, Gen2: 0, GC pause: 93%, Threads max: 34, Exceptions: 0","data":{"gcHeapMax":1135.0,"cpuAvg":17.98,"gcPauseMax":93.0,"threadPoolMax":34.0,"gen2Collections":0.0}}
+{"timestamp":"2026-03-06T02:07:46.6729272+11:00","iteration":0,"phase":"measure","level":"info","message":"Counter metrics saved to: C:\\Projects\\Hone\\sample-api\\results\\iteration-0\\dotnet-counters.json","data":{}}
+{"timestamp":"2026-03-06T02:07:46.6875203+11:00","iteration":0,"phase":"baseline","level":"info","message":"Run metadata saved to: C:\\Projects\\Hone\\sample-api\\results\\run-metadata.json","data":{}}
+{"timestamp":"2026-03-06T02:07:46.6955287+11:00","iteration":0,"phase":"baseline","level":"info","message":"Counter baseline saved to: C:\\Projects\\Hone\\sample-api\\results\\baseline-counters.json","data":{}}
+{"timestamp":"2026-03-06T02:07:46.7033043+11:00","iteration":0,"phase":"baseline","level":"info","message":"Baseline saved to: C:\\Projects\\Hone\\sample-api\\results\\baseline.json","data":{"p95":101.13719999999985,"rps":113.70017155219529}}
+{"timestamp":"2026-03-06T02:07:46.7460524+11:00","iteration":0,"phase":"measure","level":"info","message":"Running scenario 'stress': Progressive ramp: 10→200 VUs over 2 min","data":{}}
+{"timestamp":"2026-03-06T02:07:46.7544851+11:00","iteration":0,"phase":"measure","level":"info","message":"Running k6 scenario: C:\\Projects\\Hone\\sample-api\\scale-tests\\scenarios\\stress.js against http://localhost:5000","data":{}}
+{"timestamp":"2026-03-06T02:09:47.3388221+11:00","iteration":0,"phase":"measure","level":"info","message":"Run 1 — p95: 244.52733ms, RPS: 213.2","data":{"rps":213.18888571450302,"errorRate":0,"run":1,"p95":244.52732999999998}}
+{"timestamp":"2026-03-06T02:09:47.3452135+11:00","iteration":0,"phase":"measure","level":"info","message":"k6 completed — p95: 244.52733ms, RPS: 213.2","data":{"rps":213.18888571450302,"errorRate":0,"p95":244.52732999999998,"runs":1}}
+{"timestamp":"2026-03-06T02:09:47.4039030+11:00","iteration":0,"phase":"measure","level":"info","message":"Cooldown 3s — between scenarios","data":{}}
+{"timestamp":"2026-03-06T02:09:50.4114965+11:00","iteration":0,"phase":"measure","level":"info","message":"Running scenario 'spike': Sudden burst: idle → 100 VUs instant","data":{}}
+{"timestamp":"2026-03-06T02:09:50.4205071+11:00","iteration":0,"phase":"measure","level":"info","message":"Running k6 scenario: C:\\Projects\\Hone\\sample-api\\scale-tests\\scenarios\\spike.js against http://localhost:5000","data":{}}
+{"timestamp":"2026-03-06T02:10:37.9905161+11:00","iteration":0,"phase":"measure","level":"info","message":"Run 1 — p95: 707.84412ms, RPS: 165.3","data":{"rps":165.32251208797567,"errorRate":0,"run":1,"p95":707.8441199999996}}
+{"timestamp":"2026-03-06T02:10:37.9950845+11:00","iteration":0,"phase":"measure","level":"info","message":"k6 completed — p95: 707.84412ms, RPS: 165.3","data":{"rps":165.32251208797567,"errorRate":0,"p95":707.8441199999996,"runs":1}}
+{"timestamp":"2026-03-06T02:10:38.0495373+11:00","iteration":0,"phase":"measure","level":"info","message":"Cooldown 3s — between scenarios","data":{}}
+{"timestamp":"2026-03-06T02:10:41.0580028+11:00","iteration":0,"phase":"measure","level":"info","message":"Running scenario 'stress-products': Products CRUD lifecycle: 10→200 VUs over 2 min","data":{}}
+{"timestamp":"2026-03-06T02:10:41.0652105+11:00","iteration":0,"phase":"measure","level":"info","message":"Running k6 scenario: C:\\Projects\\Hone\\sample-api\\scale-tests\\scenarios\\stress-products.js against http://localhost:5000","data":{}}
+{"timestamp":"2026-03-06T02:12:42.1820975+11:00","iteration":0,"phase":"measure","level":"info","message":"Run 1 — p95: 5.68573999999999ms, RPS: 336.3","data":{"rps":336.30795595514445,"errorRate":0,"run":1,"p95":5.685739999999995}}
+{"timestamp":"2026-03-06T02:12:42.1862998+11:00","iteration":0,"phase":"measure","level":"info","message":"k6 completed — p95: 5.68573999999999ms, RPS: 336.3","data":{"rps":336.30795595514445,"errorRate":0,"p95":5.685739999999995,"runs":1}}
+{"timestamp":"2026-03-06T02:12:42.2673361+11:00","iteration":0,"phase":"measure","level":"info","message":"Cooldown 3s — between scenarios","data":{}}
+{"timestamp":"2026-03-06T02:12:45.2770141+11:00","iteration":0,"phase":"measure","level":"info","message":"Running scenario 'stress-orders': Orders lifecycle (create, query, status updates): 10→200 VUs over 2 min","data":{}}
+{"timestamp":"2026-03-06T02:12:45.2870456+11:00","iteration":0,"phase":"measure","level":"info","message":"Running k6 scenario: C:\\Projects\\Hone\\sample-api\\scale-tests\\scenarios\\stress-orders.js against http://localhost:5000","data":{}}
+{"timestamp":"2026-03-06T02:14:46.6590555+11:00","iteration":0,"phase":"measure","level":"info","message":"Run 1 — p95: 758.385525ms, RPS: 176.1","data":{"rps":176.07575308133042,"errorRate":0,"run":1,"p95":758.385525}}
+{"timestamp":"2026-03-06T02:14:46.6682548+11:00","iteration":0,"phase":"measure","level":"info","message":"k6 completed — p95: 758.385525ms, RPS: 176.1","data":{"rps":176.07575308133042,"errorRate":0,"p95":758.385525,"runs":1}}
+{"timestamp":"2026-03-06T02:14:46.7068287+11:00","iteration":0,"phase":"measure","level":"info","message":"Cooldown 3s — between scenarios","data":{}}
+{"timestamp":"2026-03-06T02:14:49.7176180+11:00","iteration":0,"phase":"measure","level":"info","message":"Running scenario 'stress-cart': Cart operations (add, read, update qty, remove, clear): 10→200 VUs over 2 min","data":{}}
+{"timestamp":"2026-03-06T02:14:49.7282032+11:00","iteration":0,"phase":"measure","level":"info","message":"Running k6 scenario: C:\\Projects\\Hone\\sample-api\\scale-tests\\scenarios\\stress-cart.js against http://localhost:5000","data":{}}
+{"timestamp":"2026-03-06T02:16:52.4755247+11:00","iteration":0,"phase":"measure","level":"info","message":"Run 1 — p95: 101.13323ms, RPS: 391.9","data":{"rps":391.9210451647768,"errorRate":0,"run":1,"p95":101.13323}}
+{"timestamp":"2026-03-06T02:16:52.4797965+11:00","iteration":0,"phase":"measure","level":"info","message":"k6 completed — p95: 101.13323ms, RPS: 391.9","data":{"rps":391.9210451647768,"errorRate":0,"p95":101.13323,"runs":1}}
+{"timestamp":"2026-03-06T02:16:52.5184717+11:00","iteration":0,"phase":"measure","level":"info","message":"Cooldown 3s — between scenarios","data":{}}
+{"timestamp":"2026-03-06T02:16:55.5221068+11:00","iteration":0,"phase":"measure","level":"info","message":"Running scenario 'stress-reviews': Reviews CRUD lifecycle: 10→200 VUs over 2 min","data":{}}
+{"timestamp":"2026-03-06T02:16:55.5323957+11:00","iteration":0,"phase":"measure","level":"info","message":"Running k6 scenario: C:\\Projects\\Hone\\sample-api\\scale-tests\\scenarios\\stress-reviews.js against http://localhost:5000","data":{}}
+{"timestamp":"2026-03-06T02:18:56.8834675+11:00","iteration":0,"phase":"measure","level":"info","message":"Run 1 — p95: 450.84122ms, RPS: 230.4","data":{"rps":230.3961632563394,"errorRate":0,"run":1,"p95":450.84121999999985}}
+{"timestamp":"2026-03-06T02:18:56.8878735+11:00","iteration":0,"phase":"measure","level":"info","message":"k6 completed — p95: 450.84122ms, RPS: 230.4","data":{"rps":230.3961632563394,"errorRate":0,"p95":450.84121999999985,"runs":1}}
+{"timestamp":"2026-03-06T02:18:56.8997692+11:00","iteration":0,"phase":"baseline","level":"info","message":"Scenario baseline saved: stress — p95: 244.52733ms","data":{}}
+{"timestamp":"2026-03-06T02:18:56.9067034+11:00","iteration":0,"phase":"baseline","level":"info","message":"Scenario baseline saved: spike — p95: 707.84412ms","data":{}}
+{"timestamp":"2026-03-06T02:18:56.9184156+11:00","iteration":0,"phase":"baseline","level":"info","message":"Scenario baseline saved: stress-products — p95: 5.68573999999999ms","data":{}}
+{"timestamp":"2026-03-06T02:18:56.9289604+11:00","iteration":0,"phase":"baseline","level":"info","message":"Scenario baseline saved: stress-orders — p95: 758.385525ms","data":{}}
+{"timestamp":"2026-03-06T02:18:56.9369428+11:00","iteration":0,"phase":"baseline","level":"info","message":"Scenario baseline saved: stress-cart — p95: 101.13323ms","data":{}}
+{"timestamp":"2026-03-06T02:18:56.9431239+11:00","iteration":0,"phase":"baseline","level":"info","message":"Scenario baseline saved: stress-reviews — p95: 450.84122ms","data":{}}
+{"timestamp":"2026-03-06T02:18:56.9563932+11:00","iteration":0,"phase":"measure","level":"info","message":"Stopping API process (PID: 5780)","data":{}}
+{"timestamp":"2026-03-06T02:18:56.9831435+11:00","iteration":0,"phase":"measure","level":"info","message":"API process stopped","data":{}}

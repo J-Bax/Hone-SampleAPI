@@ -1,0 +1,32 @@
+{
+  "Machine": {
+    "MachineName": "DESKTOP-BERIFNB",
+    "Cpu": {
+      "Name": "11th Gen Intel(R) Core(TM) i7-1165G7 @ 2.80GHz",
+      "PhysicalCores": 4,
+      "LogicalProcessors": 8,
+      "MaxClockSpeedMHz": 2803,
+      "Architecture": "X64"
+    },
+    "Memory": {
+      "TotalGB": 31.8,
+      "AvailableGB": 25.0
+    },
+    "OS": {
+      "Description": "Microsoft Windows 10.0.19045",
+      "Platform": "Windows",
+      "Version": "Microsoft Windows NT 10.0.19045.0"
+    },
+    "Runtime": {
+      "PowerShellVersion": "7.4.13",
+      "DotnetSdkVersion": "8.0.418",
+      "ClrVersion": ".NET 8.0.21"
+    },
+    "CollectedAt": "2026-03-06T02:04:01.8574778+11:00"
+  },
+  "BaselineRun": {
+    "StartedAt": "2026-03-06T02:04:01.8574778+11:00",
+    "CompletedAt": "2026-03-06T02:07:46.6805535+11:00"
+  },
+  "Iterations": []
+}
