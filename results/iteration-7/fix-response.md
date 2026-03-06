@@ -1,3 +1,4 @@
+```csharp
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SampleApi.Data;
@@ -149,3 +150,4 @@ public class CartController : ControllerBase
         return NoContent();
     }
 }
+```

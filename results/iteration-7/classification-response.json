@@ -1,0 +1,6 @@
+```json
+{
+  "scope": "narrow",
+  "reasoning": "Change adds .AsNoTracking() to read-only GET queries (lines 25, 33, 69) within CartController.cs only, modifying only query logic without adding dependencies, changing schema, altering endpoints, or affecting other files."
+}
+```

@@ -33,3 +33,15 @@
 - [ ] Add .AsNoTracking() to read-only GET queries in CategoriesController and CartController to fully complete the pattern across all controllers
 - [ ] Add response caching (OutputCache or ResponseCache middleware) on read-heavy GET endpoints like Products and Categories to skip redundant database round-trips for unchanged data
 - [ ] [ARCHITECTURE] Add database indexes on frequently queried foreign-key columns (e.g., ProductId on Reviews, CategoryId on Products) to accelerate joins and WHERE clauses
+
+### From Iteration 6
+
+- [ ] Add .AsNoTracking() to read-only GET queries in CartController to fully complete the pattern across all controllers
+- [ ] Add response caching (OutputCache or ResponseCache middleware) on read-heavy GET endpoints like Products and Categories to skip redundant database round-trips for unchanged data
+- [ ] [ARCHITECTURE] Add database indexes on frequently queried foreign-key columns (e.g., ProductId on Reviews, CategoryId on Products) to accelerate joins and WHERE clauses
+
+### From Iteration 7
+
+- [ ] Add response caching (ResponseCache middleware) on read-heavy GET endpoints like Products and Categories to skip redundant database round-trips for unchanged data
+- [ ] [ARCHITECTURE] Add database indexes on frequently queried foreign-key columns (e.g., ProductId on Reviews, CategoryId on Products) to accelerate joins and WHERE clauses
+- [ ] [ARCHITECTURE] Implement server-side pagination on collection endpoints (Products, Orders, Reviews) to cap row count per response and reduce both query time and serialization cost
