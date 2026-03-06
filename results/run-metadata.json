@@ -1,4 +1,24 @@
 {
+  "BaselineRun": {
+    "StartedAt": "2026-03-06T02:04:01.8574778+11:00",
+    "CompletedAt": "2026-03-06T02:07:46.6805535+11:00"
+  },
+  "Iterations": [
+    {
+      "Iteration": 1,
+      "StartedAt": "2026-03-07T08:50:29.0656390+11:00",
+      "CompletedAt": "2026-03-07T09:07:09.0409090+11:00",
+      "Improved": true,
+      "Regression": true,
+      "P95": 118.55021999999994,
+      "RPS": 113.8,
+      "Outcome": "regressed",
+      "BranchName": "hone/iteration-1",
+      "BaseBranch": "master",
+      "PrNumber": null,
+      "PrUrl": null
+    }
+  ],
   "Machine": {
     "MachineName": "DESKTOP-BERIFNB",
     "Cpu": {
@@ -10,7 +30,7 @@
     },
     "Memory": {
       "TotalGB": 31.8,
-      "AvailableGB": 25.0
+      "AvailableGB": 20.1
     },
     "OS": {
       "Description": "Microsoft Windows 10.0.19045",
@@ -22,11 +42,7 @@
       "DotnetSdkVersion": "8.0.418",
       "ClrVersion": ".NET 8.0.21"
     },
-    "CollectedAt": "2026-03-06T02:04:01.8574778+11:00"
+    "CollectedAt": "2026-03-07T08:50:28.9752337+11:00"
   },
-  "BaselineRun": {
-    "StartedAt": "2026-03-06T02:04:01.8574778+11:00",
-    "CompletedAt": "2026-03-06T02:07:46.6805535+11:00"
-  },
-  "Iterations": []
+  "LoopStartedAt": "2026-03-07T08:50:28.9918829+11:00"
 }
