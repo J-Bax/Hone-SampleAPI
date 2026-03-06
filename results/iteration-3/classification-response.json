@@ -1,0 +1,6 @@
+```json
+{
+  "scope": "narrow",
+  "reasoning": "Change adds .AsNoTracking() to read-only GET queries in a single file, modifying only EF Core query implementation internals without altering SQL output, response shape, dependencies, schema, or API contracts."
+}
+```

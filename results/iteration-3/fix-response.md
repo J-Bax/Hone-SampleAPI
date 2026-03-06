@@ -1,3 +1,4 @@
+```csharp
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SampleApi.Data;
@@ -132,3 +133,4 @@ public class ProductsController : ControllerBase
         return NoContent();
     }
 }
+```

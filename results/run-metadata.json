@@ -17,6 +17,20 @@
       "BaseBranch": "master",
       "PrNumber": null,
       "PrUrl": null
+    },
+    {
+      "Iteration": 2,
+      "StartedAt": "2026-03-07T09:07:09.0457564+11:00",
+      "CompletedAt": "2026-03-07T09:24:57.3627785+11:00",
+      "Improved": true,
+      "Regression": true,
+      "P95": 118.35946499999999,
+      "RPS": 125.9,
+      "Outcome": "regressed",
+      "BranchName": "hone/iteration-2",
+      "BaseBranch": "hone/iteration-1",
+      "PrNumber": null,
+      "PrUrl": null
     }
   ],
   "Machine": {

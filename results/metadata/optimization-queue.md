@@ -9,3 +9,15 @@
 - [ ] Add .AsNoTracking() to all read-only GET endpoints across all controllers to eliminate EF Core change-tracker overhead
 - [ ] [ARCHITECTURE] Add database indexes on frequently queried foreign key columns (e.g., ProductId on Reviews, CategoryId on Products) to speed up joins and lookups
 - [ ] [ARCHITECTURE] Implement server-side pagination on collection endpoints (Products, Orders, Reviews) to limit data transferred per request
+
+### From Iteration 2
+
+- [ ] Add response caching or output caching headers on read-heavy GET endpoints (Products, Categories) to avoid redundant database queries for unchanged data
+- [ ] [ARCHITECTURE] Implement server-side pagination on collection endpoints (Products, Orders, Reviews) to limit data transferred per request and reduce query execution time
+- [ ] [ARCHITECTURE] Add database indexes on frequently queried foreign key columns (e.g., ProductId on Reviews, CategoryId on Products) to speed up joins and lookups
+
+### From Iteration 3
+
+- [ ] Add response caching (OutputCache or ResponseCache middleware) on read-heavy GET endpoints such as Products and Categories to skip redundant database round-trips for unchanged data
+- [ ] [ARCHITECTURE] Implement server-side pagination on collection endpoints (Products, Orders, Reviews) to cap the row count per response and reduce both query time and serialization cost
+- [ ] [ARCHITECTURE] Add database indexes on frequently queried foreign key columns (e.g., ProductId on Reviews, CategoryId on Products) to accelerate joins and WHERE clauses
