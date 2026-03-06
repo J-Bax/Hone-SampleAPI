@@ -1,0 +1,30 @@
+Let me read the source files to identify the best optimization opportunity.
+
+I need to read the controller files to analyze them. Let me do that now.
+
+Based on the optimization history:
+- Iterations 1-2: Eager loading and DTO projection on Products/Orders ΓåÆ regressed
+- Iterations 3-5: `.AsNoTracking()` on Products, Orders, Reviews ΓåÆ all improved
+- The optimization queue consistently suggests: completing `.AsNoTracking()` on remaining controllers (Categories, Cart), response caching, and database indexes
+
+Let me examine the remaining unoptimized controllers.
+
+Given what I can see from the context:
+
+1. **CategoriesController and CartController** still lack `.AsNoTracking()` - the proven pattern from iterations 3-5
+2. The queue repeatedly mentions response caching and database indexes as architecture-level changes
+3. The `.AsNoTracking()` pattern has been consistently successful (3 consecutive improvements)
+
+The most logical next step is completing `.AsNoTracking()` on CategoriesController, since categories are likely read-heavy (referenced by products) and this follows the proven pattern. CartController may involve writes (add to cart, update cart), so CategoriesController is the safer read-only target.
+
+```json
+{
+  "filePath": "SampleApi/Controllers/CategoriesController.cs",
+  "explanation": "Add .AsNoTracking() to all read-only GET queries in CategoriesController to eliminate EF Core change-tracker overhead. This completes the proven pattern that improved performance in iterations 3, 4, and 5. Categories are read-heavy and likely joined into Product queries, so removing tracking will reduce memory allocations and GC pressure (currently 1158MB heap), lowering p95 latency.",
+  "additionalOpportunities": [
+    { "description": "Add .AsNoTracking() to read-only GET queries in CartController to fully complete the pattern across all controllers", "scope": "narrow" },
+    { "description": "Add response caching (OutputCache or ResponseCache middleware) on read-heavy GET endpoints like Products and Categories to skip redundant database round-trips for unchanged data", "scope": "narrow" },
+    { "description": "Add database indexes on frequently queried foreign-key columns (e.g., ProductId on Reviews, CategoryId on Products) to accelerate joins and WHERE clauses", "scope": "architecture" }
+  ]
+}
+```

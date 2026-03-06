@@ -1,0 +1,6 @@
+```json
+{
+  "scope": "narrow",
+  "reasoning": "Change modifies only implementation internals (adding .AsNoTracking() to query methods) in a single file without altering routes, schemas, dependencies, or tests."
+}
+```
