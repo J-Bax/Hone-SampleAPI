@@ -45,6 +45,20 @@
       "BaseBranch": "hone/iteration-2",
       "PrNumber": "5",
       "PrUrl": "https://github.com/J-Bax/Hone-SampleAPI/pull/5"
+    },
+    {
+      "Iteration": 4,
+      "StartedAt": "2026-03-07T09:40:56.1297927+11:00",
+      "CompletedAt": "2026-03-07T09:57:08.6191316+11:00",
+      "Improved": true,
+      "Regression": false,
+      "P95": 98.65283999999984,
+      "RPS": 113.9,
+      "Outcome": "improved",
+      "BranchName": "hone/iteration-4",
+      "BaseBranch": "hone/iteration-3",
+      "PrNumber": "6",
+      "PrUrl": "https://github.com/J-Bax/Hone-SampleAPI/pull/6"
     }
   ],
   "Machine": {

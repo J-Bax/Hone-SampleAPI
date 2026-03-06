@@ -1,0 +1,6 @@
+```json
+{
+  "scope": "narrow",
+  "reasoning": "Adding .AsNoTracking() to read-only GET queries modifies only this single file's implementation internals without changing endpoints, dependencies, schema, or test contracts."
+}
+```
