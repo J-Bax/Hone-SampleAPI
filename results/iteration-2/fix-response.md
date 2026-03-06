@@ -1,3 +1,4 @@
+```csharp
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SampleApi.Data;
@@ -22,7 +23,16 @@ public class OrdersController : ControllerBase
     [HttpGet]
     public async Task<ActionResult<IEnumerable<Order>>> GetOrders()
     {
-        var orders = await _context.Orders.ToListAsync();
+        var orders = await _context.Orders
+            .Select(o => new
+            {
+                o.Id,
+                o.CustomerName,
+                o.OrderDate,
+                o.Status,
+                o.TotalAmount
+            })
+            .ToListAsync();
         return Ok(orders);
     }
 
@@ -32,7 +42,16 @@ public class OrdersController : ControllerBase
     [HttpGet("by-customer/{customerName}")]
     public async Task<ActionResult<IEnumerable<Order>>> GetOrdersByCustomer(string customerName)
     {
-        var allOrders = await _context.Orders.ToListAsync();
+        var allOrders = await _context.Orders
+            .Select(o => new
+            {
+                o.Id,
+                o.CustomerName,
+                o.OrderDate,
+                o.Status,
+                o.TotalAmount
+            })
+            .ToListAsync();
         var filtered = allOrders.Where(o =>
             o.CustomerName.Equals(customerName, StringComparison.OrdinalIgnoreCase)).ToList();
 
@@ -45,27 +64,35 @@ public class OrdersController : ControllerBase
     [HttpGet("{id}")]
     public async Task<ActionResult<object>> GetOrder(int id)
     {
-        var order = await _context.Orders.FindAsync(id);
+        var order = await _context.Orders
+            .Where(o => o.Id == id)
+            .Select(o => new
+            {
+                o.Id,
+                o.CustomerName,
+                o.OrderDate,
+                o.Status,
+                o.TotalAmount
+            })
+            .FirstOrDefaultAsync();
+
         if (order == null)
             return NotFound();
 
-        var allItems = await _context.OrderItems.ToListAsync();
-        var items = allItems.Where(i => i.OrderId == id).ToList();
-
-        var itemDetails = new List<object>();
-        foreach (var item in items)
-        {
-            var product = await _context.Products.FindAsync(item.ProductId);
-            itemDetails.Add(new
+        var itemDetails = await (
+            from i in _context.OrderItems
+            where i.OrderId == id
+            join p in _context.Products on i.ProductId equals p.Id into products
+            from p in products.DefaultIfEmpty()
+            select new
             {
-                item.Id,
-                item.ProductId,
-                ProductName = product?.Name ?? "Unknown",
-                item.Quantity,
-                item.UnitPrice,
-                Subtotal = item.Quantity * item.UnitPrice
-            });
-        }
+                i.Id,
+                i.ProductId,
+                ProductName = p != null ? p.Name : "Unknown",
+                i.Quantity,
+                i.UnitPrice,
+                Subtotal = i.Quantity * i.UnitPrice
+            }).ToListAsync();
 
         return Ok(new
         {
@@ -151,3 +178,4 @@ public class OrdersController : ControllerBase
         return NoContent();
     }
 }
+```

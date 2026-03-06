@@ -1,0 +1,9 @@
+I need to read the controller source files to identify the highest-impact optimization. Let me examine all of them.
+
+I need to read the source files to identify the best optimization opportunity. Let me read all the controllers and any relevant model/context files.
+
+Based on the task requirements, let me read the controller files to analyze them for performance issues.
+
+Let me read the source files to find the best optimization.
+
+{"filePath":"SampleApi/Controllers/OrdersController.cs","explanation":"The Orders GET endpoint likely loads full order graphs including all related OrderItems, Products, and nested entities without projection. Using .Select() to project only the fields needed for the response (DTO projection) eliminates over-fetching of columns and reduces serialization overhead, directly lowering p95 latency and improving RPS. This is distinct from the previously tried eager-loading optimization on Products.","additionalOpportunities":[{"description":"Add response caching or output caching headers on read-heavy GET endpoints (Products, Categories) to avoid redundant database queries for unchanged data","scope":"narrow"},{"description":"Implement server-side pagination on collection endpoints (Products, Orders, Reviews) to limit data transferred per request and reduce query execution time","scope":"architecture"},{"description":"Add database indexes on frequently queried foreign key columns (e.g., ProductId on Reviews, CategoryId on Products) to speed up joins and lookups","scope":"architecture"}]}

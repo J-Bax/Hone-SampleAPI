@@ -1,0 +1,6 @@
+```json
+{
+  "scope": "narrow",
+  "reasoning": "The optimization adds .Select() projection logic within the OrdersController.cs methods to reduce over-fetching, which modifies only implementation internals (query logic and response construction) without changing routes, schemas, dependencies, or requiring test modifications."
+}
+```
