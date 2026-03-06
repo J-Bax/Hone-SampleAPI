@@ -1,3 +1,4 @@
+```csharp
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SampleApi.Data;
@@ -22,7 +23,9 @@ public class ProductsController : ControllerBase
     [HttpGet]
     public async Task<ActionResult<IEnumerable<Product>>> GetProducts()
     {
-        var products = await _context.Products.ToListAsync();
+        var products = await _context.Products
+            .AsNoTracking()
+            .ToListAsync();
         return Ok(products);
     }
 
@@ -32,7 +35,9 @@ public class ProductsController : ControllerBase
     [HttpGet("{id}")]
     public async Task<ActionResult<Product>> GetProduct(int id)
     {
-        var product = await _context.Products.FindAsync(id);
+        var product = await _context.Products
+            .AsNoTracking()
+            .FirstOrDefaultAsync(p => p.Id == id);
 
         if (product == null)
             return NotFound();
@@ -53,7 +58,9 @@ public class ProductsController : ControllerBase
         if (matchingCategory == null)
             return NotFound(new { message = $"Category '{categoryName}' not found" });
 
-        var allProducts = await _context.Products.ToListAsync();
+        var allProducts = await _context.Products
+            .AsNoTracking()
+            .ToListAsync();
         var filtered = allProducts.Where(p =>
             p.Category.Equals(categoryName, StringComparison.OrdinalIgnoreCase)).ToList();
 
@@ -66,7 +73,9 @@ public class ProductsController : ControllerBase
     [HttpGet("search")]
     public async Task<ActionResult<IEnumerable<Product>>> SearchProducts([FromQuery] string? q)
     {
-        var allProducts = await _context.Products.ToListAsync();
+        var allProducts = await _context.Products
+            .AsNoTracking()
+            .ToListAsync();
 
         if (!string.IsNullOrWhiteSpace(q))
         {
@@ -132,3 +141,4 @@ public class ProductsController : ControllerBase
         return NoContent();
     }
 }
+```

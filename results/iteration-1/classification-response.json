@@ -1,0 +1,6 @@
+```json
+{
+  "scope": "narrow",
+  "reasoning": "The optimization adds .Include()/.ThenInclude() and .AsNoTracking() to existing query methods in a single controller file, improving EF Core query efficiency without modifying schema, dependencies, API contracts, or other files."
+}
+```
