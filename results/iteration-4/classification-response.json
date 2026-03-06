@@ -1,0 +1,6 @@
+```json
+{
+  "scope": "narrow",
+  "reasoning": "Change applies .AsNoTracking() only to read-only GET queries (lines 25, 35, 48, 52, 58) within OrdersController.cs, modifying only query internals without altering endpoints, schema, dependencies, or test requirements."
+}
+```
