@@ -1,16 +1,22 @@
 import http from 'k6/http';
-import { check, sleep } from 'k6';
+import { check } from 'k6';
 
-// Baseline scenario: pure steady-state load test.
-// Warmup (JIT, DB, connection pool) is handled externally by warmup.js
-// so this scenario measures ONLY steady-state performance.
-// No ramp-up/down stages — every request is under identical load.
+// Baseline scenario: high-concurrency stress test exercising every endpoint.
+// Same user-journey shape as a real marketplace session (browse → review →
+// cart → order → pages) but with zero think-time so VUs fire requests
+// back-to-back, creating real server contention.
+// Warmup (JIT, DB, connection pool) is handled externally by warmup.js.
 export const options = {
-  vus: 50,
-  duration: '30s',
+  stages: [
+    { duration: '15s', target: 10 },   // Warm-up
+    { duration: '30s', target: 100 },   // Normal load
+    { duration: '30s', target: 300 },   // High load
+    { duration: '30s', target: 500 },   // Stress load
+    { duration: '15s', target: 0 },     // Cool-down
+  ],
   thresholds: {
-    http_req_duration: ['p(95)<500'],  // p95 under 500ms
-    http_req_failed: ['rate<0.01'],     // error rate under 1%
+    http_req_duration: ['p(95)<2000'],  // p95 under 2s (stress test)
+    http_req_failed: ['rate<0.05'],      // error rate under 5%
   },
 };
 
@@ -24,9 +30,11 @@ function seededId(max, salt) {
 }
 
 export default function () {
+  const randomId = seededId(100, 1);
+  const sessionId = `k6-session-${__VU}-${__ITER}`;
+
   // ── Product endpoints ──
 
-  // GET /api/products — list all products
   const listRes = http.get(`${BASE_URL}/api/products`);
   check(listRes, {
     'list products: status 200': (r) => r.status === 200,
@@ -36,57 +44,36 @@ export default function () {
     },
   });
 
-  sleep(0.5);
-
-  // GET /api/products/{id} — get a single product
-  const randomId = seededId(100, 1);
   const getRes = http.get(`${BASE_URL}/api/products/${randomId}`);
   check(getRes, {
     'get product: status 200 or 404': (r) => r.status === 200 || r.status === 404,
   });
 
-  sleep(0.5);
-
-  // GET /api/products/search?q=Product — search products
   const searchRes = http.get(`${BASE_URL}/api/products/search?q=Product`);
   check(searchRes, {
     'search: status 200': (r) => r.status === 200,
   });
 
-  sleep(0.5);
-
-  // GET /api/products/by-category/Electronics — filter by category
   const categoryRes = http.get(`${BASE_URL}/api/products/by-category/Electronics`);
   check(categoryRes, {
     'category filter: status 200': (r) => r.status === 200,
   });
 
-  sleep(0.5);
-
   // ── Review endpoints ──
 
-  // GET /api/reviews/by-product/{id} — reviews for a product
   const reviewProductId = seededId(500, 2);
   const reviewsRes = http.get(`${BASE_URL}/api/reviews/by-product/${reviewProductId}`);
   check(reviewsRes, {
     'reviews by product: status 200': (r) => r.status === 200,
   });
 
-  sleep(0.3);
-
-  // GET /api/reviews/average/{id} — average rating
   const avgRes = http.get(`${BASE_URL}/api/reviews/average/${reviewProductId}`);
   check(avgRes, {
     'average rating: status 200': (r) => r.status === 200,
   });
 
-  sleep(0.3);
-
   // ── Cart flow ──
 
-  const sessionId = `k6-session-${__VU}-${__ITER}`;
-
-  // POST /api/cart — add item to cart
   const addCartRes = http.post(`${BASE_URL}/api/cart`,
     JSON.stringify({ sessionId, productId: randomId, quantity: 1 }),
     { headers: { 'Content-Type': 'application/json' } }
@@ -95,24 +82,15 @@ export default function () {
     'add to cart: status 200 or 201': (r) => r.status === 200 || r.status === 201,
   });
 
-  sleep(0.3);
-
-  // GET /api/cart/{sessionId} — get cart contents
   const cartRes = http.get(`${BASE_URL}/api/cart/${sessionId}`);
   check(cartRes, {
     'get cart: status 200': (r) => r.status === 200,
   });
 
-  sleep(0.3);
-
-  // DELETE /api/cart/session/{sessionId} — clear cart
   http.del(`${BASE_URL}/api/cart/session/${sessionId}`);
-
-  sleep(0.3);
 
   // ── Order flow ──
 
-  // POST /api/orders — create order
   const orderRes = http.post(`${BASE_URL}/api/orders`,
     JSON.stringify({
       customerName: `k6-user-${__VU}`,
@@ -127,8 +105,6 @@ export default function () {
     'create order: status 201': (r) => r.status === 201,
   });
 
-  sleep(0.3);
-
   // ── Razor Pages ──
 
   const homeRes = http.get(`${BASE_URL}/`);
@@ -136,21 +112,15 @@ export default function () {
     'home page: status 200': (r) => r.status === 200,
   });
 
-  sleep(0.3);
-
   const productsPageRes = http.get(`${BASE_URL}/Products`);
   check(productsPageRes, {
     'products page: status 200': (r) => r.status === 200,
   });
 
-  sleep(0.3);
-
   const detailPageRes = http.get(`${BASE_URL}/Products/Detail/${randomId}`);
   check(detailPageRes, {
     'product detail page: status 200': (r) => r.status === 200,
   });
-
-  sleep(0.3);
 }
 
 export function handleSummary(data) {
