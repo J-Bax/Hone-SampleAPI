@@ -1,4 +1,9 @@
 {
+  "BaselineRun": {
+    "StartedAt": "2026-03-09T04:06:33.8957328+11:00",
+    "CompletedAt": "2026-03-09T04:17:56.28675+11:00"
+  },
+  "Experiments": [],
   "Machine": {
     "MachineName": "DESKTOP-BERIFNB",
     "Cpu": {
@@ -10,7 +15,7 @@
     },
     "Memory": {
       "TotalGB": 31.8,
-      "AvailableGB": 25.0
+      "AvailableGB": 20.4
     },
     "OS": {
       "Description": "Microsoft Windows 10.0.19045",
@@ -22,11 +27,12 @@
       "DotnetSdkVersion": "8.0.418",
       "ClrVersion": ".NET 8.0.21"
     },
-    "CollectedAt": "2026-03-06T02:04:01.8574778+11:00"
+    "CollectedAt": "2026-03-09T04:29:34.4065696+11:00"
   },
-  "BaselineRun": {
-    "StartedAt": "2026-03-06T02:04:01.8574778+11:00",
-    "CompletedAt": "2026-03-06T02:07:46.6805535+11:00"
-  },
-  "Iterations": []
+  "LoopStartedAt": "2026-03-09T04:29:34.4263314+11:00",
+  "LoopCompletedAt": "2026-03-09T04:30:27.4325938+11:00",
+  "PrChain": [],
+  "FullBranchChain": [
+    "master"
+  ]
 }

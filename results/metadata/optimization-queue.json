@@ -1,0 +1,39 @@
+{
+  "generatedByExperiment": 1,
+  "generatedAt": "2026-03-09T04:33:09.1379577+11:00",
+  "items": [
+    {
+      "id": 1,
+      "filePath": "SampleApi/Controllers/CartController.cs",
+      "title": "Cart endpoints load entire table and N+1 query for products",
+      "explanation": "Cart endpoints load entire table and N+1 query for products",
+      "scope": "narrow",
+      "rootCausePath": "C:\\Projects\\Hone\\sample-api\\results\\metadata\\root-causes\\rca-1.md",
+      "status": "done",
+      "triedByExperiment": 1,
+      "outcome": "improved"
+    },
+    {
+      "id": 2,
+      "filePath": "SampleApi/Controllers/ProductsController.cs",
+      "title": "Product search and category filter scan full Products table in memory",
+      "explanation": "Product search and category filter scan full Products table in memory",
+      "scope": "narrow",
+      "rootCausePath": "C:\\Projects\\Hone\\sample-api\\results\\metadata\\root-causes\\rca-2.md",
+      "status": "pending",
+      "triedByExperiment": null,
+      "outcome": null
+    },
+    {
+      "id": 3,
+      "filePath": "SampleApi/Controllers/ReviewsController.cs",
+      "title": "Review endpoints load all reviews into memory instead of filtering server-side",
+      "explanation": "Review endpoints load all reviews into memory instead of filtering server-side",
+      "scope": "narrow",
+      "rootCausePath": "C:\\Projects\\Hone\\sample-api\\results\\metadata\\root-causes\\rca-3.md",
+      "status": "pending",
+      "triedByExperiment": null,
+      "outcome": null
+    }
+  ]
+}
