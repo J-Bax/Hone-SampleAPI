@@ -1,3 +1,14 @@
+# Root Cause Analysis — Experiment 3
+
+> Generated: 2026-03-09 04:39:13 | Classification: narrow — All N+1 queries and full table loads can be fixed by adding `.Include()` and `.Where()` clauses directly in this controller file's query methods without modifying other files, adding dependencies, changing migrations, or altering API contracts.
+
+| Metric | Current | Baseline |
+|--------|---------|----------|
+| p95 Latency | 1745.51ms | 1934.079535ms |
+| Requests/sec | 341.1 | 309.4 |
+| Error Rate | 0% | 0% |
+
+---
 # Orders endpoints load full tables and N+1 query products
 
 > **File:** `SampleApi/Controllers/OrdersController.cs` | **Scope:** narrow
@@ -58,3 +69,4 @@ foreach (var itemReq in request.Items)
 - p95 latency: ~15-25% reduction. The N+1 in `GetOrder` adds multiple sequential round-trips under load; eliminating them should significantly reduce tail latency.
 - RPS: ~15-20% increase. Fewer database round-trips per request means fewer connections held, reducing pool contention.
 - Error rate: No change (currently 0%).
+

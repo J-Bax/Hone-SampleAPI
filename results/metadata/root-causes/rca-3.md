@@ -1,49 +1,41 @@
-# Review endpoints load all reviews into memory instead of filtering server-side
+# GetCategory queries products by string without AsNoTracking
 
-> **File:** `SampleApi/Controllers/ReviewsController.cs` | **Scope:** narrow
+> **File:** `SampleApi/Controllers/CategoriesController.cs` | **Scope:** narrow
 
 ## Evidence
 
-At `ReviewsController.cs:54-55`, `GetReviewsByProduct` loads ALL reviews then filters in C#:
+At `CategoriesController.cs:40-42`, `GetCategory` queries products by category name string:
 
 ```csharp
-var allReviews = await _context.Reviews.ToListAsync();
-var filtered = allReviews.Where(r => r.ProductId == productId).ToList();
+var products = await _context.Products
+    .Where(p => p.Category == category.Name)
+    .ToListAsync();
 ```
 
-At lines 70-71, `GetAverageRating` does the same full scan for a simple aggregation:
+This query and all other read-only GET endpoints across the application (e.g., `GetOrders` at `OrdersController.cs:25`, `GetProducts` at `ProductsController.cs:25`, `GetReviews` at `ReviewsController.cs:25`, `GetCategories` at `CategoriesController.cs:25`) load entities with full EF change tracking enabled. For `GetCategory`, this means up to ~100 Product entities (1000 products / 10 categories) are tracked unnecessarily.
+
+Additionally, `CategoriesController.cs:35` uses `FindAsync` for the category lookup:
 
 ```csharp
-var allReviews = await _context.Reviews.ToListAsync();
-var productReviews = allReviews.Where(r => r.ProductId == productId).ToList();
+var category = await _context.Categories.FindAsync(id);
 ```
 
-At lines 95-97, `CreateReview` re-loads ALL reviews after insert just to compute an average that is never used:
-
-```csharp
-var allReviews = await _context.Reviews.ToListAsync();
-var productReviews = allReviews.Where(r => r.ProductId == review.ProductId).ToList();
-var _ = productReviews.Average(r => r.Rating);
-```
-
-The `stress.js` scenario calls both `/api/reviews/by-product/{id}` and `/api/reviews/average/{id}` (lines 41-42).
+Then passes `category.Name` to filter Products. This two-step lookup could be a single query.
 
 ## Theory
 
-With seed data populating reviews for many products, every review endpoint request transfers the full Reviews table from SQL Server to the app. For `GetAverageRating`, SQL Server can compute `AVG(Rating) WHERE ProductId = @id` entirely on the server in a single index scan, returning just two numbers instead of thousands of rows. The wasted `ToListAsync` in `CreateReview` is pure overheadΓÇöit loads every review, computes an unused average, then discards both.
+EF Core's change tracker creates a snapshot of every materialized entity to detect modifications at `SaveChanges` time. For read-only endpoints that never call `SaveChanges`, this is pure overhead ΓÇö extra memory allocations, identity-resolution hash lookups, and GC pressure. Under concurrent load, the additional allocations per request compound into measurable p95 latency increases, especially for endpoints returning large result sets like `GetProducts` (1000 rows) or `GetReviews` (~2000 rows).
 
-Under 200 VUs, the Reviews table is read-heavy and likely one of the larger tables (many products ├ù multiple reviews each), so the full-scan pattern contributes meaningfully to overall latency and memory pressure.
+The `CategoriesController.GetCategory` is the best representative because it both loads a non-trivial number of Products (~100 per category) with tracking AND this specific endpoint hasn't been optimized yet.
 
 ## Proposed Fixes
 
-1. **Server-side filtering for `GetReviewsByProduct`:** Replace with `_context.Reviews.Where(r => r.ProductId == productId).ToListAsync()`.
+1. **Add AsNoTracking to read-only queries in CategoriesController:** At `CategoriesController.cs:25`, change to `_context.Categories.AsNoTracking().ToListAsync()`. At `CategoriesController.cs:40`, change to `_context.Products.AsNoTracking().Where(...).ToListAsync()`. Replace the `FindAsync` at line 35 with `_context.Categories.AsNoTracking().FirstOrDefaultAsync(c => c.Id == id)` since `FindAsync` always tracks.
 
-2. **Server-side aggregation for `GetAverageRating`:** Replace with `_context.Reviews.Where(r => r.ProductId == productId).AverageAsync(r => r.Rating)` and `.CountAsync()`, or use a `GroupBy` projection so SQL returns just the aggregate.
-
-3. **Remove dead code in `CreateReview`:** Delete lines 95-97 entirelyΓÇöthe loaded reviews and computed average are assigned to a discard variable and never used.
+2. **Optionally combine into single query:** Replace the two-step lookup (find category, then query products) with a single `Products.AsNoTracking().Where(p => p.Category == categoryName)` query, skipping the category lookup entirely since the category name is already in the route parameter ΓÇö but only if the 404 behavior for unknown categories is preserved by checking the result.
 
 ## Expected Impact
 
-- p95 latency: **10-15% reduction** ΓÇö Review endpoints appear in the stress mix and the full table scan is eliminated.
-- RPS: **5-10% improvement** ΓÇö Reduced memory allocations and DB I/O free capacity for other concurrent requests.
-- Error rate: Remains at 0%.
+- p95 latency: ~3-5% reduction. Change tracking overhead is per-entity, so eliminating it for ~100 products per GetCategory call (and ~1000 for GetProducts, etc.) reduces allocation pressure.
+- RPS: ~3-5% increase. Less GC pressure and fewer allocations per request improve throughput under sustained load.
+- Error rate: No change.

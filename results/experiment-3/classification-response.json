@@ -1,0 +1,6 @@
+```json
+{
+  "scope": "narrow",
+  "reasoning": "All N+1 queries and full table loads can be fixed by adding `.Include()` and `.Where()` clauses directly in this controller file's query methods without modifying other files, adding dependencies, changing migrations, or altering API contracts."
+}
+```
