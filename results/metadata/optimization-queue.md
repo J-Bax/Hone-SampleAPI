@@ -6,5 +6,5 @@
 **Generated:** experiment 1 at 03/09/2026 04:33:09
 
 - [x] **#1** `SampleApi/Controllers/CartController.cs` — Cart endpoints load entire table and N+1 query for products *(experiment 1 — improved)*
-- [ ] **#2** `SampleApi/Controllers/ProductsController.cs` — Product search and category filter scan full Products table in memory
+- [x] **#2** `SampleApi/Controllers/ProductsController.cs` — Product search and category filter scan full Products table in memory *(experiment 1 — improved)*
 - [ ] **#3** `SampleApi/Controllers/ReviewsController.cs` — Review endpoints load all reviews into memory instead of filtering server-side

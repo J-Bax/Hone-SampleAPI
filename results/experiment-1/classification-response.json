@@ -1,6 +1,6 @@
 ```json
 {
   "scope": "narrow",
-  "reasoning": "The N+1 query issue and full table load can be fixed by adding `.Where()` filters and `.Include()` joins in the DbContext queries without modifying any other files, API routes, or adding dependencies."
+  "reasoning": "The optimization moves filtering from in-memory LINQ (lines 56-58 and 69-76) to database-level queries via DbContext, modifying only method bodies without adding dependencies, migrations, or changing API contracts."
 }
 ```

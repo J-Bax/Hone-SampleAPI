@@ -8,140 +8,126 @@ namespace SampleApi.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-public class CartController : ControllerBase
+public class ProductsController : ControllerBase
 {
     private readonly AppDbContext _context;
 
-    public CartController(AppDbContext context)
+    public ProductsController(AppDbContext context)
     {
         _context = context;
     }
 
     /// <summary>
-    /// Get cart contents for a session.
+    /// Get all products.
     /// </summary>
-    [HttpGet("{sessionId}")]
-    public async Task<ActionResult<object>> GetCart(string sessionId)
+    [HttpGet]
+    public async Task<ActionResult<IEnumerable<Product>>> GetProducts()
     {
-        var sessionItems = await _context.CartItems
-            .Where(c => c.SessionId == sessionId)
-            .Join(
-                _context.Products,
-                ci => ci.ProductId,
-                p => p.Id,
-                (ci, p) => new
-                {
-                    ci.Id,
-                    ci.ProductId,
-                    ProductName = p.Name,
-                    ProductPrice = p.Price,
-                    ci.Quantity,
-                    Subtotal = p.Price * ci.Quantity,
-                    ci.AddedAt
-                })
-            .ToListAsync();
-
-        decimal total = sessionItems.Sum(i => i.Subtotal);
-
-        return Ok(new
-        {
-            SessionId = sessionId,
-            Items = sessionItems.Cast<object>().ToList(),
-            ItemCount = sessionItems.Count,
-            Total = Math.Round(total, 2)
-        });
+        var products = await _context.Products.ToListAsync();
+        return Ok(products);
     }
 
     /// <summary>
-    /// Add an item to the cart.
+    /// Get a single product by ID.
+    /// </summary>
+    [HttpGet("{id}")]
+    public async Task<ActionResult<Product>> GetProduct(int id)
+    {
+        var product = await _context.Products.FindAsync(id);
+
+        if (product == null)
+            return NotFound();
+
+        return Ok(product);
+    }
+
+    /// <summary>
+    /// Get products by category.
+    /// </summary>
+    [HttpGet("by-category/{categoryName}")]
+    public async Task<ActionResult<IEnumerable<Product>>> GetProductsByCategory(string categoryName)
+    {
+        var matchingCategory = await _context.Categories
+            .FirstOrDefaultAsync(c => c.Name == categoryName);
+
+        if (matchingCategory == null)
+            return NotFound(new { message = $"Category '{categoryName}' not found" });
+
+        var filtered = await _context.Products
+            .Where(p => p.Category == categoryName)
+            .ToListAsync();
+
+        return Ok(filtered);
+    }
+
+    /// <summary>
+    /// Search products by name.
+    /// </summary>
+    [HttpGet("search")]
+    public async Task<ActionResult<IEnumerable<Product>>> SearchProducts([FromQuery] string? q)
+    {
+        if (!string.IsNullOrWhiteSpace(q))
+        {
+            var pattern = $"%{q}%";
+            var products = await _context.Products
+                .Where(p => EF.Functions.Like(p.Name, pattern) ||
+                            (p.Description != null && EF.Functions.Like(p.Description, pattern)))
+                .ToListAsync();
+            return Ok(products);
+        }
+
+        var allProducts = await _context.Products.ToListAsync();
+        return Ok(allProducts);
+    }
+
+    /// <summary>
+    /// Create a new product.
     /// </summary>
     [HttpPost]
-    public async Task<ActionResult<CartItem>> AddToCart(AddToCartRequest request)
+    public async Task<ActionResult<Product>> CreateProduct(Product product)
     {
-        // Check if product exists
-        var product = await _context.Products.FindAsync(request.ProductId);
-        if (product == null)
-            return NotFound(new { message = $"Product with ID {request.ProductId} not found" });
-
-        var existing = await _context.CartItems.FirstOrDefaultAsync(c =>
-            c.SessionId == request.SessionId && c.ProductId == request.ProductId);
-
-        if (existing != null)
-        {
-            // Item already in cart ΓÇö increment quantity
-            existing.Quantity += request.Quantity;
-            await _context.SaveChangesAsync();
-            return Ok(existing);
-        }
-
-        var cartItem = new CartItem
-        {
-            SessionId = request.SessionId,
-            ProductId = request.ProductId,
-            Quantity = request.Quantity,
-            AddedAt = DateTime.UtcNow
-        };
-
-        _context.CartItems.Add(cartItem);
+        product.CreatedAt = DateTime.UtcNow;
+        _context.Products.Add(product);
         await _context.SaveChangesAsync();
 
-        return CreatedAtAction(nameof(GetCart), new { sessionId = request.SessionId }, cartItem);
+        return CreatedAtAction(nameof(GetProduct), new { id = product.Id }, product);
     }
 
     /// <summary>
-    /// Update cart item quantity.
+    /// Update an existing product.
     /// </summary>
     [HttpPut("{id}")]
-    public async Task<IActionResult> UpdateCartItem(int id, [FromBody] int quantity)
+    public async Task<IActionResult> UpdateProduct(int id, Product product)
     {
-        var item = await _context.CartItems.FindAsync(id);
-        if (item == null)
+        if (id != product.Id)
+            return BadRequest(new { message = "ID mismatch" });
+
+        var existing = await _context.Products.FindAsync(id);
+        if (existing == null)
             return NotFound();
 
-        if (quantity <= 0)
-        {
-            _context.CartItems.Remove(item);
-        }
-        else
-        {
-            item.Quantity = quantity;
-        }
+        existing.Name = product.Name;
+        existing.Description = product.Description;
+        existing.Price = product.Price;
+        existing.Category = product.Category;
+        existing.UpdatedAt = DateTime.UtcNow;
 
         await _context.SaveChangesAsync();
+
         return NoContent();
     }
 
     /// <summary>
-    /// Remove a single item from the cart.
+    /// Delete a product.
     /// </summary>
     [HttpDelete("{id}")]
-    public async Task<IActionResult> RemoveCartItem(int id)
+    public async Task<IActionResult> DeleteProduct(int id)
     {
-        var item = await _context.CartItems.FindAsync(id);
-        if (item == null)
+        var product = await _context.Products.FindAsync(id);
+        if (product == null)
             return NotFound();
 
-        _context.CartItems.Remove(item);
-        await _context.SaveChangesAsync();
-
-        return NoContent();
-    }
-
-    /// <summary>
-    /// Clear all items from a session's cart.
-    /// </summary>
-    [HttpDelete("session/{sessionId}")]
-    public async Task<IActionResult> ClearCart(string sessionId)
-    {
-        var sessionItems = await _context.CartItems
-            .Where(c => c.SessionId == sessionId)
-            .ToListAsync();
-
-        foreach (var item in sessionItems)
-        {
-            _context.CartItems.Remove(item);
-        }
-
+        _context.Products.Remove(product);
         await _context.SaveChangesAsync();
 
         return NoContent();
