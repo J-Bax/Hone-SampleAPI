@@ -1,0 +1,6 @@
+```json
+{
+  "scope": "narrow",
+  "reasoning": "The proposed optimization changes only the query implementation logic within ReviewsController.cs by replacing server-side filtering with in-memory filteringΓÇöno files are added/removed, no dependencies change, no API contracts alter, and no test changes are required."
+}
+```

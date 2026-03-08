@@ -17,7 +17,29 @@
       "BaseBranch": "master",
       "PrNumber": "12",
       "PrUrl": "https://github.com/J-Bax/Hone-SampleAPI/pull/12"
+    },
+    {
+      "Experiment": 1,
+      "StartedAt": "2026-03-09T04:35:12.7599279+11:00",
+      "CompletedAt": "2026-03-09T04:36:12.6058187+11:00",
+      "Improved": true,
+      "Regression": false,
+      "P95": 1837.38,
+      "RPS": 324.9,
+      "Outcome": "improved",
+      "BranchName": "hone/experiment-1",
+      "BaseBranch": "master",
+      "PrNumber": null,
+      "PrUrl": null
     }
+  ],
+  "LoopCompletedAt": "2026-03-09T04:34:17.4451615+11:00",
+  "PrChain": [
+    "12"
+  ],
+  "FullBranchChain": [
+    "master",
+    "hone/experiment-1"
   ],
   "Machine": {
     "MachineName": "DESKTOP-BERIFNB",
@@ -30,7 +52,7 @@
     },
     "Memory": {
       "TotalGB": 31.8,
-      "AvailableGB": 20.2
+      "AvailableGB": 20.0
     },
     "OS": {
       "Description": "Microsoft Windows 10.0.19045",
@@ -42,15 +64,7 @@
       "DotnetSdkVersion": "8.0.418",
       "ClrVersion": ".NET 8.0.21"
     },
-    "CollectedAt": "2026-03-09T04:31:35.1009993+11:00"
+    "CollectedAt": "2026-03-09T04:35:12.6306033+11:00"
   },
-  "LoopStartedAt": "2026-03-09T04:31:35.1279731+11:00",
-  "LoopCompletedAt": "2026-03-09T04:34:17.4451615+11:00",
-  "PrChain": [
-    "12"
-  ],
-  "FullBranchChain": [
-    "master",
-    "hone/experiment-1"
-  ]
+  "LoopStartedAt": "2026-03-09T04:35:12.6502716+11:00"
 }

@@ -6,3 +6,4 @@
 |-----------|-----------|------|-------------|---------|
 | 1 | 2026-03-09 04:34 | `SampleApi/Controllers/CartController.cs` | Cart endpoints load entire table and N+1 query for products | improved |
 | 1 | 2026-03-09 04:36 | `SampleApi/Controllers/ProductsController.cs` | Product search and category filter scan full Products table in memory | improved |
+| 2 | 2026-03-09 04:37 | `SampleApi/Controllers/ReviewsController.cs` | Review endpoints load all reviews into memory instead of filtering server-side | improved |

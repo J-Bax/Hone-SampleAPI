@@ -1,3 +1,4 @@
+```csharp
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SampleApi.Data;
@@ -110,3 +111,4 @@ public class ReviewsController : ControllerBase
         return NoContent();
     }
 }
+```
