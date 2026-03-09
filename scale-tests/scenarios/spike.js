@@ -17,7 +17,7 @@ export const options = {
   },
 };
 
-const BASE_URL = __ENV.BASE_URL || 'http://localhost:5000';
+const BASE_URL = __ENV.BASE_URL || 'http://localhost:5050';
 
 // Deterministic ID generation for reproducible traffic patterns.
 function seededId(max, salt) {
