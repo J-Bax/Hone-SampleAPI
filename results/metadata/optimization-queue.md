@@ -6,5 +6,5 @@
 **Generated:** experiment 1 at 03/09/2026 10:14:39
 
 - [x] **#1** `SampleApi/Controllers/ReviewsController.cs` — Client-side evaluation loads entire Reviews table on every request *(experiment 1 — improved)*
-- [ ] **#2** `SampleApi/Controllers/ProductsController.cs` — Client-side filtering materializes all 1000 products for search and category queries
+- [x] **#2** `SampleApi/Controllers/ProductsController.cs` — Client-side filtering materializes all 1000 products for search and category queries *(experiment 2 — improved)*
 - [ ] **#3** [ARCHITECTURE] `SampleApi/Data/AppDbContext.cs` — No database indexes on frequently filtered columns causes full table scans

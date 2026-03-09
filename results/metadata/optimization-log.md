@@ -5,3 +5,4 @@
 | Experiment | Timestamp | File | Optimization | Outcome |
 |-----------|-----------|------|-------------|---------|
 | 1 | 2026-03-09 10:37 | `SampleApi/Controllers/ReviewsController.cs` | Client-side evaluation loads entire Reviews table on every request | improved |
+| 2 | 2026-03-09 11:00 | `SampleApi/Controllers/ProductsController.cs` | Client-side filtering materializes all 1000 products for search and category queries | improved |
