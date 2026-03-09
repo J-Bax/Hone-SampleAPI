@@ -1,48 +1,49 @@
-# Product search and category filter load entire tables client-side
+# GetOrder has N+1 query loop; GetOrdersByCustomer loads all orders client-side
 
-> **File:** `SampleApi/Controllers/ProductsController.cs` | **Scope:** narrow
+> **File:** `SampleApi/Controllers/OrdersController.cs` | **Scope:** narrow
 
 ## Evidence
 
-At `ProductsController.cs:49-58`, `GetProductsByCategory` loads ALL categories AND ALL products:
-
+**`GetOrder` (lines 52-58) — N+1 query pattern:**
 ```csharp
-var categories = await _context.Categories.ToListAsync();
-var matchingCategory = categories.FirstOrDefault(c =>
-    c.Name.Equals(categoryName, StringComparison.OrdinalIgnoreCase));
-...
-var allProducts = await _context.Products.ToListAsync();
-var filtered = allProducts.Where(p =>
-    p.Category.Equals(categoryName, StringComparison.OrdinalIgnoreCase)).ToList();
-```
+var allItems = await _context.OrderItems.ToListAsync();
+var items = allItems.Where(i => i.OrderId == id).ToList();
 
-At lines 69-77, `SearchProducts` loads all products then filters in memory:
-
-```csharp
-var allProducts = await _context.Products.ToListAsync();
-if (!string.IsNullOrWhiteSpace(q))
+var itemDetails = new List<object>();
+foreach (var item in items)
 {
-    allProducts = allProducts.Where(p =>
-        p.Name.Contains(q, StringComparison.OrdinalIgnoreCase) ||
-        (p.Description != null && p.Description.Contains(q, StringComparison.OrdinalIgnoreCase))
-    ).ToList();
-}
+    var product = await _context.Products.FindAsync(item.ProductId);
 ```
+First loads ALL order items into memory (line 52), filters client-side (line 53), then issues a separate `FindAsync` for each item's product (line 58). For an order with N items, this is 1 (all order items) + N (product lookups) queries.
 
-## Theory
+**`GetOrdersByCustomer` (lines 35-37):**
+```csharp
+var allOrders = await _context.Orders.ToListAsync();
+var filtered = allOrders.Where(o =>
+    o.CustomerName.Equals(customerName, StringComparison.OrdinalIgnoreCase)).ToList();
+```
+Loads all orders then filters in memory.
 
-Product browsing by category and search are core read-heavy operations that likely dominate load test traffic. `GetProductsByCategory` makes two full table scans (Categories + Products) when it only needs one filtered query. The Products table materializes every row including Description text, consuming memory and network bandwidth unnecessarily.
+**`CreateOrder` (lines 103-107) — sequential FindAsync per item:**
+```csharp
+foreach (var itemReq in request.Items)
+{
+    var product = await _context.Products.FindAsync(itemReq.ProductId);
+```
+Each order item triggers a separate DB round-trip. The baseline sends 2 items per order (`baseline.js` lines 97-100), so this is 2 extra queries per VU iteration.
 
-`SearchProducts` pulls the entire Products table for every search, then filters in .NET. SQL Server's `LIKE` operator (via EF `Contains`) would push this work to the database where indexes on Name could help, and only matching rows would be transferred over the wire.
+`GetOrder` and `GetOrdersByCustomer` are not directly hit by the baseline scenario, but `CreateOrder` is called every iteration. As the Orders and OrderItems tables grow during the test, `GetOrder`'s full table scan of OrderItems becomes increasingly expensive if called.
 
 ## Proposed Fixes
 
-1. **Push filters to SQL:** For `GetProductsByCategory`, use `_context.Products.Where(p => p.Category == categoryName)` directly (SQL collation handles case-insensitivity). Validate category existence with `AnyAsync` instead of loading all categories. For `SearchProducts`, use `_context.Products.Where(p => EF.Functions.Like(p.Name, $"%{q}%") || ...)` to filter server-side.
+1. **Fix GetOrder N+1:** Replace the full table load + loop with a single query using `Include` or a projection join: `_context.OrderItems.Where(oi => oi.OrderId == id).Join(_context.Products, oi => oi.ProductId, p => p.Id, ...)`. This collapses N+1 queries into 1.
 
-2. **Add index on Product.Category:** Configure `entity.HasIndex(e => e.Category)` in OnModelCreating to speed up category-based filtering.
+2. **Fix GetOrdersByCustomer:** Replace `ToListAsync()` + client-side Where with `_context.Orders.Where(o => o.CustomerName == customerName).ToListAsync()`. Add an index on `Order.CustomerName` in `AppDbContext.OnModelCreating` (line 44-49).
+
+3. **Fix CreateOrder:** Batch-load products with `_context.Products.Where(p => productIds.Contains(p.Id)).ToDictionaryAsync(p => p.Id)` before the loop instead of individual `FindAsync` calls.
 
 ## Expected Impact
 
-- p95 latency: ~5-10% reduction. Product catalog is likely a fixed-size dataset (not growing during test), so the impact is less dramatic than Cart/Orders, but eliminating full materialization still saves significant time.
-- RPS: ~5-8% increase. Reduced memory allocation per request lowers GC pressure and frees thread pool threads faster.
-- The Products table is read-heavy and stable-sized, so the improvement is consistent but moderate compared to the growing Cart/Order tables.
+- **p95 latency:** ~5-10% reduction. `CreateOrder` is called once per VU iteration with 2 items, so eliminating 2 serial round-trips saves ~2-4ms per request. The `GetOrder` and `GetOrdersByCustomer` fixes prevent future degradation.
+- **RPS:** ~5% increase from reduced DB round-trips on the write path.
+- **Error rate:** No change expected.

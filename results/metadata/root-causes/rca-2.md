@@ -1,46 +1,47 @@
-# Order queries load all rows then filter client-side with N+1
+# All review queries load entire Reviews table; CreateReview performs wasted computation
 
-> **File:** `SampleApi/Controllers/OrdersController.cs` | **Scope:** narrow
+> **File:** `SampleApi/Controllers/ReviewsController.cs` | **Scope:** narrow
 
 ## Evidence
 
-At `OrdersController.cs:35-37`, `GetOrdersByCustomer` loads every order into memory:
-
+**`GetReviewsByProduct` (line 54):**
 ```csharp
-var allOrders = await _context.Orders.ToListAsync();
-var filtered = allOrders.Where(o =>
-    o.CustomerName.Equals(customerName, StringComparison.OrdinalIgnoreCase)).ToList();
+var allReviews = await _context.Reviews.ToListAsync();
+var filtered = allReviews.Where(r => r.ProductId == productId).ToList();
 ```
+Loads every review row into memory, then filters for one product.
 
-At lines 52-53, `GetOrder` loads the entire `OrderItems` table to find items for one order:
-
+**`GetAverageRating` (lines 70-71):**
 ```csharp
-var allItems = await _context.OrderItems.ToListAsync();
-var items = allItems.Where(i => i.OrderId == id).ToList();
+var allReviews = await _context.Reviews.ToListAsync();
+var productReviews = allReviews.Where(r => r.ProductId == productId).ToList();
 ```
+Same full table load to compute a single aggregate.
 
-Then at lines 56-58, each matching order item triggers another query:
-
+**`CreateReview` (lines 95-97):**
 ```csharp
-foreach (var item in items)
-{
-    var product = await _context.Products.FindAsync(item.ProductId);
+var allReviews = await _context.Reviews.ToListAsync();
+var productReviews = allReviews.Where(r => r.ProductId == review.ProductId).ToList();
+var _ = productReviews.Average(r => r.Rating); // Wasted computation
 ```
+After inserting a review, loads ALL reviews and computes an average that is assigned to a discard variable (`_`) and never used. This is pure waste on a write path.
+
+The baseline scenario hits `by-product/{id}` and `average/{id}` on every iteration (`baseline.js` lines 65-66, 70-71), so under 500 VUs the entire Reviews table is scanned ~1,000 times per second.
 
 ## Theory
 
-As the load test creates orders via `POST /api/orders`, the Orders and OrderItems tables grow continuously. `GetOrdersByCustomer` fetches every order ever created to find one customer's orders — O(n) in total orders instead of O(k) in matching orders. The case-insensitive comparison in C# also means SQL Server can't use any index optimization.
+The Reviews table grows with every `CreateReview` call during the load test. As VUs create reviews, subsequent `GetReviewsByProduct` and `GetAverageRating` calls load an ever-growing table into memory. This creates a compounding performance degradation as the test progresses — later requests are slower than earlier ones because the table is larger. The `CreateReview` waste doubles the write-path cost by adding an unnecessary full table scan after every insert.
 
-`GetOrder` has the same pattern with OrderItems plus an N+1 for product details. For an order with 3 items, that's: 1 FindAsync(order) + 1 full table scan(OrderItems) + 3 FindAsync(products) = 5 queries instead of 1-2.
+Without an index on `Review.ProductId`, even server-side WHERE clauses would require a table scan. The combination of client-side evaluation and no index makes this the second-largest bottleneck.
 
 ## Proposed Fixes
 
-1. **Server-side filtering:** Replace `ToListAsync()` + LINQ-to-Objects with `Where()` clauses before materialization. For `GetOrdersByCustomer`, use `_context.Orders.Where(o => o.CustomerName == customerName)` (SQL Server default collation is case-insensitive). For `GetOrder`, use `_context.OrderItems.Where(i => i.OrderId == id)` and join with Products to eliminate the N+1 loop.
+1. **Push filters and aggregates to SQL:** Replace `ToListAsync()` + client-side `Where` with `_context.Reviews.Where(r => r.ProductId == productId).ToListAsync()` in `GetReviewsByProduct` (line 54). In `GetAverageRating`, use `_context.Reviews.Where(r => r.ProductId == productId).AverageAsync(r => r.Rating)` to compute the aggregate in SQL. Remove the dead computation in `CreateReview` (lines 95-97 entirely).
 
-2. **Add index on OrderItem.OrderId and Order.CustomerName:** Configure indexes in `OnModelCreating` to support the filtered queries.
+2. **Add a database index on `Review.ProductId`:** In `AppDbContext.OnModelCreating` (line 37-42), add `.HasIndex(e => e.ProductId)` so the server-side WHERE/AVG can use an index seek.
 
 ## Expected Impact
 
-- p95 latency: ~10-15% reduction. Order detail and customer lookup endpoints will go from full table scans to indexed lookups.
-- RPS: ~8-12% increase. Fewer queries per request and less data transferred reduces SQL Server and connection pool contention.
-- The impact is slightly lower than Cart because order reads may be less frequent than cart operations in typical e-commerce load test scenarios.
+- **p95 latency:** ~15-20% reduction. Two review endpoints are hit per VU iteration; eliminating full table scans and the CreateReview waste should meaningfully reduce tail latency.
+- **RPS:** ~10-15% increase from reduced SQL I/O and allocation pressure.
+- **Error rate:** No change expected.

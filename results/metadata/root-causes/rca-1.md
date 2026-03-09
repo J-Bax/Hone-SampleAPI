@@ -1,60 +1,53 @@
-# Cart endpoints load entire table and N+1 query products
+# Client-side filtering loads entire Products and Categories tables on every request
 
-> **File:** `SampleApi/Controllers/CartController.cs` | **Scope:** narrow
+> **File:** `SampleApi/Controllers/ProductsController.cs` | **Scope:** narrow
 
 ## Evidence
 
-At `CartController.cs:25-26`, `GetCart` loads every cart item in the database then filters in memory:
+Three endpoints in `ProductsController.cs` pull full tables into application memory and filter client-side:
 
+**`SearchProducts` (line 69):**
 ```csharp
-var allItems = await _context.CartItems.ToListAsync();
-var sessionItems = allItems.Where(c => c.SessionId == sessionId).ToList();
+var allProducts = await _context.Products.ToListAsync();
 ```
+Loads every product row, then filters in-memory at lines 73-76.
 
-Then at lines 31-33, each session item triggers a separate database round-trip:
-
+**`GetProductsByCategory` (lines 49 + 56):**
 ```csharp
-foreach (var item in sessionItems)
-{
-    var product = await _context.Products.FindAsync(item.ProductId);
+var categories = await _context.Categories.ToListAsync();
+// ...
+var allProducts = await _context.Products.ToListAsync();
+var filtered = allProducts.Where(p =>
+    p.Category.Equals(categoryName, StringComparison.OrdinalIgnoreCase)).ToList();
 ```
+Two full table scans (Categories + Products), then client-side filtering.
 
-The same full-table-scan pattern appears in `AddToCart` at lines 69-71:
-
+**`GetProducts` (line 25):**
 ```csharp
-var allItems = await _context.CartItems.ToListAsync();
-var existing = allItems.FirstOrDefault(c =>
-    c.SessionId == request.SessionId && c.ProductId == request.ProductId);
+var products = await _context.Products.ToListAsync();
 ```
+No pagination — returns every product.
 
-And in `ClearCart` at lines 140-146, which additionally calls `SaveChangesAsync()` inside the loop:
-
-```csharp
-var allItems = await _context.CartItems.ToListAsync();
-var sessionItems = allItems.Where(c => c.SessionId == sessionId).ToList();
-foreach (var item in sessionItems)
-{
-    _context.CartItems.Remove(item);
-    await _context.SaveChangesAsync();
-}
-```
+The k6 baseline scenario calls all three of these endpoints plus `GetProduct(id)` on every single VU iteration (see `baseline.js` lines 38, 52, 57), so under 500 VUs this generates ~2,000 full table scans per second across these three endpoints alone.
 
 ## Theory
 
-Cart endpoints are high-frequency in e-commerce load tests (every user session hits GetCart and AddToCart). Loading the entire `CartItems` table on every request means query cost scales with total rows across ALL sessions, not just the current session. Under concurrent load with k6, the table grows continuously as virtual users add items, making every subsequent request slower.
+When `ToListAsync()` is called before any `Where` clause, EF Core issues `SELECT * FROM Products` (or Categories) with no server-side predicate. The entire result set is materialized into .NET objects, transferred over the LocalDB named-pipe connection, and only then filtered in C# LINQ-to-Objects. Under high concurrency (500 VUs), this creates:
 
-The N+1 pattern in `GetCart` compounds this: after the full table scan, each cart item issues a separate `SELECT` to the Products table. With 5 items per cart, that's 6 queries per `GetCart` call (1 full scan + 5 product lookups).
+1. **Excessive SQL Server I/O** — full table scans saturate the LocalDB buffer pool
+2. **Excessive memory allocation** — every request allocates a `List<Product>` containing all rows, increasing GC pressure
+3. **Wasted network transfer** — all columns of all rows traverse the pipe even though most are discarded
 
-`ClearCart` calling `SaveChangesAsync()` inside the foreach loop generates one SQL `DELETE` transaction per item instead of batching, adding unnecessary round-trip latency.
+With the baseline sending 4 product-related requests per VU iteration, this is the single largest contributor to the 813ms p95 latency.
 
 ## Proposed Fixes
 
-1. **Server-side filtering with Join:** In `GetCart`, replace the full table scan with `_context.CartItems.Where(c => c.SessionId == sessionId)` and use a `Join` or navigation property to eager-load products in a single query, eliminating the N+1 loop. In `AddToCart`, use `.FirstOrDefaultAsync(c => c.SessionId == ... && c.ProductId == ...)` directly. In `ClearCart`, use `RemoveRange()` and a single `SaveChangesAsync()` after the loop.
+1. **Push predicates to the database:** In `SearchProducts`, use `_context.Products.Where(p => EF.Functions.Like(p.Name, $"%{q}%") || EF.Functions.Like(p.Description, $"%{q}%"))` to push the filter to SQL. In `GetProductsByCategory`, replace the two-query pattern with `_context.Products.Where(p => p.Category == categoryName)` using a direct `EF.Functions.Collate` or normalised string comparison, and validate the category name with a single `AnyAsync` instead of loading all categories.
 
-2. **Add database index on SessionId:** Configure an index on `CartItem.SessionId` in `AppDbContext.OnModelCreating` to accelerate the filtered queries.
+2. **Add a database index on `Product.Category`:** In `AppDbContext.OnModelCreating` (line 23-29), add `.HasIndex(e => e.Category)` to the Product entity configuration so the server-side WHERE on Category can use an index seek instead of a scan.
 
 ## Expected Impact
 
-- p95 latency: ~15-25% reduction. Cart endpoints currently dominate with full table scans that worsen under load. Server-side filtering eliminates data transfer overhead and reduces SQL execution time.
-- RPS: ~15-20% increase. Fewer database round-trips per request frees connection pool and thread pool capacity for concurrent requests.
-- Memory: Reduced GC pressure from not materializing entire tables into .NET objects on every call (current 2356MB max heap).
+- **p95 latency:** ~30-40% reduction (estimated 480-570ms). These three endpoints are hit on every VU iteration and currently account for 4 out of 13 HTTP requests, each doing full table scans.
+- **RPS:** ~25-35% increase. Reduced SQL I/O and memory allocation frees server capacity.
+- **Error rate:** No change expected (currently 0%).
