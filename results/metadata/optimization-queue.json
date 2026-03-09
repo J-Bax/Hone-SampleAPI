@@ -1,0 +1,39 @@
+{
+  "generatedByExperiment": 4,
+  "generatedAt": "2026-03-08T23:24:28.91544-07:00",
+  "items": [
+    {
+      "id": 1,
+      "filePath": "SampleApi/Controllers/CartController.cs",
+      "title": "Cart endpoints load entire table and N+1 query products",
+      "explanation": "Cart endpoints load entire table and N+1 query products",
+      "scope": "narrow",
+      "rootCausePath": "C:\\Projects\\Hone\\sample-api\\results\\metadata\\root-causes\\rca-1.md",
+      "status": "in_progress",
+      "triedByExperiment": null,
+      "outcome": null
+    },
+    {
+      "id": 2,
+      "filePath": "SampleApi/Controllers/OrdersController.cs",
+      "title": "Order queries load all rows then filter client-side with N+1",
+      "explanation": "Order queries load all rows then filter client-side with N+1",
+      "scope": "narrow",
+      "rootCausePath": "C:\\Projects\\Hone\\sample-api\\results\\metadata\\root-causes\\rca-2.md",
+      "status": "pending",
+      "triedByExperiment": null,
+      "outcome": null
+    },
+    {
+      "id": 3,
+      "filePath": "SampleApi/Controllers/ProductsController.cs",
+      "title": "Product search and category filter load entire tables client-side",
+      "explanation": "Product search and category filter load entire tables client-side",
+      "scope": "narrow",
+      "rootCausePath": "C:\\Projects\\Hone\\sample-api\\results\\metadata\\root-causes\\rca-3.md",
+      "status": "pending",
+      "triedByExperiment": null,
+      "outcome": null
+    }
+  ]
+}
