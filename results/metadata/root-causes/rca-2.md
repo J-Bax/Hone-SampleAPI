@@ -1,46 +1,50 @@
-# Order queries load all rows then filter client-side with N+1
+# Client-side filtering materializes all 1000 products for search and category queries
 
-> **File:** `SampleApi/Controllers/OrdersController.cs` | **Scope:** narrow
+> **File:** `SampleApi/Controllers/ProductsController.cs` | **Scope:** narrow
 
 ## Evidence
 
-At `OrdersController.cs:35-37`, `GetOrdersByCustomer` loads every order into memory:
+At `ProductsController.cs:69`, `SearchProducts` loads the entire Products table (1000 rows) into memory before filtering:
 
 ```csharp
-var allOrders = await _context.Orders.ToListAsync();
-var filtered = allOrders.Where(o =>
-    o.CustomerName.Equals(customerName, StringComparison.OrdinalIgnoreCase)).ToList();
+var allProducts = await _context.Products.ToListAsync();
 ```
 
-At lines 52-53, `GetOrder` loads the entire `OrderItems` table to find items for one order:
+Then at lines 73-76, it filters in C#:
 
 ```csharp
-var allItems = await _context.OrderItems.ToListAsync();
-var items = allItems.Where(i => i.OrderId == id).ToList();
+allProducts = allProducts.Where(p =>
+    p.Name.Contains(q, StringComparison.OrdinalIgnoreCase) ||
+    (p.Description != null && p.Description.Contains(q, StringComparison.OrdinalIgnoreCase))
+).ToList();
 ```
 
-Then at lines 56-58, each matching order item triggers another query:
+Similarly, `GetProductsByCategory` at lines 49-58 performs two full-table loads:
 
 ```csharp
-foreach (var item in items)
-{
-    var product = await _context.Products.FindAsync(item.ProductId);
+var categories = await _context.Categories.ToListAsync();
+// ...
+var allProducts = await _context.Products.ToListAsync();
+var filtered = allProducts.Where(p =>
+    p.Category.Equals(categoryName, StringComparison.OrdinalIgnoreCase)).ToList();
 ```
+
+The k6 scenario calls `GET /api/products/search?q=Product` and `GET /api/products/by-category/Electronics` on every VU iteration, plus `GET /api/products` also loads all 1000 products. This means 3 full Product table materializations per iteration (3000 Product objects).
 
 ## Theory
 
-As the load test creates orders via `POST /api/orders`, the Orders and OrderItems tables grow continuously. `GetOrdersByCustomer` fetches every order ever created to find one customer's orders — O(n) in total orders instead of O(k) in matching orders. The case-insensitive comparison in C# also means SQL Server can't use any index optimization.
+Each Product entity includes a Description field (a multi-sentence string per seed data at SeedData.cs:43-44), so materializing 1000 products allocates significant string data. Three full materializations per VU iteration at 500 VUs compounds the allocation pressure alongside the Reviews issue. The `StringComparison.OrdinalIgnoreCase` comparison forces client-side evaluation—EF Core cannot translate this to SQL—but SQL Server's default collation is case-insensitive, so a simple `EF.Functions.Like()` or `.Contains()` without `StringComparison` achieves the same result server-side.
 
-`GetOrder` has the same pattern with OrderItems plus an N+1 for product details. For an order with 3 items, that's: 1 FindAsync(order) + 1 full table scan(OrderItems) + 3 FindAsync(products) = 5 queries instead of 1-2.
+The `GetProductsByCategory` method makes it worse by also loading all Categories, performing two round-trips and materializing two entire tables when a single `WHERE Category = @p0` query would suffice.
 
 ## Proposed Fixes
 
-1. **Server-side filtering:** Replace `ToListAsync()` + LINQ-to-Objects with `Where()` clauses before materialization. For `GetOrdersByCustomer`, use `_context.Orders.Where(o => o.CustomerName == customerName)` (SQL Server default collation is case-insensitive). For `GetOrder`, use `_context.OrderItems.Where(i => i.OrderId == id)` and join with Products to eliminate the N+1 loop.
+1. **Push search to SQL in SearchProducts:** Replace the in-memory filter with `_context.Products.Where(p => p.Name.Contains(q) || (p.Description != null && p.Description.Contains(q))).ToListAsync()`. EF Core translates parameterless `.Contains()` to SQL `LIKE '%value%'`, which uses SQL Server's default case-insensitive collation.
 
-2. **Add index on OrderItem.OrderId and Order.CustomerName:** Configure indexes in `OnModelCreating` to support the filtered queries.
+2. **Push category filter to SQL in GetProductsByCategory:** Replace the two-step approach with `_context.Products.Where(p => p.Category == categoryName).ToListAsync()`. Remove the separate Categories lookup entirely, or replace it with a targeted `AnyAsync` existence check.
 
 ## Expected Impact
 
-- p95 latency: ~10-15% reduction. Order detail and customer lookup endpoints will go from full table scans to indexed lookups.
-- RPS: ~8-12% increase. Fewer queries per request and less data transferred reduces SQL Server and connection pool contention.
-- The impact is slightly lower than Cart because order reads may be less frequent than cart operations in typical e-commerce load test scenarios.
+- **Allocation volume:** Eliminates ~2000 Product entity materializations per VU iteration (search returns subset matching "Product" in name, category returns ~100 Electronics products vs. 1000 total each time). Estimated 15-25% reduction in total allocations.
+- **p95 latency:** Expected reduction of 10-20% on top of the Reviews fix, as SQL Server returns smaller result sets and fewer objects traverse the serialization pipeline.
+- **RPS:** Expected 10-15% additional throughput improvement from reduced memory pressure and faster query execution.

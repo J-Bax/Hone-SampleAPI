@@ -1,30 +1,30 @@
 {
-  "Machine": {
-    "Cpu": {
-      "Name": "AMD Ryzen 7 3700X 8-Core Processor",
-      "LogicalProcessors": 16,
-      "Architecture": "X64",
-      "PhysicalCores": 8,
-      "MaxClockSpeedMHz": 3593
-    },
-    "Runtime": {
-      "DotnetSdkVersion": "8.0.100-preview.4.23260.5",
-      "PowerShellVersion": "7.4.13",
-      "ClrVersion": ".NET 8.0.21"
-    },
-    "CollectedAt": "2026-03-09T05:00:52.578872Z",
-    "OS": {
-      "Platform": "Windows",
-      "Description": "Windows 10"
-    },
-    "Memory": {
-      "TotalGB": 63.9,
-      "AvailableGB": 48.4
-    }
-  },
   "Experiments": [],
   "BaselineRun": {
     "CompletedAt": "2026-03-08T20:13:17.3985927-07:00",
     "StartedAt": "2026-03-09T03:02:27.565554Z"
+  },
+  "Machine": {
+    "Runtime": {
+      "ClrVersion": ".NET 8.0.21",
+      "PowerShellVersion": "7.4.13",
+      "DotnetSdkVersion": "8.0.100-preview.4.23260.5"
+    },
+    "Cpu": {
+      "MaxClockSpeedMHz": 3593,
+      "LogicalProcessors": 16,
+      "PhysicalCores": 8,
+      "Name": "AMD Ryzen 7 3700X 8-Core Processor",
+      "Architecture": "X64"
+    },
+    "OS": {
+      "Description": "Windows 10",
+      "Platform": "Windows"
+    },
+    "CollectedAt": "2026-03-09T05:00:52.578872Z",
+    "Memory": {
+      "AvailableGB": 48.4,
+      "TotalGB": 63.9
+    }
   }
 }

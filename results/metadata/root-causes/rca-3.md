@@ -1,48 +1,32 @@
-# Product search and category filter load entire tables client-side
+# No database indexes on frequently filtered columns causes full table scans
 
-> **File:** `SampleApi/Controllers/ProductsController.cs` | **Scope:** narrow
+> **File:** `SampleApi/Data/AppDbContext.cs` | **Scope:** architecture
 
 ## Evidence
 
-At `ProductsController.cs:49-58`, `GetProductsByCategory` loads ALL categories AND ALL products:
+In `AppDbContext.cs:19-63`, the `OnModelCreating` method defines primary keys and property constraints but zero indexes. The most frequently queried filter columns have no index:
 
-```csharp
-var categories = await _context.Categories.ToListAsync();
-var matchingCategory = categories.FirstOrDefault(c =>
-    c.Name.Equals(categoryName, StringComparison.OrdinalIgnoreCase));
-...
-var allProducts = await _context.Products.ToListAsync();
-var filtered = allProducts.Where(p =>
-    p.Category.Equals(categoryName, StringComparison.OrdinalIgnoreCase)).ToList();
-```
+- `Review.ProductId` — filtered by `GetReviewsByProduct` and `GetAverageRating` (lines 37-42 define Review entity with no `.HasIndex()`)
+- `CartItem.SessionId` — filtered by `GetCart`, `AddToCart`, `ClearCart` (lines 58-62 define CartItem with no `.HasIndex()`)
+- `OrderItem.OrderId` — filtered by `GetOrder` (lines 52-55 define OrderItem with no `.HasIndex()`)
+- `Product.Category` — filtered by `GetProductsByCategory` (lines 23-29 define Product with no `.HasIndex()`)
 
-At lines 69-77, `SearchProducts` loads all products then filters in memory:
-
-```csharp
-var allProducts = await _context.Products.ToListAsync();
-if (!string.IsNullOrWhiteSpace(q))
-{
-    allProducts = allProducts.Where(p =>
-        p.Name.Contains(q, StringComparison.OrdinalIgnoreCase) ||
-        (p.Description != null && p.Description.Contains(q, StringComparison.OrdinalIgnoreCase))
-    ).ToList();
-}
-```
+Once client-side evaluation is fixed (opportunities #1 and #2), these WHERE clauses will execute server-side. Without indexes, SQL Server must perform full table scans on every filtered query. With 2000+ reviews, 1000 products, and growing OrderItems/CartItems tables under load, scan cost compounds.
 
 ## Theory
 
-Product browsing by category and search are core read-heavy operations that likely dominate load test traffic. `GetProductsByCategory` makes two full table scans (Categories + Products) when it only needs one filtered query. The Products table materializes every row including Description text, consuming memory and network bandwidth unnecessarily.
+After fixing client-side evaluation, the SQL queries will push `WHERE ProductId = @p0`, `WHERE SessionId = @p0`, etc. to the database. Without non-clustered indexes on these columns, SQL Server uses clustered index scans (sequential reads of every row) instead of index seeks (direct lookups). For the Reviews table at 2000+ rows queried twice per VU iteration, and CartItems table growing continuously during the test, full scans create I/O contention under high concurrency. The CartItem.SessionId index is particularly important because cart operations (`AddToCart` at CartController.cs:65-66 uses `FirstOrDefaultAsync` with SessionId + ProductId filter) occur on every VU iteration.
 
-`SearchProducts` pulls the entire Products table for every search, then filters in .NET. SQL Server's `LIKE` operator (via EF `Contains`) would push this work to the database where indexes on Name could help, and only matching rows would be transferred over the wire.
+This is classified as `architecture` because adding indexes requires an EF Core migration (`dotnet ef migrations add ...`), which generates additional migration files.
 
 ## Proposed Fixes
 
-1. **Push filters to SQL:** For `GetProductsByCategory`, use `_context.Products.Where(p => p.Category == categoryName)` directly (SQL collation handles case-insensitivity). Validate category existence with `AnyAsync` instead of loading all categories. For `SearchProducts`, use `_context.Products.Where(p => EF.Functions.Like(p.Name, $"%{q}%") || ...)` to filter server-side.
+1. **Add indexes in OnModelCreating:** Add `.HasIndex(e => e.ProductId)` to the Review entity, `.HasIndex(e => e.SessionId)` to CartItem, `.HasIndex(e => e.OrderId)` to OrderItem, and `.HasIndex(e => e.Category)` to Product. Then generate and apply a migration.
 
-2. **Add index on Product.Category:** Configure `entity.HasIndex(e => e.Category)` in OnModelCreating to speed up category-based filtering.
+2. **Consider composite index for CartItem:** Add `.HasIndex(e => new { e.SessionId, e.ProductId })` since `AddToCart` filters on both columns together (CartController.cs:65-66).
 
 ## Expected Impact
 
-- p95 latency: ~5-10% reduction. Product catalog is likely a fixed-size dataset (not growing during test), so the impact is less dramatic than Cart/Orders, but eliminating full materialization still saves significant time.
-- RPS: ~5-8% increase. Reduced memory allocation per request lowers GC pressure and frees thread pool threads faster.
-- The Products table is read-heavy and stable-sized, so the improvement is consistent but moderate compared to the growing Cart/Order tables.
+- **p95 latency:** Expected 5-15% additional reduction after client-side evaluation fixes are applied, as index seeks replace table scans.
+- **RPS:** Expected 5-10% throughput improvement from reduced I/O wait times and lock contention on table scans.
+- **Scalability:** Indexes prevent query degradation as tables grow during extended load tests (CartItems and Orders grow with each VU iteration).

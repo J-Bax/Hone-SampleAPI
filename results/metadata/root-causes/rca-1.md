@@ -1,60 +1,49 @@
-# Cart endpoints load entire table and N+1 query products
+# Client-side evaluation loads entire Reviews table on every request
 
-> **File:** `SampleApi/Controllers/CartController.cs` | **Scope:** narrow
+> **File:** `SampleApi/Controllers/ReviewsController.cs` | **Scope:** narrow
 
 ## Evidence
 
-At `CartController.cs:25-26`, `GetCart` loads every cart item in the database then filters in memory:
+At `ReviewsController.cs:54-55`, `GetReviewsByProduct` materializes the entire Reviews table (~2000+ rows) into memory and then filters by ProductId in C#:
 
 ```csharp
-var allItems = await _context.CartItems.ToListAsync();
-var sessionItems = allItems.Where(c => c.SessionId == sessionId).ToList();
+var allReviews = await _context.Reviews.ToListAsync();
+var filtered = allReviews.Where(r => r.ProductId == productId).ToList();
 ```
 
-Then at lines 31-33, each session item triggers a separate database round-trip:
+The identical pattern appears at `ReviewsController.cs:70-71` in `GetAverageRating`:
 
 ```csharp
-foreach (var item in sessionItems)
-{
-    var product = await _context.Products.FindAsync(item.ProductId);
+var allReviews = await _context.Reviews.ToListAsync();
+var productReviews = allReviews.Where(r => r.ProductId == productId).ToList();
 ```
 
-The same full-table-scan pattern appears in `AddToCart` at lines 69-71:
+Additionally, `CreateReview` at lines 95-97 performs a completely wasted full-table materialization after every insert:
 
 ```csharp
-var allItems = await _context.CartItems.ToListAsync();
-var existing = allItems.FirstOrDefault(c =>
-    c.SessionId == request.SessionId && c.ProductId == request.ProductId);
+var allReviews = await _context.Reviews.ToListAsync();
+var productReviews = allReviews.Where(r => r.ProductId == review.ProductId).ToList();
+var _ = productReviews.Average(r => r.Rating);
 ```
 
-And in `ClearCart` at lines 140-146, which additionally calls `SaveChangesAsync()` inside the loop:
-
-```csharp
-var allItems = await _context.CartItems.ToListAsync();
-var sessionItems = allItems.Where(c => c.SessionId == sessionId).ToList();
-foreach (var item in sessionItems)
-{
-    _context.CartItems.Remove(item);
-    await _context.SaveChangesAsync();
-}
-```
+The k6 baseline scenario calls both `GET /api/reviews/by-product/{id}` and `GET /api/reviews/average/{id}` on every VU iteration (lines 65-73 of baseline.js). At 500 VUs firing back-to-back, this materializes ~2000 Review objects twice per iteration, producing massive allocation volume that directly drives the observed 162 GB total allocations, inverted GC generation profile (107 Gen2 vs 8 Gen0), and 12.4% GC pause ratio.
 
 ## Theory
 
-Cart endpoints are high-frequency in e-commerce load tests (every user session hits GetCart and AddToCart). Loading the entire `CartItems` table on every request means query cost scales with total rows across ALL sessions, not just the current session. Under concurrent load with k6, the table grows continuously as virtual users add items, making every subsequent request slower.
+Each `ToListAsync()` on the full Reviews table forces EF Core to: (1) execute an unfiltered `SELECT *` query, (2) allocate a managed object for every row (~2000+ Review entities), (3) populate the DbContext change tracker with all entities. With two such calls per VU iteration at 500 concurrent VUs, the allocation rate overwhelms the Gen0 GC budget. Objects survive to Gen1/Gen2 because the DbContext (scoped per request) keeps them rooted until the request completes, and concurrent requests overlap. This explains the inverted generation counts—the GC cannot reclaim objects fast enough in ephemeral collections, forcing constant full-heap Gen2 sweeps at 1.25/sec, each pausing the application for up to 192ms and directly inflating p95 latency to 813ms.
 
-The N+1 pattern in `GetCart` compounds this: after the full table scan, each cart item issues a separate `SELECT` to the Products table. With 5 items per cart, that's 6 queries per `GetCart` call (1 full scan + 5 product lookups).
-
-`ClearCart` calling `SaveChangesAsync()` inside the foreach loop generates one SQL `DELETE` transaction per item instead of batching, adding unnecessary round-trip latency.
+The `GetAverageRating` method is especially wasteful because it materializes thousands of objects just to compute a single scalar that SQL Server can compute natively with `AVG()`.
 
 ## Proposed Fixes
 
-1. **Server-side filtering with Join:** In `GetCart`, replace the full table scan with `_context.CartItems.Where(c => c.SessionId == sessionId)` and use a `Join` or navigation property to eager-load products in a single query, eliminating the N+1 loop. In `AddToCart`, use `.FirstOrDefaultAsync(c => c.SessionId == ... && c.ProductId == ...)` directly. In `ClearCart`, use `RemoveRange()` and a single `SaveChangesAsync()` after the loop.
+1. **Push Where clause to SQL in GetReviewsByProduct:** Replace the two-step load-then-filter with `_context.Reviews.Where(r => r.ProductId == productId).ToListAsync()`. This sends `WHERE ProductId = @p0` to SQL Server, returning only the handful of matching rows.
 
-2. **Add database index on SessionId:** Configure an index on `CartItem.SessionId` in `AppDbContext.OnModelCreating` to accelerate the filtered queries.
+2. **Use server-side aggregate in GetAverageRating:** Replace the full materialization with `_context.Reviews.Where(r => r.ProductId == productId).AverageAsync(r => r.Rating)` and `.CountAsync()`. This computes the average in SQL, returning a single scalar instead of thousands of objects.
+
+3. **Remove wasted query in CreateReview:** Delete lines 95-97 entirely—the computed average is assigned to a discard variable and never used.
 
 ## Expected Impact
 
-- p95 latency: ~15-25% reduction. Cart endpoints currently dominate with full table scans that worsen under load. Server-side filtering eliminates data transfer overhead and reduces SQL execution time.
-- RPS: ~15-20% increase. Fewer database round-trips per request frees connection pool and thread pool capacity for concurrent requests.
-- Memory: Reduced GC pressure from not materializing entire tables into .NET objects on every call (current 2356MB max heap).
+- **Allocation volume:** Eliminates ~4000 Review entity allocations per VU iteration (the two full-table loads), reducing total allocations by an estimated 40-50%. This should dramatically reduce Gen2 collection frequency and GC pause ratio.
+- **p95 latency:** Expected reduction of 30-45% (from ~813ms toward ~450-570ms) due to reduced GC pauses and faster SQL queries (returning 1-7 rows instead of 2000+).
+- **RPS:** Expected increase of 25-40% as GC stop-the-world pauses decrease and database round-trip time drops.
