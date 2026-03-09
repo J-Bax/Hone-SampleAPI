@@ -5,3 +5,4 @@
 | Experiment | Timestamp | File | Optimization | Outcome |
 |-----------|-----------|------|-------------|---------|
 | 1 | 2026-03-09 00:37 | `SampleApi/Controllers/ProductsController.cs` | Client-side filtering loads entire Products and Categories tables on every request | improved |
+| 2 | 2026-03-09 01:00 | `SampleApi/Controllers/ReviewsController.cs` | All review queries load entire Reviews table; CreateReview performs wasted computation | improved |

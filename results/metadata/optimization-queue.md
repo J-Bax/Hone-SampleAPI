@@ -6,5 +6,5 @@
 **Generated:** experiment 1 at 03/09/2026 00:15:24
 
 - [x] **#1** `SampleApi/Controllers/ProductsController.cs` — Client-side filtering loads entire Products and Categories tables on every request *(experiment 1 — improved)*
-- [ ] **#2** `SampleApi/Controllers/ReviewsController.cs` — All review queries load entire Reviews table; CreateReview performs wasted computation
+- [x] **#2** `SampleApi/Controllers/ReviewsController.cs` — All review queries load entire Reviews table; CreateReview performs wasted computation *(experiment 2 — improved)*
 - [ ] **#3** `SampleApi/Controllers/OrdersController.cs` — GetOrder has N+1 query loop; GetOrdersByCustomer loads all orders client-side

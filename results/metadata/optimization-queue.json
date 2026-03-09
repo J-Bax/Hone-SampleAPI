@@ -20,9 +20,9 @@
       "explanation": "All review queries load entire Reviews table; CreateReview performs wasted computation",
       "scope": "narrow",
       "rootCausePath": "C:\\Projects\\Hone\\sample-api\\results\\metadata\\root-causes\\rca-2.md",
-      "status": "pending",
-      "triedByExperiment": null,
-      "outcome": null
+      "status": "done",
+      "triedByExperiment": 2,
+      "outcome": "improved"
     },
     {
       "id": 3,
