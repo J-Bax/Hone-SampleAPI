@@ -6,5 +6,5 @@
 **Generated:** experiment 11 at 03/10/2026 03:34:16
 
 - [x] **#1** `SampleApi/Pages/Index.cshtml.cs` — Replace ORDER BY NEWID() with efficient random product sampling *(experiment 11 — stale)*
-- [ ] **#2** `SampleApi/Controllers/ReviewsController.cs` — Combine GetAverageRating into single aggregation query
+- [x] **#2** `SampleApi/Controllers/ReviewsController.cs` — Combine GetAverageRating into single aggregation query *(experiment 12 — improved)*
 - [ ] **#3** `SampleApi/Program.cs` — Enable DbContext pooling to reduce per-request allocations

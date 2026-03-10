@@ -1,0 +1,6 @@
+```json
+{
+  "scope": "narrow",
+  "reasoning": "The optimization combines three separate database queries (FindAsync for product, CountAsync for review count, and AverageAsync for rating) into a single aggregation query within the GetAverageRating method body, modifying only implementation logic without changing the response schema, HTTP contract, or requiring changes elsewhere."
+}
+```
