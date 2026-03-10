@@ -7,4 +7,4 @@
 
 - [x] **#1** `SampleApi/Data/AppDbContext.cs` — Add database indexes on frequently filtered columns *(experiment 8 — improved)*
 - [x] **#2** `SampleApi/Controllers/ReviewsController.cs` — Eliminate redundant tracked product-existence queries *(experiment 9 — stale)*
-- [ ] **#3** `SampleApi/Controllers/CategoriesController.cs` — Add AsNoTracking and optimize GetCategory product query *(in progress)*
+- [x] **#3** `SampleApi/Controllers/CategoriesController.cs` — Add AsNoTracking and optimize GetCategory product query *(experiment 10 — stale)*
