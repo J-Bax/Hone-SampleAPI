@@ -1,0 +1,30 @@
+{
+  "Machine": {
+    "Cpu": {
+      "Name": "AMD Ryzen 7 3700X 8-Core Processor",
+      "PhysicalCores": 8,
+      "LogicalProcessors": 16,
+      "MaxClockSpeedMHz": 3593,
+      "Architecture": "X64"
+    },
+    "Memory": {
+      "TotalGB": 63.9,
+      "AvailableGB": 47.6
+    },
+    "OS": {
+      "Description": "Windows 10",
+      "Platform": "Windows"
+    },
+    "Runtime": {
+      "PowerShellVersion": "7.4.13",
+      "DotnetSdkVersion": "8.0.100-preview.4.23260.5",
+      "ClrVersion": ".NET 8.0.21"
+    },
+    "CollectedAt": "2026-03-09T23:29:15.3755636Z"
+  },
+  "BaselineRun": {
+    "StartedAt": "2026-03-09T23:29:15.3755636Z",
+    "CompletedAt": "2026-03-09T16:40:05.8772845-07:00"
+  },
+  "Experiments": []
+}

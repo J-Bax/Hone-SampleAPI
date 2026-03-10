@@ -1,0 +1,39 @@
+{
+  "generatedByExperiment": 1,
+  "generatedAt": "2026-03-09T17:08:30.0607212-07:00",
+  "items": [
+    {
+      "id": 1,
+      "filePath": "SampleApi/Controllers/CartController.cs",
+      "title": "Full-table CartItems loads with N+1 queries and per-item SaveChanges",
+      "explanation": "Full-table CartItems loads with N+1 queries and per-item SaveChanges",
+      "scope": "narrow",
+      "rootCausePath": "C:\\Projects\\Hone\\sample-api\\results\\metadata\\root-causes\\rca-1.md",
+      "status": "done",
+      "triedByExperiment": 1,
+      "outcome": "improved"
+    },
+    {
+      "id": 2,
+      "filePath": "SampleApi/Controllers/ReviewsController.cs",
+      "title": "Full-table Reviews loads for per-product filtering and aggregation",
+      "explanation": "Full-table Reviews loads for per-product filtering and aggregation",
+      "scope": "narrow",
+      "rootCausePath": "C:\\Projects\\Hone\\sample-api\\results\\metadata\\root-causes\\rca-2.md",
+      "status": "pending",
+      "triedByExperiment": null,
+      "outcome": null
+    },
+    {
+      "id": 3,
+      "filePath": "SampleApi/Controllers/ProductsController.cs",
+      "title": "Full-table Products loads for search and category filtering",
+      "explanation": "Full-table Products loads for search and category filtering",
+      "scope": "narrow",
+      "rootCausePath": "C:\\Projects\\Hone\\sample-api\\results\\metadata\\root-causes\\rca-3.md",
+      "status": "pending",
+      "triedByExperiment": null,
+      "outcome": null
+    }
+  ]
+}
