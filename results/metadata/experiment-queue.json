@@ -9,9 +9,9 @@
       "explanation": "Replace ORDER BY NEWID() with efficient random product sampling",
       "scope": "narrow",
       "rootCausePath": "C:\\Projects\\Hone\\sample-api\\results\\metadata\\root-causes\\rca-1.md",
-      "status": "in_progress",
-      "triedByExperiment": null,
-      "outcome": null
+      "status": "done",
+      "triedByExperiment": 11,
+      "outcome": "stale"
     },
     {
       "id": 2,
