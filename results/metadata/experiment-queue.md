@@ -6,5 +6,5 @@
 **Generated:** experiment 15 at 03/10/2026 04:52:43
 
 - [x] **#1** `SampleApi/Controllers/CartController.cs` — Fix full table scans and N+1 queries in CartController *(experiment 15 — stale)*
-- [ ] **#2** `SampleApi/Pages/Index.cshtml.cs` — Replace ORDER BY NEWID() with efficient random sampling
+- [x] **#2** `SampleApi/Pages/Index.cshtml.cs` — Replace ORDER BY NEWID() with efficient random sampling *(experiment 16 — improved)*
 - [ ] **#3** [ARCHITECTURE] `SampleApi/Data/AppDbContext.cs` — Add HasMaxLength to Product.Description to eliminate nvarchar(max) PLP overhead

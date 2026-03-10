@@ -20,9 +20,9 @@
       "explanation": "Replace ORDER BY NEWID() with efficient random sampling",
       "scope": "narrow",
       "rootCausePath": "C:\\Projects\\Hone\\sample-api\\results\\metadata\\root-causes\\rca-2.md",
-      "status": "pending",
-      "triedByExperiment": null,
-      "outcome": null
+      "status": "done",
+      "triedByExperiment": 16,
+      "outcome": "improved"
     },
     {
       "id": 3,

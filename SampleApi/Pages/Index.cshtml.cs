@@ -25,8 +25,16 @@ public class IndexModel : PageModel
 
     public async Task OnGetAsync()
     {
-        FeaturedProducts = await _context.Products.AsNoTracking().OrderBy(p => EF.Functions.Random()).Take(12).ToListAsync();
         TotalProducts = await _context.Products.CountAsync();
+
+        // Use OFFSET/FETCH instead of ORDER BY NEWID() to avoid full table scan + sort.
+        // Random.Shared is thread-safe and avoids allocating a new Random instance per request.
+        int offset = TotalProducts > 12 ? Random.Shared.Next(0, TotalProducts - 12) : 0;
+        FeaturedProducts = await _context.Products.AsNoTracking()
+            .OrderBy(p => p.Id)
+            .Skip(offset)
+            .Take(12)
+            .ToListAsync();
 
         // Separate query for categories
         Categories = await _context.Categories.AsNoTracking().ToListAsync();

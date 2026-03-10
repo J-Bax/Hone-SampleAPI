@@ -19,3 +19,4 @@
 | 13 | 2026-03-10 04:20 | `SampleApi/Program.cs` | Test failure: Enable DbContext pooling to reduce per-request allocations | regressed |
 | 14 | 2026-03-10 04:40 | `SampleApi/Controllers/ProductsController.cs` | Test failure: Add server-side result limiting to GetProducts and SearchProducts | regressed |
 | 15 | 2026-03-10 05:15 | `SampleApi/Controllers/CartController.cs` | Fix full table scans and N+1 queries in CartController | stale |
+| 16 | 2026-03-10 05:38 | `SampleApi/Pages/Index.cshtml.cs` | Replace ORDER BY NEWID() with efficient random sampling | improved |
