@@ -5,3 +5,4 @@
 | Experiment | Timestamp | File | Optimization | Outcome |
 |-----------|-----------|------|-------------|---------|
 | 1 | 2026-03-09 23:04 | `SampleApi/Controllers/ProductsController.cs` | Replace client-side filtering with server-side queries and AsNoTracking in ProductsController | improved |
+| 2 | 2026-03-09 23:27 | `SampleApi/Controllers/ReviewsController.cs` | Eliminate full Reviews table scan with server-side filtering and SQL aggregation | improved |

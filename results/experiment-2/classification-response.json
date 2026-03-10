@@ -1,0 +1,6 @@
+```json
+{
+  "scope": "narrow",
+  "reasoning": "Optimization modifies only method bodies in this single controller file to add WHERE filtering and LINQ aggregation at the query level, does not change endpoints/schemas/dependencies, and requires no test modifications."
+}
+```
