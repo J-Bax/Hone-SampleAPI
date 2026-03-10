@@ -1,0 +1,6 @@
+```json
+{
+  "scope": "narrow",
+  "reasoning": "Server-side pagination and filtering can be implemented by moving `.Where()` clauses to the database query in OnGetAsync before `.ToListAsync()`, keeping changes within this single file with no new dependencies, database migrations, or API contract changes."
+}
+```

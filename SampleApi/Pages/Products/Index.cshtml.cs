@@ -32,34 +32,33 @@ public class IndexModel : PageModel
         SearchQuery = q;
         CurrentPage = page < 1 ? 1 : page;
 
-        var allProducts = await _context.Products.ToListAsync();
+        IQueryable<Product> query = _context.Products.AsNoTracking();
 
-        // Filter by category in memory
+        // Filter by category server-side
         if (!string.IsNullOrWhiteSpace(category))
         {
-            allProducts = allProducts.Where(p =>
-                p.Category.Equals(category, StringComparison.OrdinalIgnoreCase)).ToList();
+            query = query.Where(p => p.Category == category);
         }
 
-        // Filter by search in memory
+        // Filter by search server-side
         if (!string.IsNullOrWhiteSpace(q))
         {
-            allProducts = allProducts.Where(p =>
-                p.Name.Contains(q, StringComparison.OrdinalIgnoreCase) ||
-                (p.Description != null && p.Description.Contains(q, StringComparison.OrdinalIgnoreCase))
-            ).ToList();
+            query = query.Where(p =>
+                p.Name.Contains(q) ||
+                (p.Description != null && p.Description.Contains(q)));
         }
 
-        TotalPages = (int)Math.Ceiling(allProducts.Count / (double)PageSize);
+        var totalCount = await query.CountAsync();
+        TotalPages = (int)Math.Ceiling(totalCount / (double)PageSize);
         if (TotalPages < 1) TotalPages = 1;
         if (CurrentPage > TotalPages) CurrentPage = TotalPages;
 
-        Products = allProducts
+        Products = await query
             .Skip((CurrentPage - 1) * PageSize)
             .Take(PageSize)
-            .ToList();
+            .ToListAsync();
 
         // Separate query for categories sidebar
-        Categories = await _context.Categories.ToListAsync();
+        Categories = await _context.Categories.AsNoTracking().ToListAsync();
     }
 }
