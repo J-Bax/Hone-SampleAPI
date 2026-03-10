@@ -1,46 +1,68 @@
-# Eliminate full Reviews table scan with server-side filtering and SQL aggregation
+# Add database indexes on frequently filtered columns
 
-> **File:** `SampleApi/Controllers/ReviewsController.cs` | **Scope:** narrow
+> **File:** `SampleApi/Data/AppDbContext.cs` | **Scope:** architecture
 
 ## Evidence
 
-Both `GetReviewsByProduct` and `GetAverageRating` are called once per VU iteration, and both load the entire Reviews table (~2000 rows) into memory before filtering:
+In `AppDbContext.cs:19-63`, the `OnModelCreating` method defines entity configurations but **zero indexes** on any column used in WHERE clauses:
 
-`ReviewsController.cs:54-55`:
 ```csharp
-var allReviews = await _context.Reviews.ToListAsync();
-var filtered = allReviews.Where(r => r.ProductId == productId).ToList();
+modelBuilder.Entity<Product>(entity =>
+{
+    entity.HasKey(e => e.Id);
+    entity.Property(e => e.Name).HasMaxLength(200).IsRequired();
+    entity.Property(e => e.Category).HasMaxLength(100).IsRequired();
+    // No index on Category — used in WHERE by ProductsController:56 and CategoriesController:41
+});
 ```
 
-`ReviewsController.cs:70-71`:
 ```csharp
-var allReviews = await _context.Reviews.ToListAsync();
-var productReviews = allReviews.Where(r => r.ProductId == productId).ToList();
+modelBuilder.Entity<Review>(entity =>
+{
+    entity.HasKey(e => e.Id);
+    // No index on ProductId — used in WHERE by ReviewsController:54,71,73
+});
 ```
 
-Additionally, `CreateReview` (line 95-97) reloads the entire Reviews table just to compute an average that's never used:
 ```csharp
-var allReviews = await _context.Reviews.ToListAsync();
-var productReviews = allReviews.Where(r => r.ProductId == review.ProductId).ToList();
-var _ = productReviews.Average(r => r.Rating); // Wasted computation
+modelBuilder.Entity<CartItem>(entity =>
+{
+    entity.HasKey(e => e.Id);
+    entity.Property(e => e.SessionId).HasMaxLength(100).IsRequired();
+    // No index on SessionId — used in WHERE by CartController
+});
 ```
+
+Similarly, `OrderItem.OrderId` (used at OrdersController:53) and `Order.CustomerName` (used at OrdersController:37) have no indexes.
+
+The CPU profile shows TdsParserStateObject.TryReadChar at 1.7% exclusive and Unicode decoding at 1.73% — evidence that SQL Server is reading excessive data from full table scans. Even controllers already optimized with server-side `WHERE` clauses (ProductsController, ReviewsController) still force SQL Server to perform clustered index scans without proper non-clustered indexes.
+
+With 1000 products, ~2000 reviews (SeedData.cs:86-101), and a CartItems table growing during the 120s load test with 500 VUs, these scans are expensive and repeated on every request.
 
 ## Theory
 
-Each review has `Comment` (up to 2000 chars nvarchar), `CustomerName` (100 chars), plus other fields. Loading ~2000 reviews means ~2000 tracked entities × ~1KB+ = ~2MB+ per request through the EF materialization pipeline, with all the TDS string decoding and change tracking overhead visible in the CPU profile (`TryReadChar` at 1.6%, `UnicodeEncoding` at 2.1%). With 2 calls per VU iteration at 500 VUs, this is the second largest source of allocations.
+Without non-clustered indexes, every server-side `WHERE` clause translates to a SQL clustered index scan (full table read). For example, `_context.Reviews.Where(r => r.ProductId == productId)` generates `SELECT ... FROM Reviews WHERE ProductId = @p0` — without an index on `ProductId`, SQL Server scans all ~2000+ review rows to find the matching subset.
 
-The product typically has only 1-7 reviews, so 99.5%+ of materialized entities are discarded — pure waste. The `GetAverageRating` endpoint materializes ~2000 entities just to compute a single scalar that SQL Server could compute with `SELECT AVG(Rating)`. The wasted computation in `CreateReview` adds unnecessary load on write operations.
+This is called 2x per k6 iteration (by-product + average rating) across 500 VUs = ~1000 full scans/second on the Reviews table alone. Similarly, `Products.Where(p => p.Category == categoryName)` scans all 1000 products per call.
+
+The CartItems table is particularly impacted: it grows continuously as VUs add items, and every AddToCart call (still doing full table loads) gets progressively slower through the test. An index on SessionId would at least prepare for a future CartController fix.
+
+Proper indexes convert O(n) scans to O(log n) seeks, dramatically reducing I/O, buffer pool pressure, and CPU spent in the TDS parsing layer.
 
 ## Proposed Fixes
 
-1. **Server-side filtering for `GetReviewsByProduct`** (line 54-55): Replace with `_context.Reviews.AsNoTracking().Where(r => r.ProductId == productId).ToListAsync()`. This pushes the `WHERE ProductId = @p` to SQL, returning only 1-7 rows instead of 2000.
+1. **Add HasIndex calls in OnModelCreating:** Add the following index configurations in `AppDbContext.cs`:
+   - `entity.HasIndex(e => e.Category)` on the Product entity (after line 28)
+   - `entity.HasIndex(e => e.ProductId)` on the Review entity (after line 40)
+   - `entity.HasIndex(e => e.SessionId)` on the CartItem entity (after line 61)
+   - `entity.HasIndex(e => e.OrderId)` on the OrderItem entity (after line 55)
+   - `entity.HasIndex(e => e.CustomerName)` on the Order entity (after line 48)
 
-2. **SQL aggregation for `GetAverageRating`** (line 70-74): Replace the full table load with `_context.Reviews.Where(r => r.ProductId == productId).AverageAsync(r => r.Rating)` and `.CountAsync()`. This computes the aggregate in SQL without materializing any entities.
-
-3. **Remove wasted computation in `CreateReview`** (lines 95-97): Delete the three lines that reload all reviews and compute an unused average.
+   If the application uses `EnsureCreated()`, these take effect automatically on next startup. If using EF Core migrations, a migration must also be generated.
 
 ## Expected Impact
 
-- **p95 latency**: ~15-20% reduction. Two fewer full-table materializations per VU iteration.
-- **RPS**: ~15-25% increase from reduced CPU and memory pressure.
-- **GC**: Substantial reduction — eliminates ~4000 tracked entity materializations per VU iteration (2 calls × ~2000 reviews), directly reducing Gen2 GC pressure.
+- p95 latency: ~10-20% reduction. The 6 out of 13 baseline k6 requests that use WHERE clauses (products by-category, products search, reviews by-product, reviews average, plus cart and order operations) all benefit from index seeks instead of table scans.
+- RPS: ~10-15% improvement from reduced SQL Server CPU and I/O contention — each query completes faster, freeing connections sooner.
+- GC pressure: Indirect improvement — faster queries mean shorter request lifetimes and earlier object reclamation, reducing heap pressure from the current 2.7 GB peak.
+- The allocation rate (~1,579 MB/sec) should decrease modestly since SQL Server returns data faster and EF Core spends less time in the materialization pipeline per query.

@@ -1,39 +1,28 @@
 {
-  "generatedByExperiment": 1,
-  "generatedAt": "2026-03-09T22:41:56.6214619-07:00",
+  "generatedByExperiment": 4,
+  "generatedAt": "2026-03-10T00:04:37.2502879-07:00",
   "items": [
     {
       "id": 1,
-      "filePath": "SampleApi/Controllers/ProductsController.cs",
-      "title": "Replace client-side filtering with server-side queries and AsNoTracking in ProductsController",
-      "explanation": "Replace client-side filtering with server-side queries and AsNoTracking in ProductsController",
+      "filePath": "SampleApi/Controllers/OrdersController.cs",
+      "title": "Fix full table scans and N+1 queries in OrdersController",
+      "explanation": "Fix full table scans and N+1 queries in OrdersController",
       "scope": "narrow",
       "rootCausePath": "C:\\Projects\\Hone\\sample-api\\results\\metadata\\root-causes\\rca-1.md",
       "status": "done",
-      "triedByExperiment": 1,
+      "triedByExperiment": 4,
       "outcome": "improved"
     },
     {
       "id": 2,
-      "filePath": "SampleApi/Controllers/ReviewsController.cs",
-      "title": "Eliminate full Reviews table scan with server-side filtering and SQL aggregation",
-      "explanation": "Eliminate full Reviews table scan with server-side filtering and SQL aggregation",
-      "scope": "narrow",
+      "filePath": "SampleApi/Data/AppDbContext.cs",
+      "title": "Add database indexes on frequently filtered columns",
+      "explanation": "Add database indexes on frequently filtered columns",
+      "scope": "architecture",
       "rootCausePath": "C:\\Projects\\Hone\\sample-api\\results\\metadata\\root-causes\\rca-2.md",
-      "status": "done",
-      "triedByExperiment": 2,
-      "outcome": "improved"
-    },
-    {
-      "id": 3,
-      "filePath": "SampleApi/Controllers/CartController.cs",
-      "title": "Fix N+1 queries, full table scans, and per-item SaveChanges in CartController",
-      "explanation": "Fix N+1 queries, full table scans, and per-item SaveChanges in CartController",
-      "scope": "narrow",
-      "rootCausePath": "C:\\Projects\\Hone\\sample-api\\results\\metadata\\root-causes\\rca-3.md",
-      "status": "done",
-      "triedByExperiment": 3,
-      "outcome": "stale"
+      "status": "pending",
+      "triedByExperiment": null,
+      "outcome": null
     }
   ]
 }

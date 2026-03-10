@@ -1,0 +1,6 @@
+```json
+{
+  "scope": "narrow",
+  "reasoning": "All optimizations (removing N+1 queries, adding `.Where()` clauses, using `.Include()` for eager loading, replacing full table scans with filtered queries) can be implemented entirely within this single controller file by modifying query logic and DbContext calls without adding dependencies or changing API contracts."
+}
+```

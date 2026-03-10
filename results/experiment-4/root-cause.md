@@ -1,3 +1,14 @@
+# Root Cause Analysis — Experiment 4
+
+> Generated: 2026-03-10 00:04:48 | Classification: narrow — All optimizations (removing N+1 queries, adding `.Where()` clauses, using `.Include()` for eager loading, replacing full table scans with filtered queries) can be implemented entirely within this single controller file by modifying query logic and DbContext calls without adding dependencies or changing API contracts.
+
+| Metric | Current | Baseline |
+|--------|---------|----------|
+| p95 Latency | 583.033435ms | 888.549155000001ms |
+| Requests/sec | 978.6 | 683.2 |
+| Error Rate | 0% | 0% |
+
+---
 # Fix full table scans and N+1 queries in OrdersController
 
 > **File:** `SampleApi/Controllers/OrdersController.cs` | **Scope:** narrow
@@ -60,3 +71,4 @@ All read endpoints lack `AsNoTracking()`, adding EF Core change-tracking overhea
 - p95 latency: ~5-10% reduction. CreateOrder drops from 4 DB round trips to 2 (one batch product lookup + one SaveChanges). GetOrdersByCustomer and GetOrder go from full-table-scan + N+1 to indexed single queries, though these endpoints aren't in the baseline k6 test.
 - RPS: ~5-8% improvement from reduced DB connection contention on the CreateOrder hot path.
 - GC pressure: Moderate reduction — fewer entities materialized means less allocation churn, helping the 10.4% GC pause ratio.
+
