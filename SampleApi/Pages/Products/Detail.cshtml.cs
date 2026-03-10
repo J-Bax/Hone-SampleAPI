@@ -27,23 +27,21 @@ public class DetailModel : PageModel
     public async Task<IActionResult> OnGetAsync(int id)
     {
         // Query 1: Load the product
-        Product = await _context.Products.FindAsync(id);
+        Product = await _context.Products.AsNoTracking().FirstOrDefaultAsync(p => p.Id == id);
         if (Product == null)
             return Page();
 
-        var allReviews = await _context.Reviews.ToListAsync();
-        Reviews = allReviews.Where(r => r.ProductId == id)
-                            .OrderByDescending(r => r.CreatedAt)
-                            .ToList();
+        Reviews = await _context.Reviews.AsNoTracking()
+                                        .Where(r => r.ProductId == id)
+                                        .OrderByDescending(r => r.CreatedAt)
+                                        .ToListAsync();
 
         AverageRating = Reviews.Any() ? Math.Round(Reviews.Average(r => r.Rating), 1) : 0;
 
-        var allProducts = await _context.Products.ToListAsync();
-        RelatedProducts = allProducts
+        RelatedProducts = await _context.Products.AsNoTracking()
             .Where(p => p.Category == Product.Category && p.Id != id)
-            .OrderBy(_ => Guid.NewGuid())
             .Take(4)
-            .ToList();
+            .ToListAsync();
 
         return Page();
     }

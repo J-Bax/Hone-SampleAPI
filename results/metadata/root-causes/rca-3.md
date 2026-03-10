@@ -1,63 +1,51 @@
-# Fix N+1 queries, full table scans, and per-item SaveChanges in CartController
+# Server-side pagination and filtering in Products page
 
-> **File:** `SampleApi/Controllers/CartController.cs` | **Scope:** narrow
+> **File:** `SampleApi/Pages/Products/Index.cshtml.cs` | **Scope:** narrow
 
 ## Evidence
 
-`GetCart` loads ALL cart items then filters client-side, plus executes an N+1 query loop:
+At `Pages/Products/Index.cshtml.cs:35`, the products listing page loads **all 1,000 products** into memory before applying filtering and pagination client-side:
 
-`CartController.cs:25-26`:
 ```csharp
-var allItems = await _context.CartItems.ToListAsync();
-var sessionItems = allItems.Where(c => c.SessionId == sessionId).ToList();
+var allProducts = await _context.Products.ToListAsync();
 ```
 
-`CartController.cs:33`:
+Filtering is done in memory (lines 38-51):
+
 ```csharp
-var product = await _context.Products.FindAsync(item.ProductId);
-```
-This runs inside a `foreach` loop (line 31), executing one SQL query per cart item.
-
-`AddToCart` also loads all cart items to find an existing entry:
-
-`CartController.cs:69-71`:
-```csharp
-var allItems = await _context.CartItems.ToListAsync();
-var existing = allItems.FirstOrDefault(c =>
-    c.SessionId == request.SessionId && c.ProductId == request.ProductId);
-```
-
-`ClearCart` loads all items and calls `SaveChangesAsync` per item:
-
-`CartController.cs:140-146`:
-```csharp
-var allItems = await _context.CartItems.ToListAsync();
-var sessionItems = allItems.Where(c => c.SessionId == sessionId).ToList();
-foreach (var item in sessionItems)
+if (!string.IsNullOrWhiteSpace(category))
 {
-    _context.CartItems.Remove(item);
-    await _context.SaveChangesAsync(); // Saves each time — extra round trips
+    allProducts = allProducts.Where(p =>
+        p.Category.Equals(category, StringComparison.OrdinalIgnoreCase)).ToList();
 }
 ```
 
+Pagination is also client-side (lines 57-60) despite `PageSize = 24`:
+
+```csharp
+Products = allProducts
+    .Skip((CurrentPage - 1) * PageSize)
+    .Take(PageSize)
+    .ToList();
+```
+
+No `AsNoTracking()` is used. The k6 scenario hits `GET /Products` every iteration (line 115 of baseline.js).
+
 ## Theory
 
-The CartItems table grows during the load test — each VU iteration adds an item via `POST /api/cart`. With 500 VUs ramping over 120s, thousands of cart items accumulate. Every `GetCart`, `AddToCart`, and `ClearCart` call loads this growing table into memory. As the table grows, materialization time and allocation volume increase linearly throughout the test, creating progressively worse GC pressure.
+The page has built-in pagination (PageSize=24) but defeats its purpose by loading all 1,000 products first. Each request materializes 1,000 tracked Product entities to display 24. The in-memory `StringComparison.OrdinalIgnoreCase` filtering prevents SQL Server from using any indexes on the Category column. Combined with the categories sidebar query (line 63, also without AsNoTracking), each request creates ~1,010 tracked entities.
 
-The N+1 pattern in `GetCart` (line 33) adds sequential round-trips to SQL Server for each cart item's product. While individual `FindAsync` calls hit the EF identity cache if the product was already tracked, under `AsNoTracking` or fresh DbContext scopes, each becomes a SQL query.
-
-The per-item `SaveChangesAsync` in `ClearCart` (line 146) creates unnecessary database round-trips — if a session has 5 items, that's 5 separate SQL DELETE transactions instead of one.
+At 500 VUs, this adds ~500K tracked Product entities per second to the allocation pressure, contributing to the 189 GB total allocations and 100 Gen2 collections observed in the profiling run.
 
 ## Proposed Fixes
 
-1. **Server-side filtering**: Replace `ToListAsync()` + LINQ `.Where()` with `_context.CartItems.Where(c => c.SessionId == sessionId).AsNoTracking().ToListAsync()` in `GetCart` (line 25-26), and similar in `AddToCart` (line 69-71) and `ClearCart` (line 140-141).
+1. **Build an IQueryable pipeline with server-side filtering and pagination (lines 35-60):** Start with `IQueryable<Product> query = _context.Products.AsNoTracking()`, apply `.Where()` filters conditionally, get count via `await query.CountAsync()`, then apply `.Skip().Take().ToListAsync()`. This pushes filtering and pagination to SQL, returning only 24 rows.
 
-2. **Eliminate N+1 in GetCart**: Replace the foreach+FindAsync loop (lines 31-47) with a single joined query: load session cart items with their product data using `.Join()` or load the needed product IDs and fetch products in one `Where(p => productIds.Contains(p.Id))` query.
-
-3. **Batch SaveChanges in ClearCart**: Move `SaveChangesAsync()` outside the foreach loop (line 146) so all removals are committed in a single transaction.
+2. **AsNoTracking on categories query (line 63):** Add `.AsNoTracking()` to the categories sidebar query.
 
 ## Expected Impact
 
-- **p95 latency**: ~10-15% reduction. Cart endpoints are hit 3 times per VU iteration (add, get, clear). Eliminating full table scans on a growing table and N+1 queries removes both the linear growth problem and sequential round-trips.
-- **RPS**: ~10-15% increase from fewer SQL round-trips and less materialization.
-- **GC**: Moderate reduction — the CartItems table is smaller than Products/Reviews initially, but grows unboundedly during the test, making this increasingly impactful.
+- **Allocation reduction:** 1,000 tracked entities → 24 untracked entities per request (~97.6% reduction)
+- **p95 latency:** Estimated 5-10% improvement (smaller contribution than Detail/Home pages since Products have smaller payloads than Reviews)
+- **RPS:** Estimated 5-8% improvement from reduced SQL data transfer and entity materialization
+- **Combined impact of all three Razor page fixes:** p95 latency improvement of 25-40% (from ~566ms toward ~340-420ms), RPS improvement of 25-35% (from ~984 toward ~1,250-1,330)

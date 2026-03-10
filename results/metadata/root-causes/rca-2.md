@@ -1,68 +1,46 @@
-# Add database indexes on frequently filtered columns
+# Eliminate full table scans in Home page
 
-> **File:** `SampleApi/Data/AppDbContext.cs` | **Scope:** architecture
+> **File:** `SampleApi/Pages/Index.cshtml.cs` | **Scope:** narrow
 
 ## Evidence
 
-In `AppDbContext.cs:19-63`, the `OnModelCreating` method defines entity configurations but **zero indexes** on any column used in WHERE clauses:
+At `Pages/Index.cshtml.cs:28-29`, the home page loads **all 1,000 products** just to select 12 random featured items:
 
 ```csharp
-modelBuilder.Entity<Product>(entity =>
-{
-    entity.HasKey(e => e.Id);
-    entity.Property(e => e.Name).HasMaxLength(200).IsRequired();
-    entity.Property(e => e.Category).HasMaxLength(100).IsRequired();
-    // No index on Category — used in WHERE by ProductsController:56 and CategoriesController:41
-});
+var allProducts = await _context.Products.ToListAsync();
+FeaturedProducts = allProducts.OrderBy(_ => Guid.NewGuid()).Take(12).ToList();
+TotalProducts = allProducts.Count;
 ```
+
+At `Pages/Index.cshtml.cs:36-37`, it loads **all ~2,000 reviews** to show 5 recent ones:
 
 ```csharp
-modelBuilder.Entity<Review>(entity =>
-{
-    entity.HasKey(e => e.Id);
-    // No index on ProductId — used in WHERE by ReviewsController:54,71,73
-});
+var allReviews = await _context.Reviews.ToListAsync();
+RecentReviews = allReviews.OrderByDescending(r => r.CreatedAt).Take(5).ToList();
 ```
 
-```csharp
-modelBuilder.Entity<CartItem>(entity =>
-{
-    entity.HasKey(e => e.Id);
-    entity.Property(e => e.SessionId).HasMaxLength(100).IsRequired();
-    // No index on SessionId — used in WHERE by CartController
-});
-```
-
-Similarly, `OrderItem.OrderId` (used at OrdersController:53) and `Order.CustomerName` (used at OrdersController:37) have no indexes.
-
-The CPU profile shows TdsParserStateObject.TryReadChar at 1.7% exclusive and Unicode decoding at 1.73% — evidence that SQL Server is reading excessive data from full table scans. Even controllers already optimized with server-side `WHERE` clauses (ProductsController, ReviewsController) still force SQL Server to perform clustered index scans without proper non-clustered indexes.
-
-With 1000 products, ~2000 reviews (SeedData.cs:86-101), and a CartItems table growing during the 120s load test with 500 VUs, these scans are expensive and repeated on every request.
+Neither query uses `AsNoTracking()`. The k6 scenario hits `GET /` every iteration (line 110 of baseline.js), making this one of the highest-traffic endpoints.
 
 ## Theory
 
-Without non-clustered indexes, every server-side `WHERE` clause translates to a SQL clustered index scan (full table read). For example, `_context.Reviews.Where(r => r.ProductId == productId)` generates `SELECT ... FROM Reviews WHERE ProductId = @p0` — without an index on `ProductId`, SQL Server scans all ~2000+ review rows to find the matching subset.
+Each home page request materializes ~3,000+ tracked entities (1,000 products + ~2,000 reviews + categories) only to discard 99.4% of them (keeps 12 + 5 = 17). Under 500 VUs, this pattern generates enormous allocation pressure:
+- 1,000 Product entities × ~200 bytes each = ~200 KB per request just for products
+- ~2,000 Review entities with Comment strings (up to 2,000 chars each) = ~4-8 MB per request for reviews
+- All with change tracking overhead (identity maps, navigation fixup)
 
-This is called 2x per k6 iteration (by-product + average rating) across 500 VUs = ~1000 full scans/second on the Reviews table alone. Similarly, `Products.Where(p => p.Category == categoryName)` scans all 1000 products per call.
-
-The CartItems table is particularly impacted: it grows continuously as VUs add items, and every AddToCart call (still doing full table loads) gets progressively slower through the test. An index on SessionId would at least prepare for a future CartController fix.
-
-Proper indexes convert O(n) scans to O(log n) seeks, dramatically reducing I/O, buffer pool pressure, and CPU spent in the TDS parsing layer.
+The `Comment` field (HasMaxLength 2000, see `AppDbContext.cs:41`) explains the CPU profiler's TDS character parsing and Unicode decoding hotspots — each review's comment string is read char-by-char from the TDS wire, decoded, and allocated as a managed string, only to be immediately discarded.
 
 ## Proposed Fixes
 
-1. **Add HasIndex calls in OnModelCreating:** Add the following index configurations in `AppDbContext.cs`:
-   - `entity.HasIndex(e => e.Category)` on the Product entity (after line 28)
-   - `entity.HasIndex(e => e.ProductId)` on the Review entity (after line 40)
-   - `entity.HasIndex(e => e.SessionId)` on the CartItem entity (after line 61)
-   - `entity.HasIndex(e => e.OrderId)` on the OrderItem entity (after line 55)
-   - `entity.HasIndex(e => e.CustomerName)` on the Order entity (after line 48)
+1. **Server-side featured products (lines 28-30):** Replace with `_context.Products.AsNoTracking().OrderBy(p => EF.Functions.Random()).Take(12).ToListAsync()` for random selection, or simply `.AsNoTracking().Take(12).ToListAsync()` for deterministic selection. Get count separately: `TotalProducts = await _context.Products.CountAsync()`.
 
-   If the application uses `EnsureCreated()`, these take effect automatically on next startup. If using EF Core migrations, a migration must also be generated.
+2. **Server-side recent reviews (lines 36-37):** Replace with `_context.Reviews.AsNoTracking().OrderByDescending(r => r.CreatedAt).Take(5).ToListAsync()`. This pushes ORDER BY + TOP to SQL.
+
+3. **AsNoTracking on categories (line 33):** Add `.AsNoTracking()` to the categories query.
 
 ## Expected Impact
 
-- p95 latency: ~10-20% reduction. The 6 out of 13 baseline k6 requests that use WHERE clauses (products by-category, products search, reviews by-product, reviews average, plus cart and order operations) all benefit from index seeks instead of table scans.
-- RPS: ~10-15% improvement from reduced SQL Server CPU and I/O contention — each query completes faster, freeing connections sooner.
-- GC pressure: Indirect improvement — faster queries mean shorter request lifetimes and earlier object reclamation, reducing heap pressure from the current 2.7 GB peak.
-- The allocation rate (~1,579 MB/sec) should decrease modestly since SQL Server returns data faster and EF Core spends less time in the materialization pipeline per query.
+- **Allocation reduction:** ~3,000 tracked entities → ~27 untracked entities per request (~99% reduction)
+- **p95 latency:** Estimated 10-15% improvement (fewer GC pauses, faster query execution)
+- **RPS:** Estimated 10-15% improvement from reduced CPU in TDS parsing and entity tracking
+- **Memory:** Peak heap should drop substantially as the home page was one of the largest per-request allocators

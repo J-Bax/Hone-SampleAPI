@@ -1,0 +1,6 @@
+```json
+{
+  "scope": "narrow",
+  "reasoning": "Eliminating full table scans requires only optimizing the DbContext queries within this single page model file (e.g., adding `.Where()` filters before `.ToListAsync()` and replacing inefficient LINQ-to-Objects with LINQ-to-SQL), with no changes to dependencies, migrations, API routes, response schemas, or test files."
+}
+```

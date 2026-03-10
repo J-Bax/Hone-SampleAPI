@@ -1,3 +1,14 @@
+# Root Cause Analysis — Experiment 5
+
+> Generated: 2026-03-10 00:40:52 | Classification: narrow — Eliminating full table scans requires only optimizing the DbContext queries within this single page model file (e.g., adding `.Where()` filters before `.ToListAsync()` and replacing inefficient LINQ-to-Objects with LINQ-to-SQL), with no changes to dependencies, migrations, API routes, response schemas, or test files.
+
+| Metric | Current | Baseline |
+|--------|---------|----------|
+| p95 Latency | 566.445435ms | 888.549155000001ms |
+| Requests/sec | 983.6 | 683.2 |
+| Error Rate | 0% | 0% |
+
+---
 # Eliminate full table scans in Product Detail page
 
 > **File:** `SampleApi/Pages/Products/Detail.cshtml.cs` | **Scope:** narrow
@@ -51,3 +62,4 @@ This is the primary driver of the 1,574 MB/sec allocation rate and the severely 
 - **p95 latency:** Estimated 15-25% improvement. Fewer allocations → fewer Gen2 collections → fewer 53-239ms GC pauses
 - **RPS:** Estimated 15-20% improvement from reduced CPU time in TDS parsing, tracking, and GC
 - **GC pause ratio:** Should drop significantly as this endpoint is one of the largest allocators
+
