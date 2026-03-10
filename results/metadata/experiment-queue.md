@@ -6,5 +6,5 @@
 **Generated:** experiment 5 at 03/10/2026 00:40:39
 
 - [x] **#1** `SampleApi/Pages/Products/Detail.cshtml.cs` — Eliminate full table scans in Product Detail page *(experiment 5 — improved)*
-- [ ] **#2** `SampleApi/Pages/Index.cshtml.cs` — Eliminate full table scans in Home page
+- [x] **#2** `SampleApi/Pages/Index.cshtml.cs` — Eliminate full table scans in Home page *(experiment 6 — improved)*
 - [ ] **#3** `SampleApi/Pages/Products/Index.cshtml.cs` — Server-side pagination and filtering in Products page

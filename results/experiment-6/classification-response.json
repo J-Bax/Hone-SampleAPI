@@ -1,0 +1,6 @@
+```json
+{
+  "scope": "narrow",
+  "reasoning": "Optimization improves query logic within OnGetAsync method (e.g., moving OrderBy to LINQ, using Take in database, or adding indexes) without modifying files outside Index.cshtml.cs, adding dependencies, changing API routes, or altering response schema."
+}
+```
