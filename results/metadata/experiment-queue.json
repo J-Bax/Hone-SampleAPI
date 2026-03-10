@@ -1,0 +1,39 @@
+{
+  "generatedByExperiment": 1,
+  "generatedAt": "2026-03-09T22:41:56.6214619-07:00",
+  "items": [
+    {
+      "id": 1,
+      "filePath": "SampleApi/Controllers/ProductsController.cs",
+      "title": "Replace client-side filtering with server-side queries and AsNoTracking in ProductsController",
+      "explanation": "Replace client-side filtering with server-side queries and AsNoTracking in ProductsController",
+      "scope": "narrow",
+      "rootCausePath": "C:\\Projects\\Hone\\sample-api\\results\\metadata\\root-causes\\rca-1.md",
+      "status": "done",
+      "triedByExperiment": 1,
+      "outcome": "improved"
+    },
+    {
+      "id": 2,
+      "filePath": "SampleApi/Controllers/ReviewsController.cs",
+      "title": "Eliminate full Reviews table scan with server-side filtering and SQL aggregation",
+      "explanation": "Eliminate full Reviews table scan with server-side filtering and SQL aggregation",
+      "scope": "narrow",
+      "rootCausePath": "C:\\Projects\\Hone\\sample-api\\results\\metadata\\root-causes\\rca-2.md",
+      "status": "pending",
+      "triedByExperiment": null,
+      "outcome": null
+    },
+    {
+      "id": 3,
+      "filePath": "SampleApi/Controllers/CartController.cs",
+      "title": "Fix N+1 queries, full table scans, and per-item SaveChanges in CartController",
+      "explanation": "Fix N+1 queries, full table scans, and per-item SaveChanges in CartController",
+      "scope": "narrow",
+      "rootCausePath": "C:\\Projects\\Hone\\sample-api\\results\\metadata\\root-causes\\rca-3.md",
+      "status": "pending",
+      "triedByExperiment": null,
+      "outcome": null
+    }
+  ]
+}

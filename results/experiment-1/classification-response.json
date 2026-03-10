@@ -1,0 +1,6 @@
+```json
+{
+  "scope": "narrow",
+  "reasoning": "Replaces client-side filtering with server-side queries and AsNoTracking in existing controller methods; modifies only this single file's method bodies and query logic without changing routes, schemas, dependencies, or requiring migrations."
+}
+```

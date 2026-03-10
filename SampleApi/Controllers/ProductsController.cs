@@ -22,7 +22,7 @@ public class ProductsController : ControllerBase
     [HttpGet]
     public async Task<ActionResult<IEnumerable<Product>>> GetProducts()
     {
-        var products = await _context.Products.ToListAsync();
+        var products = await _context.Products.AsNoTracking().ToListAsync();
         return Ok(products);
     }
 
@@ -46,16 +46,15 @@ public class ProductsController : ControllerBase
     [HttpGet("by-category/{categoryName}")]
     public async Task<ActionResult<IEnumerable<Product>>> GetProductsByCategory(string categoryName)
     {
-        var categories = await _context.Categories.ToListAsync();
-        var matchingCategory = categories.FirstOrDefault(c =>
-            c.Name.Equals(categoryName, StringComparison.OrdinalIgnoreCase));
+        var categoryExists = await _context.Categories.AsNoTracking()
+            .AnyAsync(c => c.Name == categoryName);
 
-        if (matchingCategory == null)
+        if (!categoryExists)
             return NotFound(new { message = $"Category '{categoryName}' not found" });
 
-        var allProducts = await _context.Products.ToListAsync();
-        var filtered = allProducts.Where(p =>
-            p.Category.Equals(categoryName, StringComparison.OrdinalIgnoreCase)).ToList();
+        var filtered = await _context.Products.AsNoTracking()
+            .Where(p => p.Category == categoryName)
+            .ToListAsync();
 
         return Ok(filtered);
     }
@@ -66,16 +65,15 @@ public class ProductsController : ControllerBase
     [HttpGet("search")]
     public async Task<ActionResult<IEnumerable<Product>>> SearchProducts([FromQuery] string? q)
     {
-        var allProducts = await _context.Products.ToListAsync();
-
         if (!string.IsNullOrWhiteSpace(q))
         {
-            allProducts = allProducts.Where(p =>
-                p.Name.Contains(q, StringComparison.OrdinalIgnoreCase) ||
-                (p.Description != null && p.Description.Contains(q, StringComparison.OrdinalIgnoreCase))
-            ).ToList();
+            var filtered = await _context.Products.AsNoTracking()
+                .Where(p => p.Name.Contains(q) || (p.Description != null && p.Description.Contains(q)))
+                .ToListAsync();
+            return Ok(filtered);
         }
 
+        var allProducts = await _context.Products.AsNoTracking().ToListAsync();
         return Ok(allProducts);
     }
 
