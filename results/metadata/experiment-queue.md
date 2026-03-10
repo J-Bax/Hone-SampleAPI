@@ -6,5 +6,5 @@
 **Generated:** experiment 17 at 03/10/2026 05:58:26
 
 - [ ] **#1** [ARCHITECTURE] `SampleApi/Controllers/ProductsController.cs` — In-memory caching for product catalog read endpoints
-- [ ] **#2** `SampleApi/Controllers/ProductsController.cs` — Convert GetProduct from tracked FindAsync to AsNoTracking query *(in progress)*
+- [x] **#2** `SampleApi/Controllers/ProductsController.cs` — Convert GetProduct from tracked FindAsync to AsNoTracking query *(experiment 17 — stale)*
 - [ ] **#3** `SampleApi/Program.cs` — Enable response compression middleware for large JSON payloads
