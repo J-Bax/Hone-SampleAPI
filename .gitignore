@@ -44,7 +44,7 @@ Desktop.ini
 .DS_Store
 
 # ----- Results -----
-# All result artifacts are committed for review.
+# Default: ignore everything in results/
 results/*
 !results/.gitkeep
 !results/baseline.json
@@ -52,4 +52,12 @@ results/*
 !results/run-metadata.json
 !results/hone.jsonl
 !results/metadata/
-!results/iteration-*/
+
+# Experiment directories — commit agent analysis, ignore raw profiling data
+!results/experiment-*/
+results/experiment-*/k6-*.json
+results/experiment-*/diagnostics/perfview-cpu/
+results/experiment-*/diagnostics/perfview-gc/
+results/experiment-*/diagnostics/perfview/
+results/experiment-*/diagnostics/dotnet-counters/
+results/experiment-*/diagnostics/k6-*.json
