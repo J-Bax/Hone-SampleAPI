@@ -21,3 +21,4 @@
 | 15 | 2026-03-10 05:15 | `SampleApi/Controllers/CartController.cs` | Fix full table scans and N+1 queries in CartController | stale |
 | 16 | 2026-03-10 05:38 | `SampleApi/Pages/Index.cshtml.cs` | Replace ORDER BY NEWID() with efficient random sampling | improved |
 | 17 | 2026-03-10 06:21 | `SampleApi/Controllers/ProductsController.cs` | Convert GetProduct from tracked FindAsync to AsNoTracking query | stale |
+| 18 | 2026-03-10 06:43 | `SampleApi/Program.cs` | Enable response compression middleware for large JSON payloads | stale |
