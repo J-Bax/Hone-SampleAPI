@@ -1,0 +1,6 @@
+```json
+{
+  "scope": "narrow",
+  "reasoning": "All N+1 query fixes, full table scan eliminations, and SaveChanges batching can be implemented through DbContext query optimization (`.Include()`, `.Where()` filtering in LINQ, and batching `SaveChangesAsync()`) entirely within this controller file without modifying tests, dependencies, database schema, API contracts, or other files."
+}
+```
