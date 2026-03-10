@@ -1,0 +1,6 @@
+```json
+{
+  "scope": "narrow",
+  "reasoning": "Changing line 12 from AddDbContext to AddDbContextPool is a single-file implementation change that doesn't add dependencies, create migrations, or alter public APIs."
+}
+```
