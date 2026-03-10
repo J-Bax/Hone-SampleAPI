@@ -22,23 +22,15 @@ public class CartController : ControllerBase
     [HttpGet("{sessionId}")]
     public async Task<ActionResult<object>> GetCart(string sessionId)
     {
-        var sessionItems = await _context.CartItems
-            .Where(c => c.SessionId == sessionId)
-            .AsNoTracking()
-            .ToListAsync();
-
-        var productIds = sessionItems.Select(i => i.ProductId).Distinct().ToList();
-        var products = await _context.Products
-            .Where(p => productIds.Contains(p.Id))
-            .AsNoTracking()
-            .ToDictionaryAsync(p => p.Id);
+        var allItems = await _context.CartItems.ToListAsync();
+        var sessionItems = allItems.Where(c => c.SessionId == sessionId).ToList();
 
         var cartDetails = new List<object>();
         decimal total = 0m;
 
         foreach (var item in sessionItems)
         {
-            products.TryGetValue(item.ProductId, out var product);
+            var product = await _context.Products.FindAsync(item.ProductId);
             var subtotal = (product?.Price ?? 0m) * item.Quantity;
             total += subtotal;
 
@@ -74,8 +66,9 @@ public class CartController : ControllerBase
         if (product == null)
             return NotFound(new { message = $"Product with ID {request.ProductId} not found" });
 
-        var existing = await _context.CartItems
-            .FirstOrDefaultAsync(c => c.SessionId == request.SessionId && c.ProductId == request.ProductId);
+        var allItems = await _context.CartItems.ToListAsync();
+        var existing = allItems.FirstOrDefault(c =>
+            c.SessionId == request.SessionId && c.ProductId == request.ProductId);
 
         if (existing != null)
         {
@@ -144,16 +137,14 @@ public class CartController : ControllerBase
     [HttpDelete("session/{sessionId}")]
     public async Task<IActionResult> ClearCart(string sessionId)
     {
-        var sessionItems = await _context.CartItems
-            .Where(c => c.SessionId == sessionId)
-            .ToListAsync();
+        var allItems = await _context.CartItems.ToListAsync();
+        var sessionItems = allItems.Where(c => c.SessionId == sessionId).ToList();
 
         foreach (var item in sessionItems)
         {
             _context.CartItems.Remove(item);
+            await _context.SaveChangesAsync(); // Saves each time — extra round trips
         }
-
-        await _context.SaveChangesAsync();
 
         return NoContent();
     }

@@ -7,4 +7,4 @@
 
 - [x] **#1** `SampleApi/Controllers/ProductsController.cs` — Replace client-side filtering with server-side queries and AsNoTracking in ProductsController *(experiment 1 — improved)*
 - [x] **#2** `SampleApi/Controllers/ReviewsController.cs` — Eliminate full Reviews table scan with server-side filtering and SQL aggregation *(experiment 2 — improved)*
-- [ ] **#3** `SampleApi/Controllers/CartController.cs` — Fix N+1 queries, full table scans, and per-item SaveChanges in CartController *(in progress)*
+- [x] **#3** `SampleApi/Controllers/CartController.cs` — Fix N+1 queries, full table scans, and per-item SaveChanges in CartController *(experiment 3 — stale)*
