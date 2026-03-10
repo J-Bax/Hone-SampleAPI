@@ -6,5 +6,5 @@
 **Generated:** experiment 1 at 03/09/2026 17:08:30
 
 - [x] **#1** `SampleApi/Controllers/CartController.cs` — Full-table CartItems loads with N+1 queries and per-item SaveChanges *(experiment 1 — improved)*
-- [ ] **#2** `SampleApi/Controllers/ReviewsController.cs` — Full-table Reviews loads for per-product filtering and aggregation
+- [ ] **#2** `SampleApi/Controllers/ReviewsController.cs` — Full-table Reviews loads for per-product filtering and aggregation *(in progress)*
 - [ ] **#3** `SampleApi/Controllers/ProductsController.cs` — Full-table Products loads for search and category filtering
