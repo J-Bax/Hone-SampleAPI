@@ -1,33 +1,62 @@
-# Enable response compression middleware for large JSON payloads
+# Full table scans, N+1, and per-item saves in Checkout
 
-> **File:** `SampleApi/Program.cs` | **Scope:** narrow
+> **File:** `SampleApi/Pages/Checkout/Index.cshtml.cs` | **Scope:** narrow
 
 ## Evidence
 
-At `Program.cs:15-29`, the middleware pipeline has no response compression configured:
+At `Pages/Checkout/Index.cshtml.cs:61`, the checkout POST loads the entire CartItems table:
 
 ```csharp
-var app = builder.Build();
-// ... no AddResponseCompression / UseResponseCompression
-app.UseStaticFiles();
-app.UseAuthorization();
-app.MapControllers();
+var allCartItems = await _context.CartItems.ToListAsync();
+var sessionItems = allCartItems.Where(c => c.SessionId == sessionId).ToList();
 ```
 
-`GET /api/products` and `GET /api/products/search?q=Product` each return ~1,000 Product JSON objects per response — approximately **200KB+ of uncompressed JSON** per response. The CPU profiler shows JSON serialization at **~2.3% exclusive CPU** (`StringConverter.Write` at 0.88%, `ObjectDefaultConverter.OnTryWrite` at 0.27%, plus encoding/escaping overhead).
+At line 86, N+1 product lookups occur inside a loop:
 
-With 500 VUs at peak load, Kestrel is managing ~100MB of in-flight uncompressed response data across concurrent requests. Current CPU utilization is only **18.74%**, leaving significant headroom.
+```csharp
+foreach (var cartItem in sessionItems)
+{
+    var product = await _context.Products.FindAsync(cartItem.ProductId);
+```
+
+At line 99, `SaveChangesAsync()` is called per order item:
+
+```csharp
+    _context.OrderItems.Add(new OrderItem { ... });
+    total += price * cartItem.Quantity;
+    await _context.SaveChangesAsync();
+}
+```
+
+At lines 106-110, cart cleanup also calls `SaveChangesAsync()` per item:
+
+```csharp
+foreach (var cartItem in sessionItems)
+{
+    _context.CartItems.Remove(cartItem);
+    await _context.SaveChangesAsync();
+}
+```
+
+The `LoadCartSummary()` method (line 120) repeats the same full table scan + N+1 pattern.
 
 ## Theory
 
-Without compression, Kestrel allocates and writes full-size response buffers (~200KB each) through its I/O pipeline. The `System.IO.Pipelines` infrastructure must manage, flush, and reclaim these large buffers for every response. Gzip compression typically achieves **80–90% reduction** on repetitive JSON (the product JSON has highly repetitive field names and structure), reducing each response to ~20–30KB. This cuts buffer allocation pressure, reduces Kestrel's `PipeWriter` flush frequency, and decreases TCP write system calls. k6 natively sends `Accept-Encoding: gzip` and handles decompression transparently.
+Checkout is the most write-intensive page: it creates an order, adds order items, and clears the cart. The current implementation generates 1 (full cart scan) + N (product lookups) + N (per-item order saves) + N (per-item cart deletes) = 3N+1 database round-trips for a cart with N items. Each `SaveChangesAsync()` is a separate transaction with its own round-trip, connection acquisition, and commit overhead.
+
+The full CartItems table scan in `LoadCartSummary()` runs on GET as well as being duplicated in POST, doubling the impact. The N+1 product lookup pattern forces sequential execution — each query awaits before the next, eliminating any pipeline parallelism.
+
+Per the memory profile, the 623 MB/sec allocation rate is partly driven by these unnecessary materializations and per-item async state machines.
 
 ## Proposed Fixes
 
-1. **Add response compression middleware:** In `Program.cs`, add `builder.Services.AddResponseCompression(options => { options.EnableForHttps = true; })` after the existing service registrations, and add `app.UseResponseCompression()` before `app.UseStaticFiles()` (line 24). This enables gzip compression for all JSON API responses above the default minimum size threshold.
+1. **Server-side filtering and batch product lookup:** Replace `CartItems.ToListAsync()` with `CartItems.Where(c => c.SessionId == sessionId).ToListAsync()`. Batch product lookups using `Where(p => productIds.Contains(p.Id)).ToDictionaryAsync(p => p.Id)` instead of per-item `FindAsync`.
+
+2. **Batch all writes into single SaveChanges:** Add all `OrderItem` entities to the context in the loop but call `SaveChangesAsync()` only once after the loop. Replace per-item cart removal with `RemoveRange()` followed by a single `SaveChangesAsync()`. This collapses 2N write round-trips into 2.
 
 ## Expected Impact
 
-- p95 latency: **3–6% reduction** (~379–391ms). Smaller response buffers reduce per-request memory allocation and Kestrel I/O overhead.
-- RPS: **3–5% increase** (~1,400–1,430 RPS). Reduced I/O work per response frees CPU for additional request processing.
-- Allocation rate: moderate reduction from smaller response body buffers. The compression CPU cost (~2–3% overhead) is offset by the 18.74% current utilization headroom.
+- p95 latency: ~20-40ms reduction for checkout operations (from 3N+1 round-trips to ~4 queries total)
+- RPS: ~2-4% improvement, especially under concurrent checkout load
+- Memory: Reduced allocations from eliminating full-table materialization and per-item async overhead
+- Write throughput improves significantly since batch saves reduce transaction commit overhead

@@ -1,29 +1,54 @@
-# Convert GetProduct from tracked FindAsync to AsNoTracking query
+# Two full table scans and N+1 in Orders page
 
-> **File:** `SampleApi/Controllers/ProductsController.cs` | **Scope:** narrow
+> **File:** `SampleApi/Pages/Orders/Index.cshtml.cs` | **Scope:** narrow
 
 ## Evidence
 
-At `ProductsController.cs:35`, the `GetProduct` endpoint uses tracked `FindAsync`:
+At `Pages/Orders/Index.cshtml.cs:40`, the Orders page loads **all** orders into memory:
 
 ```csharp
-var product = await _context.Products.FindAsync(id);
+var allOrders = await _context.Orders.ToListAsync();
+Orders = allOrders
+    .Where(o => o.CustomerName.Equals(customer, StringComparison.OrdinalIgnoreCase))
+    .OrderByDescending(o => o.OrderDate)
+    .ToList();
 ```
 
-The k6 scenario calls `GET /api/products/{id}` once per iteration (line 47 of `baseline.js`), totaling ~1,365 calls/sec. Each call creates a change-tracking snapshot of the returned Product entity.
+At line 46, it then loads **all** order items into memory:
 
-The memory profiler reports a **Gen1:Gen0 ratio of 0.90** — nearly every Gen0 collection promotes objects to Gen1, indicating mid-lived allocations (like EF tracking snapshots) that survive the Gen0 threshold but die shortly after. Total allocation rate is **627 MB/sec** with **262 GC collections** in 120s.
+```csharp
+var allItems = await _context.OrderItems.ToListAsync();
+```
+
+At lines 54-55, it performs N+1 product lookups per order item:
+
+```csharp
+foreach (var item in items)
+{
+    var product = await _context.Products.FindAsync(item.ProductId);
+```
+
+This method issues 2 full table scans + N individual product queries per page load. Neither query uses `AsNoTracking()`.
+
+The CPU profile shows `SingleQueryingEnumerable.MoveNextAsync` at 25% inclusive and SQL Server internals at 16% — these full table scans are a significant contributor.
 
 ## Theory
 
-`FindAsync` first checks the DbContext change tracker (wasted work on a fresh per-request scope), then queries the database and creates an internal snapshot of the entity's original property values for dirty-detection on `SaveChanges`. Since `GetProduct` is a read-only endpoint that never calls `SaveChanges`, this snapshot allocation is pure overhead. At 1,365 RPS, these snapshots contribute to the abnormal Gen1 promotion rate — they survive Gen0 (allocated mid-request) but are collected in Gen1 (discarded after response serialization), exactly matching the 0.90 Gen1:Gen0 ratio signature.
+The Orders and OrderItems tables grow monotonically as users place orders. Loading both entirely into memory to filter for one customer is O(total_orders + total_order_items) in database I/O, memory allocation, and TDS parsing — regardless of how many orders the customer has.
+
+The `StringComparison.OrdinalIgnoreCase` comparison at line 42 forces client-side evaluation because SQL Server can handle case-insensitive comparison natively via collation. The N+1 product lookup generates a separate round-trip per line item, compounding the issue.
+
+All queries use change-tracking (no `AsNoTracking()`), causing EF Core to create `EntityEntry` snapshots for every materialized entity — explaining the high Gen0→Gen1 promotion rate and 1.3GB peak heap.
 
 ## Proposed Fixes
 
-1. **Replace FindAsync with AsNoTracking query:** At line 35, change to `await _context.Products.AsNoTracking().FirstOrDefaultAsync(p => p.Id == id)`. This eliminates both the change tracker lookup and the snapshot allocation. The query still hits the primary key index and returns the same result.
+1. **Server-side filtering with batch join:** Replace both `ToListAsync()` full table scans with server-side `Where()` clauses. Filter orders by `CustomerName` in SQL (the database collation handles case-insensitivity). Filter order items by the matched order IDs. Batch product lookups using `Where(p => productIds.Contains(p.Id)).ToDictionaryAsync(p => p.Id)`. Add `AsNoTracking()` to all queries.
+
+2. **Eliminate N+1 with dictionary lookup:** Collect all distinct `ProductId` values from the filtered order items, fetch them in a single query into a dictionary, then look up each product from the dictionary instead of individual `FindAsync` calls.
 
 ## Expected Impact
 
-- p95 latency: **2–4% reduction** (~387–395ms). Fewer Gen1 collections mean fewer GC pauses contributing to tail latency.
-- Allocation rate: **3–5% reduction**. Each avoided tracking snapshot saves ~500 bytes of snapshot data plus the DetectChanges bookkeeping objects.
-- Gen1:Gen0 ratio: should improve toward 0.70–0.80 as fewer mid-lived objects are promoted.
+- p95 latency: ~15-30ms reduction for order page loads (from 2 full scans + N queries down to 3 filtered queries)
+- RPS: ~3-5% improvement from dramatically reduced database load
+- Memory: Significant heap reduction — only customer-specific rows are materialized instead of all orders/items, and AsNoTracking eliminates change-tracking overhead
+- The OrderId index on OrderItems (line 58 in AppDbContext.cs) enables efficient filtered lookups

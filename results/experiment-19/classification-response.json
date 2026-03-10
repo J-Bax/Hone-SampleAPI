@@ -1,0 +1,6 @@
+```json
+{
+  "scope": "narrow",
+  "reasoning": "Full table scans and N+1 queries can be fixed entirely within this file by adding .Where() filters and .Include() eager loading to existing DbContext queries, without modifying dependencies, database schema, or other files."
+}
+```

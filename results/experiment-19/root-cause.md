@@ -1,3 +1,14 @@
+# Root Cause Analysis — Experiment 19
+
+> Generated: 2026-03-10 06:55:18 | Classification: narrow — Full table scans and N+1 queries can be fixed entirely within this file by adding .Where() filters and .Include() eager loading to existing DbContext queries, without modifying dependencies, database schema, or other files.
+
+| Metric | Current | Baseline |
+|--------|---------|----------|
+| p95 Latency | 403.18154ms | 888.549155000001ms |
+| Requests/sec | 1365.2 | 683.2 |
+| Error Rate | 0% | 0% |
+
+---
 # Full table scans and N+1 queries in Cart page
 
 > **File:** `SampleApi/Pages/Cart/Index.cshtml.cs` | **Scope:** narrow
@@ -55,3 +66,4 @@ The per-item `SaveChangesAsync()` in `OnPostClearAsync` generates N separate DEL
 - RPS: ~3-5% improvement from reduced database round-trips and connection contention
 - Memory: Reduced allocation rate from eliminating full-table materialization and per-item async overhead
 - The SessionId index already exists (line 65-66 in AppDbContext.cs), so server-side filtering will be an efficient index seek
+
