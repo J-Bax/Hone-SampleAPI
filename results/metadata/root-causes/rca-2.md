@@ -1,45 +1,37 @@
-# Eliminate redundant SaveChanges round-trip in CreateOrder
+# Replace ORDER BY NEWID() with efficient random sampling
 
-> **File:** `SampleApi/Controllers/OrdersController.cs` | **Scope:** architecture
+> **File:** `SampleApi/Pages/Index.cshtml.cs` | **Scope:** narrow
 
 ## Evidence
 
-At `OrdersController.cs:107-108`, `CreateOrder` performs a first `SaveChangesAsync` solely to obtain the auto-generated `order.Id`:
-
+At `Pages/Index.cshtml.cs` line 28:
 ```csharp
-_context.Orders.Add(order);
-await _context.SaveChangesAsync(); // Save to get order ID
+FeaturedProducts = await _context.Products.AsNoTracking()
+    .OrderBy(p => EF.Functions.Random()).Take(12).ToListAsync();
 ```
 
-Then at line 132, order items are added individually in a loop:
+`EF.Functions.Random()` translates to `ORDER BY NEWID()` in SQL Server. This forces SQL Server to:
+1. Scan all 1,000 product rows
+2. Compute a GUID for each row
+3. Sort all 1,000 rows by the random GUID
+4. Return the top 12
 
-```csharp
-_context.OrderItems.Add(orderItem);
-```
+The home page is hit once per VU iteration (baseline.js line 110). At 500 VUs firing back-to-back, this generates hundreds of full-table-scan-plus-sort operations per second.
 
-Finally at line 136, a second `SaveChangesAsync` persists the items and updates the total:
-
-```csharp
-await _context.SaveChangesAsync();
-```
-
-The k6 scenario creates an order every iteration (`baseline.js:94-106`) with 2 items, meaning every VU executes 2 database round-trips per iteration for order creation. At 500 VUs, that is 1,000 round-trips per iteration cycle dedicated to order creation alone.
-
-With average CPU at only 18.66%, the server is not CPU-bound — it is spending significant time waiting on I/O (database round-trips). Each `SaveChangesAsync` acquires a connection from the pool, executes SQL, and returns. The default SQL Server connection pool size is 100; with 500 VUs each needing 2 round-trips for orders plus round-trips for other endpoints, connection pool contention inflates wait times.
+Experiment 11 attempted this fix but went stale (branch conflict), so it was never applied.
 
 ## Theory
 
-The dual `SaveChangesAsync` pattern doubles the connection hold-time for order creation requests. Under high concurrency, connection pool saturation creates a queuing effect: requests block waiting for an available connection, and every extra round-trip lengthens the queue. Since the k6 scenario fires 13 requests per iteration and order creation is the only write-heavy endpoint with 2 round-trips, it disproportionately contributes to connection pool pressure.
-
-The 18.66% average CPU with a 408ms p95 latency confirms the bottleneck is I/O wait, not computation. Reducing database round-trips directly reduces the time each request holds a pooled connection, freeing capacity for concurrent requests across all endpoints.
+`ORDER BY NEWID()` is an O(N log N) operation where N is the total product count (1,000). SQL Server cannot use any index for this sort since NEWID() is non-deterministic. Every execution requires a full table scan to read all rows (including the nvarchar(max) Description column) followed by an in-memory sort. Under 500 concurrent VUs, this creates massive contention on the Products table and contributes to the SQL data reading overhead (10.2% in TdsParserStateObject.TryReadChar). The sort also consumes tempdb resources under high concurrency.
 
 ## Proposed Fixes
 
-1. **Add a navigation property `Items` to the `Order` model** (`Models/Order.cs`): Add `public ICollection<OrderItem> Items { get; set; }` and configure the relationship in `AppDbContext.OnModelCreating`. Then refactor `CreateOrder` to build the full object graph — set `orderItem.Order = order` (or add to `order.Items`) — and call `SaveChangesAsync()` once. EF Core will insert the Order, retrieve the generated ID via `SCOPE_IDENTITY()`, then batch-insert all OrderItems with the correct `OrderId` in a single transaction.
+1. **Random offset sampling:** Generate a random offset in C# using `Random.Shared.Next(0, totalCount - 12)`, then use `.Skip(offset).Take(12)`. This translates to an efficient `OFFSET/FETCH` query that reads only 12 rows via index seek. Requires a `CountAsync()` first, but that's a lightweight aggregate.
+
+2. **Random ID range sampling:** Generate a random ID range and query `WHERE Id >= randomStart ORDER BY Id TAKE 12`. Since Product IDs are sequential (seeded 1-1000), this avoids both the full scan and the sort.
 
 ## Expected Impact
 
-- **p95 latency**: ~3-5% improvement. Eliminating one database round-trip per order reduces connection hold-time by ~50% for this endpoint, easing pool contention across all concurrent requests.
-- **RPS**: ~2-4% improvement from reduced I/O wait and connection pool pressure.
-- **Error rate**: No change (0% baseline).
-- This is a secondary optimization — less impactful than result-set limiting but still measurable under sustained high concurrency (500 VUs).
+- p95 latency: ~5-10% reduction. The home page is 1 of 13 requests per iteration; eliminating the full table scan + sort removes a significant per-request SQL cost.
+- RPS: ~5-8% increase from reduced SQL Server contention and tempdb pressure.
+- CPU: reduced SQL data reading overhead — no longer reading all 1,000 product Description fields just to pick 12.

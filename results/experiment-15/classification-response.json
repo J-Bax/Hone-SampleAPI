@@ -1,0 +1,6 @@
+```json
+{
+  "scope": "narrow",
+  "reasoning": "All N+1 queries and full table scans can be fixed using LINQ `.Where()`, `.Include()`, and batch operations in CartController.cs alone — no DbContext schema changes, no endpoint changes, no new packages required."
+}
+```

@@ -1,3 +1,14 @@
+# Root Cause Analysis — Experiment 15
+
+> Generated: 2026-03-10 04:52:55 | Classification: narrow — All N+1 queries and full table scans can be fixed using LINQ `.Where()`, `.Include()`, and batch operations in CartController.cs alone — no DbContext schema changes, no endpoint changes, no new packages required.
+
+| Metric | Current | Baseline |
+|--------|---------|----------|
+| p95 Latency | 407.84418ms | 888.549155000001ms |
+| Requests/sec | 1359.9 | 683.2 |
+| Error Rate | 0% | 0% |
+
+---
 # Fix full table scans and N+1 queries in CartController
 
 > **File:** `SampleApi/Controllers/CartController.cs` | **Scope:** narrow
@@ -57,3 +68,4 @@ The existing composite index on `(SessionId, ProductId)` at AppDbContext line 66
 - p95 latency: ~15-25% reduction (estimated drop to ~310-350ms). Cart operations are 3 of 13 requests per iteration and currently do the most expensive full table scans.
 - RPS: ~15-20% increase. Eliminating full table scans frees SQL Server and thread pool capacity.
 - Allocation rate: significant reduction — no longer materializing thousands of CartItem entities per request.
+

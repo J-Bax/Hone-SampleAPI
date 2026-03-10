@@ -1,12 +1,12 @@
 {
-  "generatedByExperiment": 14,
-  "generatedAt": "2026-03-10T04:39:28.9174239-07:00",
+  "generatedByExperiment": 15,
+  "generatedAt": "2026-03-10T04:52:43.6022035-07:00",
   "items": [
     {
       "id": 1,
-      "filePath": "SampleApi/Controllers/ProductsController.cs",
-      "title": "Add server-side result limiting to GetProducts and SearchProducts",
-      "explanation": "Add server-side result limiting to GetProducts and SearchProducts",
+      "filePath": "SampleApi/Controllers/CartController.cs",
+      "title": "Fix full table scans and N+1 queries in CartController",
+      "explanation": "Fix full table scans and N+1 queries in CartController",
       "scope": "narrow",
       "rootCausePath": "C:\\Projects\\Hone\\sample-api\\results\\metadata\\root-causes\\rca-1.md",
       "status": "in_progress",
@@ -15,11 +15,22 @@
     },
     {
       "id": 2,
-      "filePath": "SampleApi/Controllers/OrdersController.cs",
-      "title": "Eliminate redundant SaveChanges round-trip in CreateOrder",
-      "explanation": "Eliminate redundant SaveChanges round-trip in CreateOrder",
-      "scope": "architecture",
+      "filePath": "SampleApi/Pages/Index.cshtml.cs",
+      "title": "Replace ORDER BY NEWID() with efficient random sampling",
+      "explanation": "Replace ORDER BY NEWID() with efficient random sampling",
+      "scope": "narrow",
       "rootCausePath": "C:\\Projects\\Hone\\sample-api\\results\\metadata\\root-causes\\rca-2.md",
+      "status": "pending",
+      "triedByExperiment": null,
+      "outcome": null
+    },
+    {
+      "id": 3,
+      "filePath": "SampleApi/Data/AppDbContext.cs",
+      "title": "Add HasMaxLength to Product.Description to eliminate nvarchar(max) PLP overhead",
+      "explanation": "Add HasMaxLength to Product.Description to eliminate nvarchar(max) PLP overhead",
+      "scope": "architecture",
+      "rootCausePath": "C:\\Projects\\Hone\\sample-api\\results\\metadata\\root-causes\\rca-3.md",
       "status": "pending",
       "triedByExperiment": null,
       "outcome": null
