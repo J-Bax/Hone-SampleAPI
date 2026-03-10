@@ -53,11 +53,16 @@ results/*
 !results/hone.jsonl
 !results/metadata/
 
-# Experiment directories — commit agent analysis, ignore raw profiling data
+# Experiment directories — commit agent analysis and metrics, ignore raw profiling data
 !results/experiment-*/
-results/experiment-*/k6-*.json
+# Ignore raw profiling collector output (large binaries, ETLs, CSVs, export logs)
+# but keep parsed summary JSONs via specific negations
 results/experiment-*/diagnostics/perfview-cpu/
-results/experiment-*/diagnostics/perfview-gc/
 results/experiment-*/diagnostics/perfview/
-results/experiment-*/diagnostics/dotnet-counters/
 results/experiment-*/diagnostics/k6-*.json
+# perfview-gc: ignore dir, then un-ignore just gc-report.json
+results/experiment-*/diagnostics/perfview-gc/*
+!results/experiment-*/diagnostics/perfview-gc/gc-report.json
+# dotnet-counters: ignore dir, then un-ignore just dotnet-counters.json
+results/experiment-*/diagnostics/dotnet-counters/*
+!results/experiment-*/diagnostics/dotnet-counters/dotnet-counters.json
