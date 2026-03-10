@@ -113,3 +113,7 @@ Category 1──* Product 1──* Review
                   └──* CartItem (keyed by SessionId)
 ```
 
+## License
+
+This project is licensed under the [MIT License](LICENSE).
+
