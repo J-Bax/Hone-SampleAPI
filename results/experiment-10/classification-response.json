@@ -1,0 +1,6 @@
+```json
+{
+  "scope": "narrow",
+  "reasoning": "The proposed optimization (adding AsNoTracking to queries and optimizing the GetCategory product query) modifies only implementation internals within this single file—no dependencies, no migrations, no API contract changes, no test modifications required."
+}
+```

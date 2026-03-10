@@ -31,7 +31,7 @@
       "explanation": "Add AsNoTracking and optimize GetCategory product query",
       "scope": "narrow",
       "rootCausePath": "C:\\Projects\\Hone\\sample-api\\results\\metadata\\root-causes\\rca-3.md",
-      "status": "pending",
+      "status": "in_progress",
       "triedByExperiment": null,
       "outcome": null
     }

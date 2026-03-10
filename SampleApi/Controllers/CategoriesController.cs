@@ -22,7 +22,7 @@ public class CategoriesController : ControllerBase
     [HttpGet]
     public async Task<ActionResult<IEnumerable<Category>>> GetCategories()
     {
-        var categories = await _context.Categories.ToListAsync();
+        var categories = await _context.Categories.AsNoTracking().ToListAsync();
         return Ok(categories);
     }
 
@@ -32,12 +32,13 @@ public class CategoriesController : ControllerBase
     [HttpGet("{id}")]
     public async Task<ActionResult<object>> GetCategory(int id)
     {
-        var category = await _context.Categories.FindAsync(id);
+        var category = await _context.Categories.AsNoTracking()
+            .FirstOrDefaultAsync(c => c.Id == id);
 
         if (category == null)
             return NotFound();
 
-        var products = await _context.Products
+        var products = await _context.Products.AsNoTracking()
             .Where(p => p.Category == category.Name)
             .ToListAsync();
 
