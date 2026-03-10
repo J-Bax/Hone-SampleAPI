@@ -1,46 +1,59 @@
-# Eliminate full table scans in Home page
+# Eliminate redundant tracked product-existence queries
 
-> **File:** `SampleApi/Pages/Index.cshtml.cs` | **Scope:** narrow
+> **File:** `SampleApi/Controllers/ReviewsController.cs` | **Scope:** narrow
 
 ## Evidence
 
-At `Pages/Index.cshtml.cs:28-29`, the home page loads **all 1,000 products** just to select 12 random featured items:
+Both `GetReviewsByProduct` and `GetAverageRating` perform a **tracked `FindAsync`** solely to check if a product exists:
 
+`ReviewsController.cs:50-52`:
 ```csharp
-var allProducts = await _context.Products.ToListAsync();
-FeaturedProducts = allProducts.OrderBy(_ => Guid.NewGuid()).Take(12).ToList();
-TotalProducts = allProducts.Count;
+var product = await _context.Products.FindAsync(productId);
+if (product == null)
+    return NotFound(new { message = $"Product with ID {productId} not found" });
 ```
 
-At `Pages/Index.cshtml.cs:36-37`, it loads **all ~2,000 reviews** to show 5 recent ones:
-
+`ReviewsController.cs:67-69`:
 ```csharp
-var allReviews = await _context.Reviews.ToListAsync();
-RecentReviews = allReviews.OrderByDescending(r => r.CreatedAt).Take(5).ToList();
+var product = await _context.Products.FindAsync(productId);
+if (product == null)
+    return NotFound(new { message = $"Product with ID {productId} not found" });
 ```
 
-Neither query uses `AsNoTracking()`. The k6 scenario hits `GET /` every iteration (line 110 of baseline.js), making this one of the highest-traffic endpoints.
+These calls:
+1. Execute `SELECT TOP 1 Id, Name, Description, Price, Category, CreatedAt, UpdatedAt FROM Products WHERE Id = @p0` — fetching **all 7 columns** when only existence matters
+2. Materialize a full `Product` entity with **change tracking** (identity map entry, snapshot copy)
+3. Hold the tracked entity in the DbContext for the request lifetime
+
+The load test calls both endpoints every iteration (`/api/reviews/by-product/{id}` at line 65 and `/api/reviews/average/{id}` at line 70 of `baseline.js`), generating ~200+ unnecessary tracked Product loads/sec.
+
+Additionally, `GetAverageRating` at lines 71-73 executes **three separate queries** (FindAsync + CountAsync + conditional AverageAsync) when a single query could compute both count and average:
+
+```csharp
+var reviewCount = await _context.Reviews.CountAsync(r => r.ProductId == productId);
+var average = reviewCount > 0
+    ? Math.Round(await _context.Reviews.Where(r => r.ProductId == productId).AverageAsync(r => r.Rating), 2)
+    : 0.0;
+```
 
 ## Theory
 
-Each home page request materializes ~3,000+ tracked entities (1,000 products + ~2,000 reviews + categories) only to discard 99.4% of them (keeps 12 + 5 = 17). Under 500 VUs, this pattern generates enormous allocation pressure:
-- 1,000 Product entities × ~200 bytes each = ~200 KB per request just for products
-- ~2,000 Review entities with Comment strings (up to 2,000 chars each) = ~4-8 MB per request for reviews
-- All with change tracking overhead (identity maps, navigation fixup)
+`FindAsync` without `AsNoTracking` creates a tracked entity: EF Core allocates a snapshot copy for change detection and registers the entity in the identity map. The CPU profile shows 1.8% in `CastHelpers` (entity materialization casting) and 0.27% in DI/dictionary resolution — both amplified by tracked entities. With ~200 calls/sec, this adds ~200 unnecessary allocations/sec of Product entities + their snapshots, contributing to the 627 MB/sec allocation rate.
 
-The `Comment` field (HasMaxLength 2000, see `AppDbContext.cs:41`) explains the CPU profiler's TDS character parsing and Unicode decoding hotspots — each review's comment string is read char-by-char from the TDS wire, decoded, and allocated as a managed string, only to be immediately discarded.
+The triple-query pattern in `GetAverageRating` also adds an extra SQL round-trip: FindAsync (1 RT), CountAsync (1 RT), AverageAsync (1 RT) = 3 round-trips when 1-2 would suffice. Each round-trip adds network + SQL Server scheduling latency, directly inflating p95.
 
 ## Proposed Fixes
 
-1. **Server-side featured products (lines 28-30):** Replace with `_context.Products.AsNoTracking().OrderBy(p => EF.Functions.Random()).Take(12).ToListAsync()` for random selection, or simply `.AsNoTracking().Take(12).ToListAsync()` for deterministic selection. Get count separately: `TotalProducts = await _context.Products.CountAsync()`.
+1. **Replace `FindAsync` with `AnyAsync`** at lines 50-52 and 67-69:
+   ```csharp
+   var productExists = await _context.Products.AnyAsync(p => p.Id == productId);
+   ```
+   This generates `SELECT CASE WHEN EXISTS(SELECT 1 FROM Products WHERE Id = @p0) THEN 1 ELSE 0 END` — no entity materialization, no tracking, minimal data transfer.
 
-2. **Server-side recent reviews (lines 36-37):** Replace with `_context.Reviews.AsNoTracking().OrderByDescending(r => r.CreatedAt).Take(5).ToListAsync()`. This pushes ORDER BY + TOP to SQL.
-
-3. **AsNoTracking on categories (line 33):** Add `.AsNoTracking()` to the categories query.
+2. **Consolidate GetAverageRating into fewer queries** at lines 71-73: use a single `GroupBy` or fetch reviews once and compute both count and average in memory, eliminating one SQL round-trip.
 
 ## Expected Impact
 
-- **Allocation reduction:** ~3,000 tracked entities → ~27 untracked entities per request (~99% reduction)
-- **p95 latency:** Estimated 10-15% improvement (fewer GC pauses, faster query execution)
-- **RPS:** Estimated 10-15% improvement from reduced CPU in TDS parsing and entity tracking
-- **Memory:** Peak heap should drop substantially as the home page was one of the largest per-request allocators
+- **p95 latency**: −10 to 20ms (2–5% reduction). Eliminates ~1 SQL round-trip from GetAverageRating and reduces materialization overhead from both endpoints.
+- **Allocation rate**: −5–10 MB/sec from eliminating ~200 tracked Product entities/sec plus their change-tracking snapshots.
+- **RPS**: +2–3%. Fewer queries per request frees SQL Server and connection pool capacity.

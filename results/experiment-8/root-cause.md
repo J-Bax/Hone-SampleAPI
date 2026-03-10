@@ -1,3 +1,14 @@
+# Root Cause Analysis — Experiment 8
+
+> Generated: 2026-03-10 02:07:48 | Classification: narrow — Adding indexes via DbContext.OnModelCreating is a single-file DbContext configuration change that modifies only implementation internals without requiring new migration files or changes to the public API.
+
+| Metric | Current | Baseline |
+|--------|---------|----------|
+| p95 Latency | 409.68509ms | 888.549155000001ms |
+| Requests/sec | 1335.7 | 683.2 |
+| Error Rate | 0% | 0% |
+
+---
 # Add database indexes on frequently filtered columns
 
 > **File:** `SampleApi/Data/AppDbContext.cs` | **Scope:** narrow
@@ -47,3 +58,4 @@ Without indexes, every `WHERE` clause triggers a **full table scan** in SQL Serv
 - **RPS**: +5–10% improvement. SQL Server spends less CPU on scans, freeing capacity for more concurrent requests.
 - **Allocation rate**: Slight reduction — SQL Server returns result sets faster, reducing connection hold time and async state machine lifetimes.
 - **Growing CartItems table**: Index prevents the progressive slowdown that occurs as more items are inserted during the test.
+

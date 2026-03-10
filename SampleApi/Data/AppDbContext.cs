@@ -26,6 +26,7 @@ public class AppDbContext : DbContext
             entity.Property(e => e.Name).HasMaxLength(200).IsRequired();
             entity.Property(e => e.Category).HasMaxLength(100).IsRequired();
             entity.Property(e => e.Price).HasColumnType("decimal(18,2)");
+            entity.HasIndex(e => e.Category);
         });
 
         modelBuilder.Entity<Category>(entity =>
@@ -39,6 +40,7 @@ public class AppDbContext : DbContext
             entity.HasKey(e => e.Id);
             entity.Property(e => e.CustomerName).HasMaxLength(100).IsRequired();
             entity.Property(e => e.Comment).HasMaxLength(2000);
+            entity.HasIndex(e => e.ProductId);
         });
 
         modelBuilder.Entity<Order>(entity =>
@@ -53,12 +55,15 @@ public class AppDbContext : DbContext
         {
             entity.HasKey(e => e.Id);
             entity.Property(e => e.UnitPrice).HasColumnType("decimal(18,2)");
+            entity.HasIndex(e => e.OrderId);
         });
 
         modelBuilder.Entity<CartItem>(entity =>
         {
             entity.HasKey(e => e.Id);
             entity.Property(e => e.SessionId).HasMaxLength(100).IsRequired();
+            entity.HasIndex(e => e.SessionId);
+            entity.HasIndex(e => new { e.SessionId, e.ProductId });
         });
     }
 }

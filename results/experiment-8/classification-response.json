@@ -1,0 +1,6 @@
+```json
+{
+  "scope": "narrow",
+  "reasoning": "Adding indexes via DbContext.OnModelCreating is a single-file DbContext configuration change that modifies only implementation internals without requiring new migration files or changes to the public API."
+}
+```

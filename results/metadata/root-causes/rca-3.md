@@ -1,51 +1,52 @@
-# Server-side pagination and filtering in Products page
+# Add AsNoTracking and optimize GetCategory product query
 
-> **File:** `SampleApi/Pages/Products/Index.cshtml.cs` | **Scope:** narrow
+> **File:** `SampleApi/Controllers/CategoriesController.cs` | **Scope:** narrow
 
 ## Evidence
 
-At `Pages/Products/Index.cshtml.cs:35`, the products listing page loads **all 1,000 products** into memory before applying filtering and pagination client-side:
+Both endpoints in `CategoriesController.cs` lack `AsNoTracking`, and `GetCategory` uses string-based filtering without projection:
 
+`CategoriesController.cs:25-26`:
 ```csharp
-var allProducts = await _context.Products.ToListAsync();
+var categories = await _context.Categories.ToListAsync();
+```
+No `AsNoTracking()` — all Category entities are tracked with change-detection snapshots despite being a read-only endpoint.
+
+`CategoriesController.cs:35-42`:
+```csharp
+var category = await _context.Categories.FindAsync(id);
+// ...
+var products = await _context.Products
+    .Where(p => p.Category == category.Name)
+    .ToListAsync();
 ```
 
-Filtering is done in memory (lines 38-51):
+Two issues:
+1. `FindAsync(id)` loads a tracked Category entity solely to extract its `Name` string for the subsequent query
+2. The Products query loads all columns (including `Description`) with change tracking for every matching product — potentially ~100 products for a popular category
 
-```csharp
-if (!string.IsNullOrWhiteSpace(category))
-{
-    allProducts = allProducts.Where(p =>
-        p.Category.Equals(category, StringComparison.OrdinalIgnoreCase)).ToList();
-}
-```
-
-Pagination is also client-side (lines 57-60) despite `PageSize = 24`:
-
-```csharp
-Products = allProducts
-    .Skip((CurrentPage - 1) * PageSize)
-    .Take(PageSize)
-    .ToList();
-```
-
-No `AsNoTracking()` is used. The k6 scenario hits `GET /Products` every iteration (line 115 of baseline.js).
+The CPU profile notes: `StringConverter.Write` at 0.74% and `ObjectDefaultConverter.OnTryWrite` at 1.69% indicate large object graphs being serialized. Tracked entities add overhead through `UnicodeEncoding.GetCharCount/GetChars` (0.66%) by materializing all string columns including `Description`.
 
 ## Theory
 
-The page has built-in pagination (PageSize=24) but defeats its purpose by loading all 1,000 products first. Each request materializes 1,000 tracked Product entities to display 24. The in-memory `StringComparison.OrdinalIgnoreCase` filtering prevents SQL Server from using any indexes on the Category column. Combined with the categories sidebar query (line 63, also without AsNoTracking), each request creates ~1,010 tracked entities.
-
-At 500 VUs, this adds ~500K tracked Product entities per second to the allocation pressure, contributing to the 189 GB total allocations and 100 Gen2 collections observed in the profiling run.
+Change tracking doubles the memory footprint of each loaded entity: EF Core stores both the entity and an internal snapshot for dirty-checking. For the Products query returning ~100 Product entities with `Description` (each ~80+ chars), this means ~200 object allocations instead of ~100. While `/api/categories` endpoints are not the primary load test traffic, the missing `AsNoTracking` pattern is inconsistent with the rest of the codebase (ProductsController, OrdersController, detail page all use it) and the tracked entities contribute to GC pressure — the Gen1/Gen0 ratio of 0.88 suggests medium-lifetime objects surviving Gen0, consistent with tracked entities held for the request scope.
 
 ## Proposed Fixes
 
-1. **Build an IQueryable pipeline with server-side filtering and pagination (lines 35-60):** Start with `IQueryable<Product> query = _context.Products.AsNoTracking()`, apply `.Where()` filters conditionally, get count via `await query.CountAsync()`, then apply `.Skip().Take().ToListAsync()`. This pushes filtering and pagination to SQL, returning only 24 rows.
+1. **Add `AsNoTracking()` to both queries** — `GetCategories` at line 25 and the products query in `GetCategory` at line 40:
+   ```csharp
+   var categories = await _context.Categories.AsNoTracking().ToListAsync();
+   ```
+   ```csharp
+   var products = await _context.Products.AsNoTracking()
+       .Where(p => p.Category == category.Name)
+       .ToListAsync();
+   ```
 
-2. **AsNoTracking on categories query (line 63):** Add `.AsNoTracking()` to the categories sidebar query.
+2. **Replace `FindAsync` with `AsNoTracking().FirstOrDefaultAsync`** at line 35 to avoid tracking the Category entity.
 
 ## Expected Impact
 
-- **Allocation reduction:** 1,000 tracked entities → 24 untracked entities per request (~97.6% reduction)
-- **p95 latency:** Estimated 5-10% improvement (smaller contribution than Detail/Home pages since Products have smaller payloads than Reviews)
-- **RPS:** Estimated 5-8% improvement from reduced SQL data transfer and entity materialization
-- **Combined impact of all three Razor page fixes:** p95 latency improvement of 25-40% (from ~566ms toward ~340-420ms), RPS improvement of 25-35% (from ~984 toward ~1,250-1,330)
+- **p95 latency**: −2 to 5ms (marginal direct impact since these endpoints are not primary load test targets).
+- **Allocation rate**: −3–5 MB/sec from eliminating change-tracking snapshots, improving GC behavior.
+- **Code consistency**: Aligns with the `AsNoTracking` pattern established across all other read-only endpoints, preventing regression if these endpoints are added to load test scenarios.
