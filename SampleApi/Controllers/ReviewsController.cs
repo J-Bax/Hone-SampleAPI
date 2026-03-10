@@ -46,9 +46,9 @@ public class ReviewsController : ControllerBase
     [HttpGet("by-product/{productId}")]
     public async Task<ActionResult<IEnumerable<Review>>> GetReviewsByProduct(int productId)
     {
-        // First verify the product exists — separate query
-        var product = await _context.Products.FindAsync(productId);
-        if (product == null)
+        // Check existence without materializing or tracking a Product entity
+        var productExists = await _context.Products.AnyAsync(p => p.Id == productId);
+        if (!productExists)
             return NotFound(new { message = $"Product with ID {productId} not found" });
 
         var filtered = await _context.Reviews.AsNoTracking()
@@ -64,14 +64,20 @@ public class ReviewsController : ControllerBase
     [HttpGet("average/{productId}")]
     public async Task<ActionResult<object>> GetAverageRating(int productId)
     {
-        var product = await _context.Products.FindAsync(productId);
-        if (product == null)
+        // Check existence without materializing or tracking a Product entity
+        var productExists = await _context.Products.AnyAsync(p => p.Id == productId);
+        if (!productExists)
             return NotFound(new { message = $"Product with ID {productId} not found" });
 
-        var reviewCount = await _context.Reviews.CountAsync(r => r.ProductId == productId);
-        var average = reviewCount > 0
-            ? Math.Round(await _context.Reviews.Where(r => r.ProductId == productId).AverageAsync(r => r.Rating), 2)
-            : 0.0;
+        // Compute count and average in a single query via GroupBy
+        var stats = await _context.Reviews
+            .Where(r => r.ProductId == productId)
+            .GroupBy(r => r.ProductId)
+            .Select(g => new { Count = g.Count(), Average = (double?)g.Average(r => r.Rating) })
+            .FirstOrDefaultAsync();
+
+        var reviewCount = stats?.Count ?? 0;
+        var average = stats?.Average.HasValue == true ? Math.Round(stats.Average.Value, 2) : 0.0;
 
         return Ok(new
         {

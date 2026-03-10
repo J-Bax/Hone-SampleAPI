@@ -1,0 +1,6 @@
+```json
+{
+  "scope": "narrow",
+  "reasoning": "Eliminating redundant product-existence checks (lines 50 and 67) can be achieved by removing tracked `.FindAsync()` calls and replacing with a single `.Any()` query, contained entirely within ReviewsController.cs methods."
+}
+```
