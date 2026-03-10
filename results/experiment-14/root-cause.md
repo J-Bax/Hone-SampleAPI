@@ -1,3 +1,14 @@
+# Root Cause Analysis — Experiment 14
+
+> Generated: 2026-03-10 04:39:40 | Classification: narrow — Adding a limit clause to GetProducts (line 25) and SearchProducts (lines 70, 76) query logic modifies only method bodies within a single file and does not change endpoint routes, response schema, dependencies, or require database migrations.
+
+| Metric | Current | Baseline |
+|--------|---------|----------|
+| p95 Latency | 407.84418ms | 888.549155000001ms |
+| Requests/sec | 1359.9 | 683.2 |
+| Error Rate | 0% | 0% |
+
+---
 # Add server-side result limiting to GetProducts and SearchProducts
 
 > **File:** `SampleApi/Controllers/ProductsController.cs` | **Scope:** narrow
@@ -56,3 +67,4 @@ The tracked `FindAsync` in `GetProduct` adds minor but unnecessary change-tracke
 - **RPS**: ~15-20% increase. Lower CPU per request (less TDS parsing, materialization, serialization) and reduced GC pressure free server capacity.
 - **Memory**: Per-request allocations should drop substantially, improving the Gen1/Gen0 promotion ratio toward the healthy 10-20% range.
 - **CPU hotspots**: TDS parsing should drop from 6.2% to ~1-2%; JSON serialization from 2.2% to ~0.5%.
+

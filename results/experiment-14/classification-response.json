@@ -1,0 +1,6 @@
+```json
+{
+  "scope": "narrow",
+  "reasoning": "Adding a limit clause to GetProducts (line 25) and SearchProducts (lines 70, 76) query logic modifies only method bodies within a single file and does not change endpoint routes, response schema, dependencies, or require database migrations."
+}
+```

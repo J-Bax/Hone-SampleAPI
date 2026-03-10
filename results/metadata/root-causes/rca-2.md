@@ -1,59 +1,45 @@
-# Combine GetAverageRating into single aggregation query
+# Eliminate redundant SaveChanges round-trip in CreateOrder
 
-> **File:** `SampleApi/Controllers/ReviewsController.cs` | **Scope:** narrow
+> **File:** `SampleApi/Controllers/OrdersController.cs` | **Scope:** architecture
 
 ## Evidence
 
-At `ReviewsController.cs:67–74` (GetAverageRating):
+At `OrdersController.cs:107-108`, `CreateOrder` performs a first `SaveChangesAsync` solely to obtain the auto-generated `order.Id`:
 
 ```csharp
-var product = await _context.Products.FindAsync(productId);       // Query 1: tracked
-if (product == null)
-    return NotFound(...);
-
-var reviewCount = await _context.Reviews
-    .CountAsync(r => r.ProductId == productId);                    // Query 2
-var average = reviewCount > 0
-    ? Math.Round(await _context.Reviews
-        .Where(r => r.ProductId == productId)
-        .AverageAsync(r => r.Rating), 2)                           // Query 3
-    : 0.0;
+_context.Orders.Add(order);
+await _context.SaveChangesAsync(); // Save to get order ID
 ```
 
-This endpoint makes **3 separate DB round trips**:
-1. `FindAsync(productId)` — tracked query, materializes full Product entity with change tracking overhead
-2. `CountAsync(r => r.ProductId == productId)` — aggregate scan on Reviews index
-3. `AverageAsync(r => r.Rating)` — second aggregate scan on the **same** Reviews index range
+Then at line 132, order items are added individually in a loop:
 
-The endpoint is called every VU iteration (`baseline.js:70`: `http.get(BASE_URL + '/api/reviews/average/' + reviewProductId)`). With `seededId(500, 2)`, it covers a wide range of product IDs, each with 1–7 reviews (`SeedData.cs:88`).
+```csharp
+_context.OrderItems.Add(orderItem);
+```
 
-The Reviews.ProductId index exists (`AppDbContext.cs:43`: `entity.HasIndex(e => e.ProductId)`), so individual queries are fast — but the 3-round-trip overhead is the issue.
+Finally at line 136, a second `SaveChangesAsync` persists the items and updates the total:
+
+```csharp
+await _context.SaveChangesAsync();
+```
+
+The k6 scenario creates an order every iteration (`baseline.js:94-106`) with 2 items, meaning every VU executes 2 database round-trips per iteration for order creation. At 500 VUs, that is 1,000 round-trips per iteration cycle dedicated to order creation alone.
+
+With average CPU at only 18.66%, the server is not CPU-bound — it is spending significant time waiting on I/O (database round-trips). Each `SaveChangesAsync` acquires a connection from the pool, executes SQL, and returns. The default SQL Server connection pool size is 100; with 500 VUs each needing 2 round-trips for orders plus round-trips for other endpoints, connection pool contention inflates wait times.
 
 ## Theory
 
-Each DB round trip incurs: connection pool checkout, command preparation, network transit (even over LocalDB shared memory ~0.1ms), result parsing, and connection return. At 1,345 RPS total throughput with 13 endpoints per VU iteration, this endpoint handles ~100+ req/s. Three round trips per call means ~300+ DB operations/sec just for this endpoint.
+The dual `SaveChangesAsync` pattern doubles the connection hold-time for order creation requests. Under high concurrency, connection pool saturation creates a queuing effect: requests block waiting for an available connection, and every extra round-trip lengthens the queue. Since the k6 scenario fires 13 requests per iteration and order creation is the only write-heavy endpoint with 2 round-trips, it disproportionately contributes to connection pool pressure.
 
-The `FindAsync` also adds change-tracking overhead: the full Product entity (Name, Description, Price, Category, dates) is loaded and tracked in the DbContext, consuming memory that becomes GC pressure. The Product is never modified — purely a wasted tracked allocation.
-
-Queries 2 and 3 scan the same index range (`WHERE ProductId = @p`) twice — SQL Server reads the same data pages from its buffer pool twice per request.
+The 18.66% average CPU with a 408ms p95 latency confirms the bottleneck is I/O wait, not computation. Reducing database round-trips directly reduces the time each request holds a pooled connection, freeing capacity for concurrent requests across all endpoints.
 
 ## Proposed Fixes
 
-1. **Single GroupBy aggregation:** Replace the Count + Average with a single query:
-   ```csharp
-   var stats = await _context.Reviews
-       .Where(r => r.ProductId == productId)
-       .GroupBy(r => r.ProductId)
-       .Select(g => new { Count = g.Count(), Average = g.Average(r => r.Rating) })
-       .FirstOrDefaultAsync();
-   ```
-   This scans the ProductId index once and computes both aggregates in a single SQL pass. If `stats` is null, no reviews exist for that product ID.
-
-2. **Replace FindAsync with AnyAsync for existence check:** Change `FindAsync(productId)` to `_context.Products.AsNoTracking().AnyAsync(p => p.Id == productId)` — returns a bool without materializing the full entity. Combined with fix #1, this reduces the endpoint from 3 queries to 2 (existence + aggregation), or even 1 if you check product existence only when the aggregation returns null.
+1. **Add a navigation property `Items` to the `Order` model** (`Models/Order.cs`): Add `public ICollection<OrderItem> Items { get; set; }` and configure the relationship in `AppDbContext.OnModelCreating`. Then refactor `CreateOrder` to build the full object graph — set `orderItem.Order = order` (or add to `order.Items`) — and call `SaveChangesAsync()` once. EF Core will insert the Order, retrieve the generated ID via `SCOPE_IDENTITY()`, then batch-insert all OrderItems with the correct `OrderId` in a single transaction.
 
 ## Expected Impact
 
-- p95 latency: ~3–5% reduction from eliminating 1–2 DB round trips per call on a hot endpoint
-- Connection pool pressure: ~30% fewer checkouts for this endpoint path
-- Memory/GC: small reduction from not tracking Product entities (~100+ tracked allocations/sec eliminated)
-- The Count+Average combination alone halves the review-index scan I/O for this endpoint
+- **p95 latency**: ~3-5% improvement. Eliminating one database round-trip per order reduces connection hold-time by ~50% for this endpoint, easing pool contention across all concurrent requests.
+- **RPS**: ~2-4% improvement from reduced I/O wait and connection pool pressure.
+- **Error rate**: No change (0% baseline).
+- This is a secondary optimization — less impactful than result-set limiting but still measurable under sustained high concurrency (500 VUs).

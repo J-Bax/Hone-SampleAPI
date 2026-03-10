@@ -16,3 +16,4 @@
 | 10 | 2026-03-10 03:15 | `SampleApi/Controllers/CategoriesController.cs` | Add AsNoTracking and optimize GetCategory product query | stale |
 | 11 | 2026-03-10 03:56 | `SampleApi/Pages/Index.cshtml.cs` | Replace ORDER BY NEWID() with efficient random product sampling | stale |
 | 12 | 2026-03-10 04:19 | `SampleApi/Controllers/ReviewsController.cs` | Combine GetAverageRating into single aggregation query | improved |
+| 13 | 2026-03-10 04:20 | `SampleApi/Program.cs` | Test failure: Enable DbContext pooling to reduce per-request allocations | regressed |

@@ -1,37 +1,26 @@
 {
-  "generatedByExperiment": 11,
-  "generatedAt": "2026-03-10T03:34:16.3055682-07:00",
+  "generatedByExperiment": 14,
+  "generatedAt": "2026-03-10T04:39:28.9174239-07:00",
   "items": [
     {
       "id": 1,
-      "filePath": "SampleApi/Pages/Index.cshtml.cs",
-      "title": "Replace ORDER BY NEWID() with efficient random product sampling",
-      "explanation": "Replace ORDER BY NEWID() with efficient random product sampling",
+      "filePath": "SampleApi/Controllers/ProductsController.cs",
+      "title": "Add server-side result limiting to GetProducts and SearchProducts",
+      "explanation": "Add server-side result limiting to GetProducts and SearchProducts",
       "scope": "narrow",
       "rootCausePath": "C:\\Projects\\Hone\\sample-api\\results\\metadata\\root-causes\\rca-1.md",
-      "status": "done",
-      "triedByExperiment": 11,
-      "outcome": "stale"
+      "status": "in_progress",
+      "triedByExperiment": null,
+      "outcome": null
     },
     {
       "id": 2,
-      "filePath": "SampleApi/Controllers/ReviewsController.cs",
-      "title": "Combine GetAverageRating into single aggregation query",
-      "explanation": "Combine GetAverageRating into single aggregation query",
-      "scope": "narrow",
+      "filePath": "SampleApi/Controllers/OrdersController.cs",
+      "title": "Eliminate redundant SaveChanges round-trip in CreateOrder",
+      "explanation": "Eliminate redundant SaveChanges round-trip in CreateOrder",
+      "scope": "architecture",
       "rootCausePath": "C:\\Projects\\Hone\\sample-api\\results\\metadata\\root-causes\\rca-2.md",
-      "status": "done",
-      "triedByExperiment": 12,
-      "outcome": "improved"
-    },
-    {
-      "id": 3,
-      "filePath": "SampleApi/Program.cs",
-      "title": "Enable DbContext pooling to reduce per-request allocations",
-      "explanation": "Enable DbContext pooling to reduce per-request allocations",
-      "scope": "narrow",
-      "rootCausePath": "C:\\Projects\\Hone\\sample-api\\results\\metadata\\root-causes\\rca-3.md",
-      "status": "in_progress",
+      "status": "pending",
       "triedByExperiment": null,
       "outcome": null
     }
