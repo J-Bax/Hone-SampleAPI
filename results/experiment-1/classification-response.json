@@ -1,0 +1,6 @@
+```json
+{
+  "scope": "narrow",
+  "reasoning": "The optimization moves filtering from client-side (LINQ-to-Objects on full result set) to database-side (LINQ-to-SQL in query) by modifying method bodies in ProductsController.cs only, requiring no file changes, dependencies, migrations, or API contract changes."
+}
+```
