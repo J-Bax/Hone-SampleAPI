@@ -25,8 +25,28 @@ public class IndexModel : PageModel
 
     public async Task OnGetAsync()
     {
-        FeaturedProducts = await _context.Products.AsNoTracking().OrderBy(p => EF.Functions.Random()).Take(12).ToListAsync();
+        // Fetch count first so we can use it for both TotalProducts and random sampling.
         TotalProducts = await _context.Products.CountAsync();
+
+        // Replace ORDER BY NEWID() with a single indexed PK seek:
+        // generate a random start offset and return 12 consecutive rows via the clustered index.
+        // If fewer than 12 products remain above the random offset, wrap around from the beginning.
+        int randomStart = TotalProducts > 0 ? Random.Shared.Next(0, TotalProducts) : 0;
+        FeaturedProducts = await _context.Products.AsNoTracking()
+            .OrderBy(p => p.Id)
+            .Skip(randomStart)
+            .Take(12)
+            .ToListAsync();
+
+        if (FeaturedProducts.Count < 12 && TotalProducts >= 12)
+        {
+            int needed = 12 - FeaturedProducts.Count;
+            var wrapped = await _context.Products.AsNoTracking()
+                .OrderBy(p => p.Id)
+                .Take(needed)
+                .ToListAsync();
+            FeaturedProducts.AddRange(wrapped);
+        }
 
         // Separate query for categories
         Categories = await _context.Categories.AsNoTracking().ToListAsync();

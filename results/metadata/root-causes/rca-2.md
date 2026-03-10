@@ -1,59 +1,59 @@
-# Eliminate redundant tracked product-existence queries
+# Combine GetAverageRating into single aggregation query
 
 > **File:** `SampleApi/Controllers/ReviewsController.cs` | **Scope:** narrow
 
 ## Evidence
 
-Both `GetReviewsByProduct` and `GetAverageRating` perform a **tracked `FindAsync`** solely to check if a product exists:
+At `ReviewsController.cs:67–74` (GetAverageRating):
 
-`ReviewsController.cs:50-52`:
 ```csharp
-var product = await _context.Products.FindAsync(productId);
+var product = await _context.Products.FindAsync(productId);       // Query 1: tracked
 if (product == null)
-    return NotFound(new { message = $"Product with ID {productId} not found" });
-```
+    return NotFound(...);
 
-`ReviewsController.cs:67-69`:
-```csharp
-var product = await _context.Products.FindAsync(productId);
-if (product == null)
-    return NotFound(new { message = $"Product with ID {productId} not found" });
-```
-
-These calls:
-1. Execute `SELECT TOP 1 Id, Name, Description, Price, Category, CreatedAt, UpdatedAt FROM Products WHERE Id = @p0` — fetching **all 7 columns** when only existence matters
-2. Materialize a full `Product` entity with **change tracking** (identity map entry, snapshot copy)
-3. Hold the tracked entity in the DbContext for the request lifetime
-
-The load test calls both endpoints every iteration (`/api/reviews/by-product/{id}` at line 65 and `/api/reviews/average/{id}` at line 70 of `baseline.js`), generating ~200+ unnecessary tracked Product loads/sec.
-
-Additionally, `GetAverageRating` at lines 71-73 executes **three separate queries** (FindAsync + CountAsync + conditional AverageAsync) when a single query could compute both count and average:
-
-```csharp
-var reviewCount = await _context.Reviews.CountAsync(r => r.ProductId == productId);
+var reviewCount = await _context.Reviews
+    .CountAsync(r => r.ProductId == productId);                    // Query 2
 var average = reviewCount > 0
-    ? Math.Round(await _context.Reviews.Where(r => r.ProductId == productId).AverageAsync(r => r.Rating), 2)
+    ? Math.Round(await _context.Reviews
+        .Where(r => r.ProductId == productId)
+        .AverageAsync(r => r.Rating), 2)                           // Query 3
     : 0.0;
 ```
 
+This endpoint makes **3 separate DB round trips**:
+1. `FindAsync(productId)` — tracked query, materializes full Product entity with change tracking overhead
+2. `CountAsync(r => r.ProductId == productId)` — aggregate scan on Reviews index
+3. `AverageAsync(r => r.Rating)` — second aggregate scan on the **same** Reviews index range
+
+The endpoint is called every VU iteration (`baseline.js:70`: `http.get(BASE_URL + '/api/reviews/average/' + reviewProductId)`). With `seededId(500, 2)`, it covers a wide range of product IDs, each with 1–7 reviews (`SeedData.cs:88`).
+
+The Reviews.ProductId index exists (`AppDbContext.cs:43`: `entity.HasIndex(e => e.ProductId)`), so individual queries are fast — but the 3-round-trip overhead is the issue.
+
 ## Theory
 
-`FindAsync` without `AsNoTracking` creates a tracked entity: EF Core allocates a snapshot copy for change detection and registers the entity in the identity map. The CPU profile shows 1.8% in `CastHelpers` (entity materialization casting) and 0.27% in DI/dictionary resolution — both amplified by tracked entities. With ~200 calls/sec, this adds ~200 unnecessary allocations/sec of Product entities + their snapshots, contributing to the 627 MB/sec allocation rate.
+Each DB round trip incurs: connection pool checkout, command preparation, network transit (even over LocalDB shared memory ~0.1ms), result parsing, and connection return. At 1,345 RPS total throughput with 13 endpoints per VU iteration, this endpoint handles ~100+ req/s. Three round trips per call means ~300+ DB operations/sec just for this endpoint.
 
-The triple-query pattern in `GetAverageRating` also adds an extra SQL round-trip: FindAsync (1 RT), CountAsync (1 RT), AverageAsync (1 RT) = 3 round-trips when 1-2 would suffice. Each round-trip adds network + SQL Server scheduling latency, directly inflating p95.
+The `FindAsync` also adds change-tracking overhead: the full Product entity (Name, Description, Price, Category, dates) is loaded and tracked in the DbContext, consuming memory that becomes GC pressure. The Product is never modified — purely a wasted tracked allocation.
+
+Queries 2 and 3 scan the same index range (`WHERE ProductId = @p`) twice — SQL Server reads the same data pages from its buffer pool twice per request.
 
 ## Proposed Fixes
 
-1. **Replace `FindAsync` with `AnyAsync`** at lines 50-52 and 67-69:
+1. **Single GroupBy aggregation:** Replace the Count + Average with a single query:
    ```csharp
-   var productExists = await _context.Products.AnyAsync(p => p.Id == productId);
+   var stats = await _context.Reviews
+       .Where(r => r.ProductId == productId)
+       .GroupBy(r => r.ProductId)
+       .Select(g => new { Count = g.Count(), Average = g.Average(r => r.Rating) })
+       .FirstOrDefaultAsync();
    ```
-   This generates `SELECT CASE WHEN EXISTS(SELECT 1 FROM Products WHERE Id = @p0) THEN 1 ELSE 0 END` — no entity materialization, no tracking, minimal data transfer.
+   This scans the ProductId index once and computes both aggregates in a single SQL pass. If `stats` is null, no reviews exist for that product ID.
 
-2. **Consolidate GetAverageRating into fewer queries** at lines 71-73: use a single `GroupBy` or fetch reviews once and compute both count and average in memory, eliminating one SQL round-trip.
+2. **Replace FindAsync with AnyAsync for existence check:** Change `FindAsync(productId)` to `_context.Products.AsNoTracking().AnyAsync(p => p.Id == productId)` — returns a bool without materializing the full entity. Combined with fix #1, this reduces the endpoint from 3 queries to 2 (existence + aggregation), or even 1 if you check product existence only when the aggregation returns null.
 
 ## Expected Impact
 
-- **p95 latency**: −10 to 20ms (2–5% reduction). Eliminates ~1 SQL round-trip from GetAverageRating and reduces materialization overhead from both endpoints.
-- **Allocation rate**: −5–10 MB/sec from eliminating ~200 tracked Product entities/sec plus their change-tracking snapshots.
-- **RPS**: +2–3%. Fewer queries per request frees SQL Server and connection pool capacity.
+- p95 latency: ~3–5% reduction from eliminating 1–2 DB round trips per call on a hot endpoint
+- Connection pool pressure: ~30% fewer checkouts for this endpoint path
+- Memory/GC: small reduction from not tracking Product entities (~100+ tracked allocations/sec eliminated)
+- The Count+Average combination alone halves the review-index scan I/O for this endpoint

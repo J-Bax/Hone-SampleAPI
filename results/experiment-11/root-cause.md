@@ -1,3 +1,14 @@
+# Root Cause Analysis — Experiment 11
+
+> Generated: 2026-03-10 03:34:27 | Classification: narrow — Modifies only query logic in OnGetAsync method body to replace EF.Functions.Random() with more efficient sampling; no dependencies, APIs, or database schema changes needed.
+
+| Metric | Current | Baseline |
+|--------|---------|----------|
+| p95 Latency | 408.6216ms | 888.549155000001ms |
+| Requests/sec | 1345.6 | 683.2 |
+| Error Rate | 0% | 0% |
+
+---
 # Replace ORDER BY NEWID() with efficient random product sampling
 
 > **File:** `SampleApi/Pages/Index.cshtml.cs` | **Scope:** narrow
@@ -43,3 +54,4 @@ The memory-gc report shows 610 MB/sec allocation rate — materializing sort buf
 - SQL Server CPU: measurable reduction from removing O(n log n) sort per request
 - Allocation rate: modest reduction from not materializing 1,000-row sort buffers
 - The improvement compounds under high concurrency since the current sort holds shared locks during the full scan
+

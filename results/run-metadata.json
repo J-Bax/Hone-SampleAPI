@@ -147,6 +147,22 @@
       "PrUrl": null,
       "StaleCount": 1,
       "ConsecutiveFailures": 1
+    },
+    {
+      "Experiment": 10,
+      "StartedAt": "2026-03-10T02:53:14.4413517-07:00",
+      "CompletedAt": "2026-03-10T03:15:46.8223460-07:00",
+      "Improved": false,
+      "Regression": false,
+      "P95": 410.6581999999999,
+      "RPS": 1342.5,
+      "Outcome": "stale",
+      "BranchName": "hone/experiment-10",
+      "BaseBranch": "hone/experiment-9",
+      "PrNumber": null,
+      "PrUrl": null,
+      "StaleCount": 2,
+      "ConsecutiveFailures": 2
     }
   ],
   "Machine": {

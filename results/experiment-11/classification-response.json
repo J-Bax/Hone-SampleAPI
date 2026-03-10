@@ -1,0 +1,6 @@
+```json
+{
+  "scope": "narrow",
+  "reasoning": "Modifies only query logic in OnGetAsync method body to replace EF.Functions.Random() with more efficient sampling; no dependencies, APIs, or database schema changes needed."
+}
+```
