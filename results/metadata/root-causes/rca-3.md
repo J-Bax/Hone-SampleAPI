@@ -1,43 +1,33 @@
-# Add HasMaxLength to Product.Description to eliminate nvarchar(max) PLP overhead
+# Enable response compression middleware for large JSON payloads
 
-> **File:** `SampleApi/Data/AppDbContext.cs` | **Scope:** architecture
+> **File:** `SampleApi/Program.cs` | **Scope:** narrow
 
 ## Evidence
 
-In `Data/AppDbContext.cs` lines 23-30, the Product entity configuration has no max length for Description:
+At `Program.cs:15-29`, the middleware pipeline has no response compression configured:
+
 ```csharp
-modelBuilder.Entity<Product>(entity =>
-{
-    entity.HasKey(e => e.Id);
-    entity.Property(e => e.Name).HasMaxLength(200).IsRequired();
-    entity.Property(e => e.Category).HasMaxLength(100).IsRequired();
-    entity.Property(e => e.Price).HasColumnType("decimal(18,2)");
-    entity.HasIndex(e => e.Category);
-});
+var app = builder.Build();
+// ... no AddResponseCompression / UseResponseCompression
+app.UseStaticFiles();
+app.UseAuthorization();
+app.MapControllers();
 ```
 
-The `Product.Description` property (`Models/Product.cs` line 10: `public string? Description { get; set; }`) maps to `nvarchar(max)` by default in SQL Server.
+`GET /api/products` and `GET /api/products/search?q=Product` each return ~1,000 Product JSON objects per response — approximately **200KB+ of uncompressed JSON** per response. The CPU profiler shows JSON serialization at **~2.3% exclusive CPU** (`StringConverter.Write` at 0.88%, `ObjectDefaultConverter.OnTryWrite` at 0.27%, plus encoding/escaping overhead).
 
-The CPU profile directly identifies this as expensive:
-- `TdsParser.TryReadPlpUnicodeCharsChunk` at **2.2% inclusive** (1,771 samples)
-- `UnicodeEncoding.GetCharCount` at 2,264 samples
-- `UnicodeEncoding.GetChars` at 1,968 samples
-- Total PLP Unicode path: ~6,000 samples
-
-The profiling report states: *"PLP (Partial Length Prefixed) Unicode reading... PLP is used for nvarchar(max) columns — the query is returning large text blobs that dominate data transfer CPU cost."*
-
-In practice, seeded descriptions are ~100 characters (`SeedData.cs` lines 43-44), well within a bounded `nvarchar(500)`.
+With 500 VUs at peak load, Kestrel is managing ~100MB of in-flight uncompressed response data across concurrent requests. Current CPU utilization is only **18.74%**, leaving significant headroom.
 
 ## Theory
 
-SQL Server uses PLP (Partial Length Prefixed) encoding for `nvarchar(max)` columns, which requires character-by-character chunk reading on the client side via `TryReadPlpUnicodeCharsChunk`. For bounded `nvarchar(N)` where N ≤ 4000, SQL Server uses inline row storage with a fixed-length prefix — the SqlClient reads the value in a single operation without PLP chunking. Since every product query (GetProducts returns all 1,000 products, search, by-category, detail pages) reads the Description column, and `GetProducts` alone is called once per VU iteration, the PLP decoding cost multiplies across hundreds of concurrent requests. The 6,000+ CPU samples on the PLP path represent ~6% of total application CPU.
+Without compression, Kestrel allocates and writes full-size response buffers (~200KB each) through its I/O pipeline. The `System.IO.Pipelines` infrastructure must manage, flush, and reclaim these large buffers for every response. Gzip compression typically achieves **80–90% reduction** on repetitive JSON (the product JSON has highly repetitive field names and structure), reducing each response to ~20–30KB. This cuts buffer allocation pressure, reduces Kestrel's `PipeWriter` flush frequency, and decreases TCP write system calls. k6 natively sends `Accept-Encoding: gzip` and handles decompression transparently.
 
 ## Proposed Fixes
 
-1. **Add HasMaxLength(500) to Product.Description:** In `AppDbContext.cs` Product entity configuration (around line 29), add `entity.Property(e => e.Description).HasMaxLength(500);`. Then create and apply a migration (`dotnet ef migrations add LimitDescriptionLength` + `dotnet ef database update`). This changes the column from `nvarchar(max)` to `nvarchar(500)`, eliminating PLP encoding entirely. The seeded data (max ~100 chars) fits comfortably.
+1. **Add response compression middleware:** In `Program.cs`, add `builder.Services.AddResponseCompression(options => { options.EnableForHttps = true; })` after the existing service registrations, and add `app.UseResponseCompression()` before `app.UseStaticFiles()` (line 24). This enables gzip compression for all JSON API responses above the default minimum size threshold.
 
 ## Expected Impact
 
-- p95 latency: ~3-5% reduction. Eliminates ~6% of application CPU overhead from PLP decoding, reducing per-request SQL read cost for all product-related endpoints.
-- RPS: ~3-5% increase from freed CPU cycles.
-- Memory: slight reduction in per-request allocations — PLP chunking allocates intermediate buffers that bounded nvarchar does not.
+- p95 latency: **3–6% reduction** (~379–391ms). Smaller response buffers reduce per-request memory allocation and Kestrel I/O overhead.
+- RPS: **3–5% increase** (~1,400–1,430 RPS). Reduced I/O work per response frees CPU for additional request processing.
+- Allocation rate: moderate reduction from smaller response body buffers. The compression CPU cost (~2–3% overhead) is offset by the 18.74% current utilization headroom.

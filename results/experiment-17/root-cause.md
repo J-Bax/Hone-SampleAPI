@@ -1,3 +1,14 @@
+# Root Cause Analysis — Experiment 17
+
+> Generated: 2026-03-10 05:58:44 | Classification: narrow — Single-file query optimization changing GetProduct's FindAsync to AsNoTracking; implements internal DbContext behavior without altering API contract, dependencies, migrations, or test requirements.
+
+| Metric | Current | Baseline |
+|--------|---------|----------|
+| p95 Latency | 403.18154ms | 888.549155000001ms |
+| Requests/sec | 1365.2 | 683.2 |
+| Error Rate | 0% | 0% |
+
+---
 # Convert GetProduct from tracked FindAsync to AsNoTracking query
 
 > **File:** `SampleApi/Controllers/ProductsController.cs` | **Scope:** narrow
@@ -27,3 +38,4 @@ The memory profiler reports a **Gen1:Gen0 ratio of 0.90** — nearly every Gen0 
 - p95 latency: **2–4% reduction** (~387–395ms). Fewer Gen1 collections mean fewer GC pauses contributing to tail latency.
 - Allocation rate: **3–5% reduction**. Each avoided tracking snapshot saves ~500 bytes of snapshot data plus the DetectChanges bookkeeping objects.
 - Gen1:Gen0 ratio: should improve toward 0.70–0.80 as fewer mid-lived objects are promoted.
+

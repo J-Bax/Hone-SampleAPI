@@ -1,0 +1,6 @@
+```json
+{
+  "scope": "narrow",
+  "reasoning": "Single-file query optimization changing GetProduct's FindAsync to AsNoTracking; implements internal DbContext behavior without altering API contract, dependencies, migrations, or test requirements."
+}
+```
