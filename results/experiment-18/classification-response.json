@@ -1,0 +1,6 @@
+```json
+{
+  "scope": "narrow",
+  "reasoning": "Response compression middleware can be added by calling builder.Services.AddResponseCompression() and app.UseResponseCompression() in Program.cs, modifying only this single file without adding NuGet packages, changing endpoints, or altering the database schema."
+}
+```
