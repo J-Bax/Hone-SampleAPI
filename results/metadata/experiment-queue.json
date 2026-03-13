@@ -1,0 +1,39 @@
+{
+  "generatedByExperiment": 1,
+  "generatedAt": "2026-03-12T21:54:03.4054646-07:00",
+  "items": [
+    {
+      "id": 1,
+      "filePath": "SampleApi/Controllers/ProductsController.cs",
+      "title": "Replace client-side filtering with server-side queries",
+      "explanation": "Replace client-side filtering with server-side queries",
+      "scope": "narrow",
+      "rootCausePath": "C:\\Projects\\Hone\\sample-api\\results\\metadata\\root-causes\\rca-1.md",
+      "status": "done",
+      "triedByExperiment": 1,
+      "outcome": "improved"
+    },
+    {
+      "id": 2,
+      "filePath": "SampleApi/Controllers/ReviewsController.cs",
+      "title": "Eliminate full-table review loads and wasted computation",
+      "explanation": "Eliminate full-table review loads and wasted computation",
+      "scope": "narrow",
+      "rootCausePath": "C:\\Projects\\Hone\\sample-api\\results\\metadata\\root-causes\\rca-2.md",
+      "status": "pending",
+      "triedByExperiment": null,
+      "outcome": null
+    },
+    {
+      "id": 3,
+      "filePath": "SampleApi/Controllers/CartController.cs",
+      "title": "Fix N+1 queries and client-side cart filtering",
+      "explanation": "Fix N+1 queries and client-side cart filtering",
+      "scope": "narrow",
+      "rootCausePath": "C:\\Projects\\Hone\\sample-api\\results\\metadata\\root-causes\\rca-3.md",
+      "status": "pending",
+      "triedByExperiment": null,
+      "outcome": null
+    }
+  ]
+}

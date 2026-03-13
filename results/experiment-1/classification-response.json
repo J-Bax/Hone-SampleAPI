@@ -1,0 +1,6 @@
+```json
+{
+  "scope": "narrow",
+  "reasoning": "Replacing client-side filtering (ToListAsync then Where) with server-side queries (Where before ToListAsync) modifies only implementation internals in this single controller file, without changing API routes, request/response schemas, dependencies, or database migrations."
+}
+```
