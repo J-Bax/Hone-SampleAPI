@@ -9,9 +9,9 @@
       "explanation": "Reviews endpoints load entire table then filter in memory",
       "scope": "narrow",
       "rootCausePath": "C:\\Projects\\Hone\\sample-api\\results\\metadata\\root-causes\\rca-1.md",
-      "status": "in_progress",
-      "triedByExperiment": null,
-      "outcome": null
+      "status": "done",
+      "triedByExperiment": 1,
+      "outcome": "regressed"
     },
     {
       "id": 2,
