@@ -1,0 +1,46 @@
+{
+  "Machine": {
+    "Cpu": {
+      "Name": "AMD Ryzen 7 3700X 8-Core Processor",
+      "PhysicalCores": 8,
+      "LogicalProcessors": 16,
+      "MaxClockSpeedMHz": 3593,
+      "Architecture": "X64"
+    },
+    "Memory": {
+      "TotalGB": 63.9,
+      "AvailableGB": 42.6
+    },
+    "OS": {
+      "Description": "Windows 10",
+      "Platform": "Windows"
+    },
+    "Runtime": {
+      "PowerShellVersion": "7.4.13",
+      "DotnetSdkVersion": "8.0.100-preview.4.23260.5",
+      "ClrVersion": ".NET 8.0.21"
+    },
+    "CollectedAt": "2026-03-13T21:36:38.4540447Z"
+  },
+  "BaselineRun": null,
+  "LoopStartedAt": "2026-03-13T14:36:38.4580154-07:00",
+  "LoopCompletedAt": null,
+  "Experiments": [
+    {
+      "Experiment": 1,
+      "StartedAt": "2026-03-13T14:36:38.4995960-07:00",
+      "CompletedAt": "2026-03-13T14:40:33.9600839-07:00",
+      "Improved": true,
+      "Regression": false,
+      "P95": 844.12,
+      "RPS": 717.3,
+      "Outcome": "improved",
+      "BranchName": "hone/experiment-1",
+      "BaseBranch": "master",
+      "PrNumber": null,
+      "PrUrl": null,
+      "StaleCount": 0,
+      "ConsecutiveFailures": 0
+    }
+  ]
+}
