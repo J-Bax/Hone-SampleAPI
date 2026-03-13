@@ -1,6 +1,6 @@
 ```json
 {
   "scope": "narrow",
-  "reasoning": "Optimization moves client-side filtering (ToListAsync then LINQ) to server-side queries in DbContext for both SearchProducts and GetProductsByCategory methods—implementation change within a single file, no new dependencies, no API contract changes."
+  "reasoning": "Fix loads all reviews (line 34) and all products (line 41) into memory, then filters in LINQ-to-Objects; optimizing these queries to filter at the database level requires only modifying method bodies in this single file without adding dependencies, migrations, or changing API contracts."
 }
 ```

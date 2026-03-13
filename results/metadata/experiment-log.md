@@ -5,3 +5,4 @@
 | Experiment | Timestamp | File | Optimization | Outcome |
 |-----------|-----------|------|-------------|---------|
 | 1 | 2026-03-13 16:58 | `SampleApi/Controllers/ReviewsController.cs` | Reviews endpoints load entire table then filter in memory | regressed |
+| 2 | 2026-03-13 17:21 | `SampleApi/Pages/Products/Detail.cshtml.cs` | Product detail page loads all reviews and all products into memory | improved |

@@ -9,7 +9,7 @@
     },
     "Memory": {
       "TotalGB": 63.9,
-      "AvailableGB": 42.6
+      "AvailableGB": 41.7
     },
     "OS": {
       "Description": "Windows 10",
@@ -20,27 +20,27 @@
       "DotnetSdkVersion": "8.0.100-preview.4.23260.5",
       "ClrVersion": ".NET 8.0.21"
     },
-    "CollectedAt": "2026-03-13T21:36:38.4540447Z"
+    "CollectedAt": "2026-03-13T23:17:12.3566344Z"
   },
   "BaselineRun": null,
-  "LoopStartedAt": "2026-03-13T14:36:38.4580154-07:00",
+  "LoopStartedAt": "2026-03-13T16:17:12.3609607-07:00",
   "LoopCompletedAt": null,
   "Experiments": [
     {
       "Experiment": 1,
-      "StartedAt": "2026-03-13T14:36:38.4995960-07:00",
-      "CompletedAt": "2026-03-13T14:40:33.9600839-07:00",
-      "Improved": true,
-      "Regression": false,
-      "P95": 844.12,
-      "RPS": 717.3,
-      "Outcome": "improved",
+      "StartedAt": "2026-03-13T16:17:12.4030090-07:00",
+      "CompletedAt": "2026-03-13T16:58:55.5245672-07:00",
+      "Improved": false,
+      "Regression": true,
+      "P95": 1430.6405299999994,
+      "RPS": 522.0,
+      "Outcome": "regressed",
       "BranchName": "hone/experiment-1",
       "BaseBranch": "master",
       "PrNumber": null,
       "PrUrl": null,
-      "StaleCount": 0,
-      "ConsecutiveFailures": 0
+      "StaleCount": 1,
+      "ConsecutiveFailures": 1
     }
   ]
 }

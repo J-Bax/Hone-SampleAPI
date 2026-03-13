@@ -6,5 +6,5 @@
 **Generated:** experiment 1 at 03/13/2026 16:36:07
 
 - [x] **#1** `SampleApi/Controllers/ReviewsController.cs` — Reviews endpoints load entire table then filter in memory *(experiment 1 — regressed)*
-- [ ] **#2** `SampleApi/Pages/Products/Detail.cshtml.cs` — Product detail page loads all reviews and all products into memory
+- [x] **#2** `SampleApi/Pages/Products/Detail.cshtml.cs` — Product detail page loads all reviews and all products into memory *(experiment 2 — improved)*
 - [ ] **#3** `SampleApi/Pages/Index.cshtml.cs` — Home page loads all products and all reviews for a handful of featured items

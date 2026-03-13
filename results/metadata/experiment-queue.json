@@ -20,9 +20,9 @@
       "explanation": "Product detail page loads all reviews and all products into memory",
       "scope": "narrow",
       "rootCausePath": "C:\\Projects\\Hone\\sample-api\\results\\metadata\\root-causes\\rca-2.md",
-      "status": "pending",
-      "triedByExperiment": null,
-      "outcome": null
+      "status": "done",
+      "triedByExperiment": 2,
+      "outcome": "improved"
     },
     {
       "id": 3,
