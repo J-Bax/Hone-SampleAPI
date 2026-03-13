@@ -1,54 +1,46 @@
-# Product search and category filter use client-side evaluation
+# Product detail page loads all reviews and all products into memory
 
-> **File:** `SampleApi/Controllers/ProductsController.cs` | **Scope:** narrow
+> **File:** `SampleApi/Pages/Products/Detail.cshtml.cs` | **Scope:** narrow
 
 ## Evidence
 
-**GetProductsByCategory (lines 49-58)** executes TWO full-table scans — one for categories and one for products — then filters both in memory:
+At `Detail.cshtml.cs:34-36`, the product detail page loads every review in the database:
 
 ```csharp
-var categories = await _context.Categories.ToListAsync();
-var matchingCategory = categories.FirstOrDefault(c =>
-    c.Name.Equals(categoryName, StringComparison.OrdinalIgnoreCase));
-// ...
-var allProducts = await _context.Products.ToListAsync();
-var filtered = allProducts.Where(p =>
-    p.Category.Equals(categoryName, StringComparison.OrdinalIgnoreCase)).ToList();
+var allReviews = await _context.Reviews.ToListAsync();           // line 34
+Reviews = allReviews.Where(r => r.ProductId == id)               // line 35
+                    .OrderByDescending(r => r.CreatedAt).ToList(); // line 36
 ```
 
-**SearchProducts (lines 69-76)** loads all products and filters in memory:
+Then at lines 41-46, it loads every product to find 4 related items:
 
 ```csharp
-var allProducts = await _context.Products.ToListAsync();
-if (!string.IsNullOrWhiteSpace(q))
-{
-    allProducts = allProducts.Where(p =>
-        p.Name.Contains(q, StringComparison.OrdinalIgnoreCase) ||
-        (p.Description != null && p.Description.Contains(q, StringComparison.OrdinalIgnoreCase))
-    ).ToList();
-}
+var allProducts = await _context.Products.ToListAsync();         // line 41
+RelatedProducts = allProducts
+    .Where(p => p.Category == Product.Category && p.Id != id)    // line 43
+    .OrderBy(_ => Guid.NewGuid()).Take(4).ToList();              // line 44-46
 ```
 
-**GetProducts (line 25)** loads the entire products table with no pagination:
+The seed data contains ~2,000 reviews and 1,000 products. This single page load materializes ~3,000 entities with full change tracking to display perhaps 5 reviews and 4 related products.
 
-```csharp
-var products = await _context.Products.ToListAsync();
-```
-
-These endpoints are called on every VU iteration (3 of 13 requests, plus Razor pages at `Pages/Products/Index.cshtml.cs:35` and `Pages/Index.cshtml.cs:28` also load all products).
+The k6 scenario hits `GET /Products/Detail/{randomId}` every iteration (7.7% of total traffic). Combined with the API review endpoints, this means the full Reviews table is loaded into memory 4 times per iteration.
 
 ## Theory
 
-Every product-related request materializes the entire `Products` table into .NET objects, consuming memory and DB bandwidth. Under 500 concurrent VUs, this means 500 simultaneous full-table scans competing for SQL Server resources. The `by-category` endpoint is especially wasteful — it scans the Categories table just to validate a name, then scans the entire Products table to filter by a string column that SQL Server could filter with a simple WHERE clause. The search endpoint similarly pulls all rows across the network and applies `String.Contains` in C# rather than using SQL `LIKE` or `CONTAINS`.
+Each detail page request triggers two unbounded queries returning ~3,000 total entities through EF Core's full materialization pipeline. The `List<Review>` of 2,000 entries (each with a Comment string up to 2,000 chars) easily exceeds 85 KB, landing on the Large Object Heap. The `List<Product>` of 1,000 entries with Description fields similarly hits LOH.
+
+Both lists are immediately filtered down to a handful of items and discarded, but not before the GC must track and eventually collect ~3,000 entity objects plus their backing change-tracker structures (identity maps, navigation fixup dictionaries). At 52+ iterations/second, this page alone produces ~156,000 wasted entity materializations per second.
+
+The `OrderBy(_ => Guid.NewGuid())` at line 44 for random selection also forces a full sort of the in-memory list — this should be done server-side or via a more efficient random sampling approach.
 
 ## Proposed Fixes
 
-1. **Push category filter to SQL:** Replace the two-query pattern in `GetProductsByCategory` with `_context.Products.Where(p => p.Category == categoryName).ToListAsync()`. Use `EF.Functions.Collate()` or `ToLower()` for case-insensitive matching if needed. The category existence check can be `AnyAsync` instead of loading all categories.
+1. **Server-side review filtering (lines 34-37):** Replace with `Reviews = await _context.Reviews.AsNoTracking().Where(r => r.ProductId == id).OrderByDescending(r => r.CreatedAt).ToListAsync();`. This pushes both the WHERE and ORDER BY to SQL, returning only the handful of reviews for that product.
 
-2. **Push search to SQL:** In `SearchProducts`, use `EF.Functions.Like()` or `.Where(p => p.Name.Contains(q))` on the `IQueryable` before calling `ToListAsync()`, so SQL Server handles the filtering.
+2. **Server-side related products query (lines 41-46):** Replace with a server-side filtered query: `RelatedProducts = await _context.Products.AsNoTracking().Where(p => p.Category == Product.Category && p.Id != id).Take(4).ToListAsync();`. The random ordering can be achieved with `OrderBy(p => EF.Functions.Random())` if supported, or simply omitted (taking any 4 same-category products is acceptable).
 
 ## Expected Impact
 
-- **p95 latency:** Category filter should drop ~80-120ms (eliminating 2 full scans → 1 targeted query). Search should drop ~50-80ms.
-- **Memory/GC:** Significantly reduced object allocations per request since only matching rows are materialized.
-- **Overall p95 improvement:** ~8-12% (estimated ~90ms average reduction across ~23% of traffic).
+- p95 latency: ~10-13% overall reduction. Eliminating ~2,980 wasted entity materializations per iteration (23% of total) further reduces LOH pressure and Gen2 frequency.
+- Per-request latency for the detail page: ~250-350ms reduction by avoiding materialization of ~3,000 entities.
+- Combined with Opportunity 1, the Reviews table full-scan pattern is eliminated from 4 of the 4 call sites that load it per iteration.

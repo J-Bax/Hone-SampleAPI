@@ -1,52 +1,43 @@
-# Review queries load entire table instead of filtering server-side
+# Home page loads all products and all reviews for a handful of featured items
 
-> **File:** `SampleApi/Controllers/ReviewsController.cs` | **Scope:** narrow
+> **File:** `SampleApi/Pages/Index.cshtml.cs` | **Scope:** narrow
 
 ## Evidence
 
-**GetReviewsByProduct (lines 54-55)** loads ALL reviews and filters in memory:
+At `Index.cshtml.cs:28-29`, the home page loads every product to select 12 featured:
 
 ```csharp
-var allReviews = await _context.Reviews.ToListAsync();
-var filtered = allReviews.Where(r => r.ProductId == productId).ToList();
+var allProducts = await _context.Products.ToListAsync();               // line 28
+FeaturedProducts = allProducts.OrderBy(_ => Guid.NewGuid()).Take(12).ToList(); // line 29
 ```
 
-**GetAverageRating (lines 70-74)** also loads ALL reviews to compute a single aggregate:
+At lines 36-37, it loads every review to show 5 recent:
 
 ```csharp
-var allReviews = await _context.Reviews.ToListAsync();
-var productReviews = allReviews.Where(r => r.ProductId == productId).ToList();
-var average = productReviews.Any()
-    ? Math.Round(productReviews.Average(r => r.Rating), 2)
-    : 0.0;
+var allReviews = await _context.Reviews.ToListAsync();                 // line 36
+RecentReviews = allReviews.OrderByDescending(r => r.CreatedAt).Take(5).ToList(); // line 37
 ```
 
-Additionally, **CreateReview (lines 95-97)** performs a wasted post-insert computation — loading ALL reviews just to compute an unused average:
+Line 30 uses the full list for a count: `TotalProducts = allProducts.Count;`
 
-```csharp
-var allReviews = await _context.Reviews.ToListAsync();
-var productReviews = allReviews.Where(r => r.ProductId == review.ProductId).ToList();
-var _ = productReviews.Average(r => r.Rating);
-```
-
-The same pattern appears in Razor pages: `Pages/Products/Detail.cshtml.cs:34` and `Pages/Index.cshtml.cs:36` also call `_context.Reviews.ToListAsync()`.
+This materializes ~3,000 entities (1,000 products + 2,000 reviews) with full change tracking to display 12 products, 5 reviews, and two counts.
 
 ## Theory
 
-The Reviews table is likely the largest seeded table (products × reviews-per-product). Loading every review row for every request — when only a handful match the target `ProductId` — wastes significant DB I/O, network bandwidth, and memory. The `GetAverageRating` endpoint is particularly wasteful: SQL Server can compute `AVG(Rating) WHERE ProductId = @id` in microseconds using an index scan, but instead the app transfers every review row to .NET and computes the average in C#. Under 500 concurrent VUs, the 2 review API endpoints plus 2 Razor pages all compete for the same full-table scan, creating heavy read contention.
+The home page is hit every k6 iteration (7.7% of traffic). Each request allocates ~3,000 tracked entities that are immediately reduced to 17 display items. The in-memory `OrderBy(_ => Guid.NewGuid())` forces materialization of a `Guid` per product plus a full sort — work that SQL Server could do far more efficiently (or be replaced with a simpler random sampling strategy).
 
-The dead computation in `CreateReview` (line 97) adds an unnecessary full-table scan on every review creation, though this endpoint isn't in the k6 hot path.
+At 52+ iterations/second, this page generates ~156,000 wasted entity allocations/second. Combined with the other full-table-scan sites, these contribute to the 935 MB/sec allocation rate and the LOH-dominated allocation pattern that causes 82 Gen2 collections in 122 seconds.
+
+The `TotalProducts` count at line 30 could use `CountAsync()` instead of loading all entities just to count them.
 
 ## Proposed Fixes
 
-1. **Push WHERE to SQL for GetReviewsByProduct:** Replace `_context.Reviews.ToListAsync()` + client-side `.Where()` with `_context.Reviews.Where(r => r.ProductId == productId).ToListAsync()`.
+1. **Server-side featured products (lines 28-30):** Replace with two efficient queries: `TotalProducts = await _context.Products.AsNoTracking().CountAsync();` for the count, and `FeaturedProducts = await _context.Products.AsNoTracking().OrderBy(p => EF.Functions.Random()).Take(12).ToListAsync();` for featured items (or use a simpler server-side random strategy like `OrderBy(p => p.Id * someValue % somePrime).Take(12)`).
 
-2. **Use server-side aggregate for GetAverageRating:** Replace the full-table load with `_context.Reviews.Where(r => r.ProductId == productId).AverageAsync(r => r.Rating)` and `CountAsync()`. This translates to a single SQL `SELECT AVG(Rating), COUNT(*) WHERE ProductId = @id`.
-
-3. **Remove dead computation in CreateReview:** Delete lines 95-97 which load all reviews and compute an unused average after every insert.
+2. **Server-side recent reviews (lines 36-37):** Replace with `RecentReviews = await _context.Reviews.AsNoTracking().OrderByDescending(r => r.CreatedAt).Take(5).ToListAsync();`. This pushes the ORDER BY and TOP 5 to SQL Server, materializing only 5 entities instead of 2,000+.
 
 ## Expected Impact
 
-- **p95 latency:** GetAverageRating should drop ~60-100ms (server-side aggregate vs. full scan + client computation). GetReviewsByProduct should drop ~50-80ms.
-- **Memory/GC:** Large reduction in per-request allocations — only matching reviews materialized instead of entire table.
-- **Overall p95 improvement:** ~5-8% (estimated ~70ms average reduction across ~15% of traffic).
+- p95 latency: ~10-12% overall reduction. Eliminates ~2,973 wasted entity materializations per iteration (23% of total volume), further alleviating GC pressure.
+- Per-request latency for the home page: ~250-300ms reduction.
+- Combined with Opportunities 1 and 2, total entity materializations drop from ~13,000 to ~3,000 per iteration — a 77% reduction that should bring GC time from 49.8% down to under 15%, potentially cutting p95 from 888ms to under 300ms.

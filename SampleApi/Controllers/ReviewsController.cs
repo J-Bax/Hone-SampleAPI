@@ -46,13 +46,14 @@ public class ReviewsController : ControllerBase
     [HttpGet("by-product/{productId}")]
     public async Task<ActionResult<IEnumerable<Review>>> GetReviewsByProduct(int productId)
     {
-        // First verify the product exists — separate query
-        var product = await _context.Products.FindAsync(productId);
-        if (product == null)
+        var productExists = await _context.Products.AnyAsync(p => p.Id == productId);
+        if (!productExists)
             return NotFound(new { message = $"Product with ID {productId} not found" });
 
-        var allReviews = await _context.Reviews.ToListAsync();
-        var filtered = allReviews.Where(r => r.ProductId == productId).ToList();
+        var filtered = await _context.Reviews
+            .AsNoTracking()
+            .Where(r => r.ProductId == productId)
+            .ToListAsync();
 
         return Ok(filtered);
     }
@@ -63,22 +64,22 @@ public class ReviewsController : ControllerBase
     [HttpGet("average/{productId}")]
     public async Task<ActionResult<object>> GetAverageRating(int productId)
     {
-        var product = await _context.Products.FindAsync(productId);
-        if (product == null)
+        var productExists = await _context.Products.AnyAsync(p => p.Id == productId);
+        if (!productExists)
             return NotFound(new { message = $"Product with ID {productId} not found" });
 
-        var allReviews = await _context.Reviews.ToListAsync();
-        var productReviews = allReviews.Where(r => r.ProductId == productId).ToList();
+        var query = _context.Reviews.AsNoTracking().Where(r => r.ProductId == productId);
 
-        var average = productReviews.Any()
-            ? Math.Round(productReviews.Average(r => r.Rating), 2)
+        var reviewCount = await query.CountAsync();
+        var average = reviewCount > 0
+            ? Math.Round(await query.AverageAsync(r => r.Rating), 2)
             : 0.0;
 
         return Ok(new
         {
             ProductId = productId,
             AverageRating = average,
-            ReviewCount = productReviews.Count
+            ReviewCount = reviewCount
         });
     }
 

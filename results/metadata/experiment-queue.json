@@ -1,34 +1,34 @@
 {
   "generatedByExperiment": 1,
-  "generatedAt": "2026-03-13T14:39:41.1753514-07:00",
+  "generatedAt": "2026-03-13T16:36:07.0991003-07:00",
   "items": [
     {
       "id": 1,
-      "filePath": "SampleApi/Controllers/CartController.cs",
-      "title": "Cart endpoints: full-table scans, N+1 queries, and per-item saves",
-      "explanation": "Cart endpoints: full-table scans, N+1 queries, and per-item saves",
+      "filePath": "SampleApi/Controllers/ReviewsController.cs",
+      "title": "Reviews endpoints load entire table then filter in memory",
+      "explanation": "Reviews endpoints load entire table then filter in memory",
       "scope": "narrow",
       "rootCausePath": "C:\\Projects\\Hone\\sample-api\\results\\metadata\\root-causes\\rca-1.md",
-      "status": "done",
-      "triedByExperiment": 1,
-      "outcome": "improved"
+      "status": "in_progress",
+      "triedByExperiment": null,
+      "outcome": null
     },
     {
       "id": 2,
-      "filePath": "SampleApi/Controllers/ProductsController.cs",
-      "title": "Product search and category filter use client-side evaluation",
-      "explanation": "Product search and category filter use client-side evaluation",
+      "filePath": "SampleApi/Pages/Products/Detail.cshtml.cs",
+      "title": "Product detail page loads all reviews and all products into memory",
+      "explanation": "Product detail page loads all reviews and all products into memory",
       "scope": "narrow",
       "rootCausePath": "C:\\Projects\\Hone\\sample-api\\results\\metadata\\root-causes\\rca-2.md",
-      "status": "done",
-      "triedByExperiment": 2,
-      "outcome": "improved"
+      "status": "pending",
+      "triedByExperiment": null,
+      "outcome": null
     },
     {
       "id": 3,
-      "filePath": "SampleApi/Controllers/ReviewsController.cs",
-      "title": "Review queries load entire table instead of filtering server-side",
-      "explanation": "Review queries load entire table instead of filtering server-side",
+      "filePath": "SampleApi/Pages/Index.cshtml.cs",
+      "title": "Home page loads all products and all reviews for a handful of featured items",
+      "explanation": "Home page loads all products and all reviews for a handful of featured items",
       "scope": "narrow",
       "rootCausePath": "C:\\Projects\\Hone\\sample-api\\results\\metadata\\root-causes\\rca-3.md",
       "status": "pending",
