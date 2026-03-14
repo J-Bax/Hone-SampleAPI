@@ -32,7 +32,7 @@ public class IndexModel : PageModel
         SearchQuery = q;
         CurrentPage = page < 1 ? 1 : page;
 
-        var allProducts = await _context.Products.ToListAsync();
+        var allProducts = await _context.Products.AsNoTracking().ToListAsync();
 
         // Filter by category in memory
         if (!string.IsNullOrWhiteSpace(category))
@@ -60,6 +60,6 @@ public class IndexModel : PageModel
             .ToList();
 
         // Separate query for categories sidebar
-        Categories = await _context.Categories.ToListAsync();
+        Categories = await _context.Categories.AsNoTracking().ToListAsync();
     }
 }

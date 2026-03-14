@@ -1,43 +1,58 @@
-# Enable DbContext pooling to reduce per-request allocation and GC pressure
+# OrdersController has N+1 queries and full table scans across multiple endpoints
 
-> **File:** `SampleApi/Program.cs` | **Scope:** narrow
+> **File:** `SampleApi/Controllers/OrdersController.cs` | **Scope:** narrow
 
 ## Evidence
 
-At `Program.cs:12-13`, the DbContext is registered without pooling:
+At `Controllers/OrdersController.cs:103-107`, `CreateOrder` iterates over each order item and calls `FindAsync` individually:
 
 ```csharp
-builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+foreach (var itemReq in request.Items)
+{
+    var product = await _context.Products.FindAsync(itemReq.ProductId);
+    if (product == null)
+        continue;
 ```
 
-This creates a **new DbContext instance per request** via DI, including its change tracker, state manager, and internal data structures. At ~1295 req/sec, that is 1295 DbContext allocations and disposals per second.
+The k6 scenario sends 2 items per order (`items: [{ productId: seededId(100, 3), quantity: 1 }, { productId: seededId(100, 4), quantity: 2 }]`), causing 2 sequential DB round-trips per request.
 
-The CPU profiler confirms DI overhead: **ResolveService at 0.11% (825 samples)**. More significantly, change tracker data structures dominate:
-- **StateManager.StartTrackingFromQuery**: 0.75% inclusive (794 samples)
-- **SortedDictionary enumeration cluster**: 1.04% exclusive (~7,950 samples)
-- **NavigationFixer.InitialFixup**: 556 samples
-- **EntityReferenceMap.Update**: 566 samples
+At line 35, `GetOrdersByCustomer` loads the entire Orders table and filters client-side:
 
-The memory profiler shows **779 MB/sec allocation rate** with **92% Gen0→Gen1 promotion rate** — meaning most allocated objects survive just past the Gen0 threshold. This is the classic pattern of per-request objects (like DbContext) that live across async continuations. The **max GC pause of 516.6ms** exceeds the p95 latency target and likely causes tail-latency spikes.
+```csharp
+var allOrders = await _context.Orders.ToListAsync();
+var filtered = allOrders.Where(o =>
+    o.CustomerName.Equals(customerName, StringComparison.OrdinalIgnoreCase)).ToList();
+```
+
+At lines 52-58, `GetOrder` loads ALL OrderItems and then does N+1 product lookups:
+
+```csharp
+var allItems = await _context.OrderItems.ToListAsync();
+var items = allItems.Where(i => i.OrderId == id).ToList();
+...
+foreach (var item in items)
+{
+    var product = await _context.Products.FindAsync(item.ProductId);
+```
+
+A previous fix attempt (experiment 2) resulted in a **build failure**, so all these issues remain unfixed in the current code.
 
 ## Theory
 
-`AddDbContext<T>` registers the DbContext as a **transient/scoped** service — a new instance is constructed for every HTTP request. Each construction allocates the DbContext itself, its ChangeTracker, StateManager, EntityReferenceMap (backed by SortedDictionary), and other internal state. At 1295 req/sec, this generates substantial ephemeral allocation pressure.
+The `CreateOrder` endpoint is called at ~5.5% of total traffic (~72 requests/sec under 500 VUs). Each request holds a DB connection for 4 sequential round-trips (2× `FindAsync` + 2× `SaveChangesAsync`). Batching the product lookups into one query eliminates 1 round-trip, reducing connection hold time by ~25%. Under high concurrency with connection pool contention, shorter connection hold times have compounding benefits — less queuing means lower tail latency for ALL endpoints sharing the pool.
 
-These objects live for the duration of the request (spanning multiple `await` points), causing them to survive Gen0 collection and promote into Gen1 — exactly matching the observed 92% promotion rate. The high promotion rate forces frequent Gen1 collections (121 vs 131 Gen0) and occasional expensive compacting collections with up to 516ms pauses.
-
-`AddDbContextPool<T>()` maintains a pool of pre-allocated DbContext instances. When a request needs a DbContext, it retrieves one from the pool (near-zero allocation); when the request ends, the context is reset and returned. This eliminates the per-request allocation/disposal cycle.
+During the 2-minute k6 test, thousands of orders and order items are created. The `GetOrder` full scan of `OrderItems.ToListAsync()` (line 52) materializes an ever-growing table. The `GetOrdersByCustomer` full scan of `Orders.ToListAsync()` (line 35) likewise degrades as orders accumulate. While these GET endpoints aren't directly in the k6 scenario, fixing them is essential for correctness and future-proofing, and the DB contention from `CreateOrder` affects system-wide throughput.
 
 ## Proposed Fixes
 
-1. **Replace `AddDbContext` with `AddDbContextPool`** at `Program.cs:12`:
-   Change `builder.Services.AddDbContext<AppDbContext>(options => ...)` to `builder.Services.AddDbContextPool<AppDbContext>(options => ...)`. The default pool size (1024) is sufficient for 500 VUs. No other code changes are needed — `AppDbContext` has a simple constructor (`AppDbContext.cs:8`) that accepts `DbContextOptions<AppDbContext>`, which is compatible with pooling.
+1. **Batch product lookups in CreateOrder:** Replace the per-item `FindAsync` loop (lines 103-107) with a single batched query — collect all `ProductId` values from `request.Items`, fetch with `.Where(p => ids.Contains(p.Id)).ToDictionaryAsync(p => p.Id)`, then build order items from the dictionary.
+
+2. **Fix GetOrdersByCustomer:** Replace the full table scan on line 35 with a server-side `Where` filter: `_context.Orders.Where(o => o.CustomerName == customerName).ToListAsync()`.
+
+3. **Fix GetOrder:** Replace the full OrderItems scan on line 52 with `_context.OrderItems.Where(i => i.OrderId == id).ToListAsync()` and batch product lookups via a join or `.Where(p => productIds.Contains(p.Id))`.
 
 ## Expected Impact
 
-- p95 latency: estimated 2-4% improvement from reduced per-request overhead
-- Allocation rate should decrease measurably (fewer DbContext + internal structure allocations per second)
-- Gen0→Gen1 promotion rate should decrease, reducing Gen1 collection frequency
-- Max GC pause should decrease (less heap pressure → less aggressive compaction)
-- The GC-related tail latency spikes that blow out p95 should become less frequent
+- p95 latency: ~10-15ms reduction for CreateOrder by eliminating 1 DB round-trip and reducing connection hold time
+- RPS: Improved DB connection pool utilization benefits all concurrent requests
+- Overall: ~1-1.5% p95 improvement from CreateOrder traffic; read endpoint fixes provide resilience against table growth

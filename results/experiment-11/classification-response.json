@@ -1,0 +1,6 @@
+```json
+{
+  "scope": "narrow",
+  "reasoning": "Adding .AsNoTracking() to lines 35 and 63 (read-only queries) is a single-file EF Core optimization that doesn't require dependencies, migrations, API changes, or test modifications."
+}
+```

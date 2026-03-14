@@ -1,3 +1,14 @@
+# Root Cause Analysis — Experiment 11
+
+> Generated: 2026-03-14 16:46:38 | Classification: narrow — Adding .AsNoTracking() to lines 35 and 63 (read-only queries) is a single-file EF Core optimization that doesn't require dependencies, migrations, API changes, or test modifications.
+
+| Metric | Current | Baseline |
+|--------|---------|----------|
+| p95 Latency | 496.6681ms | 2054.749925ms |
+| Requests/sec | 1295.4 | 427.3 |
+| Error Rate | 11.11% | 11.11% |
+
+---
 # Products page tracks 1000 entities needlessly on read-only render
 
 > **File:** `SampleApi/Pages/Products/Index.cshtml.cs` | **Scope:** narrow
@@ -39,3 +50,4 @@ At ~72 requests/sec to this endpoint under 500 VUs, that's ~72,000 unnecessarily
 - p95 latency: ~20-30ms reduction per request through eliminated tracking overhead and reduced Gen1 GC pause frequency
 - Memory: ~35-40% reduction in per-request allocation for this endpoint (tracking structures for 1000+ entities)
 - Overall: ~2-3% p95 improvement accounting for 5.5% traffic share and cascading GC pressure reduction
+
