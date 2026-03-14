@@ -1,6 +1,6 @@
 ```json
 {
   "scope": "narrow",
-  "reasoning": "All three performance issues (full-table scans, N+1 queries, per-item saves) can be fixed within CartController.cs alone by optimizing LINQ queries and batching SaveChangesAsync calls, with no API contract changes, no migrations, and no multi-file dependencies."
+  "reasoning": "The proposed optimization (sampling products and reviews efficiently) can be implemented by modifying only the OnGetAsync method's query logic in this single file, replacing the load-all pattern with limit/filter operations at the database level."
 }
 ```

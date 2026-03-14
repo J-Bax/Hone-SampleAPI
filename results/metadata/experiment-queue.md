@@ -6,5 +6,5 @@
 **Generated:** experiment 3 at 03/13/2026 19:05:39
 
 - [x] **#1** `SampleApi/Pages/Products/Detail.cshtml.cs` — Product detail page loads entire Reviews and Products tables *(experiment 3 — improved)*
-- [ ] **#2** `SampleApi/Pages/Index.cshtml.cs` — Home page loads all products and reviews for sampling
+- [x] **#2** `SampleApi/Pages/Index.cshtml.cs` — Home page loads all products and reviews for sampling *(experiment 1 — improved)*
 - [ ] **#3** `SampleApi/Controllers/OrdersController.cs` — CreateOrder has N+1 product lookups and double SaveChanges
