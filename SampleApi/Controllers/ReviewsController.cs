@@ -47,11 +47,11 @@ public class ReviewsController : ControllerBase
     public async Task<ActionResult<IEnumerable<Review>>> GetReviewsByProduct(int productId)
     {
         // First verify the product exists — separate query
-        var product = await _context.Products.FindAsync(productId);
-        if (product == null)
+        var productExists = await _context.Products.AnyAsync(p => p.Id == productId);
+        if (!productExists)
             return NotFound(new { message = $"Product with ID {productId} not found" });
 
-        var filtered = await _context.Reviews.Where(r => r.ProductId == productId).ToListAsync();
+        var filtered = await _context.Reviews.AsNoTracking().Where(r => r.ProductId == productId).ToListAsync();
 
         return Ok(filtered);
     }
@@ -62,8 +62,8 @@ public class ReviewsController : ControllerBase
     [HttpGet("average/{productId}")]
     public async Task<ActionResult<object>> GetAverageRating(int productId)
     {
-        var product = await _context.Products.FindAsync(productId);
-        if (product == null)
+        var productExists = await _context.Products.AnyAsync(p => p.Id == productId);
+        if (!productExists)
             return NotFound(new { message = $"Product with ID {productId} not found" });
 
         var productReviewsQuery = _context.Reviews.Where(r => r.ProductId == productId);

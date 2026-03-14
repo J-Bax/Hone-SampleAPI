@@ -1,0 +1,6 @@
+```json
+{
+  "scope": "narrow",
+  "reasoning": "Replacing tracked FindAsync existence checks with AnyAsync and adding AsNoTracking modifies only method bodies and query logic within a single file, introduces no dependencies or API changes."
+}
+```
