@@ -58,8 +58,9 @@ public class IndexModel : PageModel
     {
         var sessionId = GetSessionId();
 
-        var allCartItems = await _context.CartItems.ToListAsync();
-        var sessionItems = allCartItems.Where(c => c.SessionId == sessionId).ToList();
+        var sessionItems = await _context.CartItems
+            .Where(c => c.SessionId == sessionId)
+            .ToListAsync();
 
         if (!sessionItems.Any())
         {
@@ -79,11 +80,16 @@ public class IndexModel : PageModel
         _context.Orders.Add(order);
         await _context.SaveChangesAsync(); // Save to get ID
 
+        var productIds = sessionItems.Select(c => c.ProductId).ToList();
+        var products = await _context.Products
+            .Where(p => productIds.Contains(p.Id))
+            .ToDictionaryAsync(p => p.Id);
+
         decimal total = 0m;
 
         foreach (var cartItem in sessionItems)
         {
-            var product = await _context.Products.FindAsync(cartItem.ProductId);
+            products.TryGetValue(cartItem.ProductId, out var product);
             var price = product?.Price ?? 0m;
 
             _context.OrderItems.Add(new OrderItem
@@ -95,19 +101,14 @@ public class IndexModel : PageModel
             });
 
             total += price * cartItem.Quantity;
-
-            await _context.SaveChangesAsync();
         }
 
         order.TotalAmount = Math.Round(total, 2);
-        await _context.SaveChangesAsync();
+        await _context.SaveChangesAsync(); // Batch: all order items + total update
 
-        // Clear cart — one by one
-        foreach (var cartItem in sessionItems)
-        {
-            _context.CartItems.Remove(cartItem);
-            await _context.SaveChangesAsync();
-        }
+        // Clear cart in a single round-trip
+        _context.CartItems.RemoveRange(sessionItems);
+        await _context.SaveChangesAsync();
 
         OrderPlaced = true;
         OrderId = order.Id;
@@ -121,15 +122,21 @@ public class IndexModel : PageModel
     {
         var sessionId = GetSessionId();
 
-        var allItems = await _context.CartItems.ToListAsync();
-        var sessionItems = allItems.Where(c => c.SessionId == sessionId).ToList();
+        var sessionItems = await _context.CartItems
+            .Where(c => c.SessionId == sessionId)
+            .ToListAsync();
+
+        var productIds = sessionItems.Select(i => i.ProductId).ToList();
+        var products = await _context.Products
+            .Where(p => productIds.Contains(p.Id))
+            .ToDictionaryAsync(p => p.Id);
 
         CartItems = new List<CartItemView>();
         Total = 0m;
 
         foreach (var item in sessionItems)
         {
-            var product = await _context.Products.FindAsync(item.ProductId);
+            products.TryGetValue(item.ProductId, out var product);
             var subtotal = (product?.Price ?? 0m) * item.Quantity;
             Total += subtotal;
 

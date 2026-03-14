@@ -20,9 +20,9 @@
       "explanation": "Checkout page has per-item SaveChanges, full table scans, and N+1 queries",
       "scope": "narrow",
       "rootCausePath": "C:\\Projects\\Hone\\sample-api\\results\\metadata\\root-causes\\rca-2.md",
-      "status": "pending",
-      "triedByExperiment": null,
-      "outcome": null
+      "status": "done",
+      "triedByExperiment": 4,
+      "outcome": "improved"
     },
     {
       "id": 3,
