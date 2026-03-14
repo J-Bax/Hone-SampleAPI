@@ -32,29 +32,32 @@ public class IndexModel : PageModel
         SearchQuery = q;
         CurrentPage = page < 1 ? 1 : page;
 
-        IQueryable<Product> query = _context.Products.AsNoTracking();
+        var allProducts = await _context.Products.ToListAsync();
 
+        // Filter by category in memory
         if (!string.IsNullOrWhiteSpace(category))
         {
-            query = query.Where(p => p.Category == category);
+            allProducts = allProducts.Where(p =>
+                p.Category.Equals(category, StringComparison.OrdinalIgnoreCase)).ToList();
         }
 
+        // Filter by search in memory
         if (!string.IsNullOrWhiteSpace(q))
         {
-            query = query.Where(p =>
-                p.Name.Contains(q) ||
-                (p.Description != null && p.Description.Contains(q)));
+            allProducts = allProducts.Where(p =>
+                p.Name.Contains(q, StringComparison.OrdinalIgnoreCase) ||
+                (p.Description != null && p.Description.Contains(q, StringComparison.OrdinalIgnoreCase))
+            ).ToList();
         }
 
-        var totalCount = await query.CountAsync();
-        TotalPages = (int)Math.Ceiling(totalCount / (double)PageSize);
+        TotalPages = (int)Math.Ceiling(allProducts.Count / (double)PageSize);
         if (TotalPages < 1) TotalPages = 1;
         if (CurrentPage > TotalPages) CurrentPage = TotalPages;
 
-        Products = await query
+        Products = allProducts
             .Skip((CurrentPage - 1) * PageSize)
             .Take(PageSize)
-            .ToListAsync();
+            .ToList();
 
         // Separate query for categories sidebar
         Categories = await _context.Categories.ToListAsync();

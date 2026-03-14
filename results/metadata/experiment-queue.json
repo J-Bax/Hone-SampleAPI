@@ -9,9 +9,9 @@
       "explanation": "Products page loads entire Products table for client-side pagination",
       "scope": "narrow",
       "rootCausePath": "C:\\Projects\\Hone\\sample-api\\results\\metadata\\root-causes\\rca-1.md",
-      "status": "in_progress",
-      "triedByExperiment": null,
-      "outcome": null
+      "status": "done",
+      "triedByExperiment": 6,
+      "outcome": "regressed"
     },
     {
       "id": 2,
