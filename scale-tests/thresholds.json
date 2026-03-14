@@ -34,6 +34,11 @@
       "description": "Reviews CRUD lifecycle: 10→200 VUs over 2 min",
       "file": "scenarios/stress-reviews.js",
       "use_for_optimization": false
+    },
+    "stress-ui": {
+      "description": "Razor Page UI journey (home→browse→cart→checkout→orders): 10→200 VUs over 2 min",
+      "file": "scenarios/stress-ui.js",
+      "use_for_optimization": false
     }
   }
 }

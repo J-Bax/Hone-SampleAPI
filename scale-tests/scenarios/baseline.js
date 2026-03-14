@@ -3,8 +3,9 @@ import { check } from 'k6';
 
 // Baseline scenario: high-concurrency stress test exercising every endpoint.
 // Same user-journey shape as a real marketplace session (browse → review →
-// cart → order → pages) but with zero think-time so VUs fire requests
-// back-to-back, creating real server contention.
+// cart → order → pages → checkout) but with zero think-time so VUs fire
+// requests back-to-back, creating real server contention.
+// Includes both JSON API calls and Razor Page rendering (GET + form POSTs).
 // Warmup (JIT, DB, connection pool) is handled externally by warmup.js.
 export const options = {
   stages: [
@@ -105,7 +106,7 @@ export default function () {
     'create order: status 201': (r) => r.status === 201,
   });
 
-  // ── Razor Pages ──
+  // ── Razor Pages (browsing) ──
 
   const homeRes = http.get(`${BASE_URL}/`);
   check(homeRes, {
@@ -120,6 +121,50 @@ export default function () {
   const detailPageRes = http.get(`${BASE_URL}/Products/Detail/${randomId}`);
   check(detailPageRes, {
     'product detail page: status 200': (r) => r.status === 200,
+  });
+
+  // ── Razor Pages (transactional: cart → checkout → orders) ──
+  // Exercises server-side rendering with heavy DB operations:
+  // N+1 queries in LoadCart/LoadCartSummary, multiple SaveChangesAsync in checkout.
+
+  // Add to cart via the product detail page form (sets CartSessionId cookie)
+  const cartProductId = seededId(100, 5);
+  const addToCartPageRes = http.post(
+    `${BASE_URL}/Products/Detail/${cartProductId}`,
+    { productId: String(cartProductId), quantity: '1' }
+  );
+  check(addToCartPageRes, {
+    'add to cart (page): status 200': (r) => r.status === 200,
+  });
+
+  // View cart page (N+1 product lookups in LoadCart)
+  const cartPageRes = http.get(`${BASE_URL}/Cart`);
+  check(cartPageRes, {
+    'cart page: status 200': (r) => r.status === 200,
+  });
+
+  // View checkout page (same N+1 in LoadCartSummary)
+  const checkoutPageRes = http.get(`${BASE_URL}/Checkout`);
+  check(checkoutPageRes, {
+    'checkout page: status 200': (r) => r.status === 200,
+  });
+
+  // Submit order via checkout form (heaviest operation: N+1 + per-item SaveChanges)
+  const customerName = `k6-checkout-${__VU}`;
+  const checkoutSubmitRes = http.post(
+    `${BASE_URL}/Checkout`,
+    { customerName: customerName }
+  );
+  check(checkoutSubmitRes, {
+    'checkout submit: status 200': (r) => r.status === 200,
+  });
+
+  // View order history page (N+1 product name lookups)
+  const ordersPageRes = http.get(
+    `${BASE_URL}/Orders?customer=${encodeURIComponent(customerName)}`
+  );
+  check(ordersPageRes, {
+    'orders page: status 200': (r) => r.status === 200,
   });
 }
 
