@@ -7,4 +7,4 @@
 
 - [x] **#1** `SampleApi/Controllers/CartController.cs` — Cart endpoints: full-table scans, N+1 queries, and per-item saves *(experiment 1 — improved)*
 - [x] **#2** `SampleApi/Controllers/ProductsController.cs` — Product search and category filter use client-side evaluation *(experiment 2 — improved)*
-- [ ] **#3** `SampleApi/Controllers/ReviewsController.cs` — Review queries load entire table instead of filtering server-side
+- [x] **#3** `SampleApi/Controllers/ReviewsController.cs` — Review queries load entire table instead of filtering server-side *(experiment 2 — improved)*

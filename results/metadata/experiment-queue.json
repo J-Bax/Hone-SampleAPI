@@ -31,9 +31,9 @@
       "explanation": "Review queries load entire table instead of filtering server-side",
       "scope": "narrow",
       "rootCausePath": "C:\\Projects\\Hone\\sample-api\\results\\metadata\\root-causes\\rca-3.md",
-      "status": "pending",
-      "triedByExperiment": null,
-      "outcome": null
+      "status": "done",
+      "triedByExperiment": 2,
+      "outcome": "improved"
     }
   ]
 }
