@@ -1,6 +1,6 @@
 ```json
 {
   "scope": "narrow",
-  "reasoning": "The optimization fixes query filtering in ReviewsController methods by moving .Where() logic to the server-side query (before .ToListAsync()), staying within a single file with no API contract, dependency, or test changes needed."
+  "reasoning": "The optimization modifies only method implementation (CreateOrder method body) by batching product lookups and consolidating SaveChanges calls, which are pure algorithm improvements contained within a single file requiring no dependency, migration, API contract, or multi-file changes."
 }
 ```

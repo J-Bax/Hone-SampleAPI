@@ -7,4 +7,4 @@
 
 - [x] **#1** `SampleApi/Pages/Products/Detail.cshtml.cs` — Product detail page loads entire Reviews and Products tables *(experiment 3 — improved)*
 - [x] **#2** `SampleApi/Pages/Index.cshtml.cs` — Home page loads all products and reviews for sampling *(experiment 1 — improved)*
-- [ ] **#3** `SampleApi/Controllers/OrdersController.cs` — CreateOrder has N+1 product lookups and double SaveChanges
+- [ ] **#3** `SampleApi/Controllers/OrdersController.cs` — CreateOrder has N+1 product lookups and double SaveChanges *(in progress)*
