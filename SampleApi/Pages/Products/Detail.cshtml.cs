@@ -60,7 +60,8 @@ public class DetailModel : PageModel
             });
         }
 
-        var existing = await _context.CartItems.FirstOrDefaultAsync(c =>
+        var allCartItems = await _context.CartItems.ToListAsync();
+        var existing = allCartItems.FirstOrDefault(c =>
             c.SessionId == sessionId && c.ProductId == productId);
 
         if (existing != null)
