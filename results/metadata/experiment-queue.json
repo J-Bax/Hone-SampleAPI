@@ -31,9 +31,9 @@
       "explanation": "Cart page loads entire CartItems table and has N+1 product lookups",
       "scope": "narrow",
       "rootCausePath": "C:\\Projects\\Hone\\sample-api\\results\\metadata\\root-causes\\rca-3.md",
-      "status": "pending",
-      "triedByExperiment": null,
-      "outcome": null
+      "status": "done",
+      "triedByExperiment": 5,
+      "outcome": "improved"
     }
   ]
 }

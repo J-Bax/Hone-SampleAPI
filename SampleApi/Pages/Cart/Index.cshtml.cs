@@ -88,14 +88,12 @@ public class IndexModel : PageModel
     {
         var sessionId = GetSessionId();
 
-        var allItems = await _context.CartItems.ToListAsync();
-        var sessionItems = allItems.Where(c => c.SessionId == sessionId).ToList();
+        var sessionItems = await _context.CartItems
+            .Where(c => c.SessionId == sessionId)
+            .ToListAsync();
 
-        foreach (var item in sessionItems)
-        {
-            _context.CartItems.Remove(item);
-            await _context.SaveChangesAsync();
-        }
+        _context.CartItems.RemoveRange(sessionItems);
+        await _context.SaveChangesAsync();
 
         Message = "Cart cleared.";
         await LoadCart();
@@ -106,27 +104,36 @@ public class IndexModel : PageModel
     {
         var sessionId = GetSessionId();
 
-        var allItems = await _context.CartItems.ToListAsync();
-        var sessionItems = allItems.Where(c => c.SessionId == sessionId).ToList();
+        var sessionItems = await _context.CartItems
+            .Where(c => c.SessionId == sessionId)
+            .ToListAsync();
 
         CartItems = new List<CartItemViewModel>();
         Total = 0m;
 
-        foreach (var item in sessionItems)
+        if (sessionItems.Count > 0)
         {
-            var product = await _context.Products.FindAsync(item.ProductId);
-            var subtotal = (product?.Price ?? 0m) * item.Quantity;
-            Total += subtotal;
+            var productIds = sessionItems.Select(i => i.ProductId).ToList();
+            var products = await _context.Products
+                .Where(p => productIds.Contains(p.Id))
+                .ToDictionaryAsync(p => p.Id);
 
-            CartItems.Add(new CartItemViewModel
+            foreach (var item in sessionItems)
             {
-                CartItemId = item.Id,
-                ProductId = item.ProductId,
-                ProductName = product?.Name ?? "Unknown",
-                ProductPrice = product?.Price ?? 0m,
-                Quantity = item.Quantity,
-                Subtotal = subtotal
-            });
+                products.TryGetValue(item.ProductId, out var product);
+                var subtotal = (product?.Price ?? 0m) * item.Quantity;
+                Total += subtotal;
+
+                CartItems.Add(new CartItemViewModel
+                {
+                    CartItemId = item.Id,
+                    ProductId = item.ProductId,
+                    ProductName = product?.Name ?? "Unknown",
+                    ProductPrice = product?.Price ?? 0m,
+                    Quantity = item.Quantity,
+                    Subtotal = subtotal
+                });
+            }
         }
 
         Total = Math.Round(Total, 2);

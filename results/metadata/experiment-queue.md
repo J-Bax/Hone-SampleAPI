@@ -7,4 +7,4 @@
 
 - [x] **#1** `SampleApi/Pages/Orders/Index.cshtml.cs` — Orders page loads entire Orders and OrderItems tables with N+1 product lookups *(experiment 3 — improved)*
 - [x] **#2** `SampleApi/Pages/Checkout/Index.cshtml.cs` — Checkout page has per-item SaveChanges, full table scans, and N+1 queries *(experiment 4 — improved)*
-- [ ] **#3** `SampleApi/Pages/Cart/Index.cshtml.cs` — Cart page loads entire CartItems table and has N+1 product lookups
+- [x] **#3** `SampleApi/Pages/Cart/Index.cshtml.cs` — Cart page loads entire CartItems table and has N+1 product lookups *(experiment 5 — improved)*
