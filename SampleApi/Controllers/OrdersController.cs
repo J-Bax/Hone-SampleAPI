@@ -87,11 +87,6 @@ public class OrdersController : ControllerBase
         if (request.Items == null || !request.Items.Any())
             return BadRequest(new { message = "Order must contain at least one item" });
 
-        var productIds = request.Items.Select(i => i.ProductId).Distinct().ToList();
-        var products = await _context.Products
-            .Where(p => productIds.Contains(p.Id))
-            .ToDictionaryAsync(p => p.Id);
-
         var order = new Order
         {
             CustomerName = request.CustomerName,
@@ -101,17 +96,19 @@ public class OrdersController : ControllerBase
         };
 
         _context.Orders.Add(order);
+        await _context.SaveChangesAsync(); // Save to get order ID
 
         decimal total = 0m;
 
         foreach (var itemReq in request.Items)
         {
-            if (!products.TryGetValue(itemReq.ProductId, out var product))
+            var product = await _context.Products.FindAsync(itemReq.ProductId);
+            if (product == null)
                 continue; // Skip unknown products silently
 
             var orderItem = new OrderItem
             {
-                Order = order,
+                OrderId = order.Id,
                 ProductId = itemReq.ProductId,
                 Quantity = itemReq.Quantity,
                 UnitPrice = product.Price
