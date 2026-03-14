@@ -5,5 +5,5 @@
 
 **Generated:** experiment 8 at 03/14/2026 15:14:32
 
-- [ ] **#1** `SampleApi/Controllers/ProductsController.cs` — Add AsNoTracking to all read-only query endpoints *(in progress)*
+- [x] **#1** `SampleApi/Controllers/ProductsController.cs` — Add AsNoTracking to all read-only query endpoints *(experiment 8 — regressed)*
 - [ ] **#2** `SampleApi/Controllers/ReviewsController.cs` — Replace tracked FindAsync existence checks with AnyAsync and add AsNoTracking

@@ -9,9 +9,9 @@
       "explanation": "Add AsNoTracking to all read-only query endpoints",
       "scope": "narrow",
       "rootCausePath": "C:\\Projects\\Hone\\sample-api\\results\\metadata\\root-causes\\rca-1.md",
-      "status": "in_progress",
-      "triedByExperiment": null,
-      "outcome": null
+      "status": "done",
+      "triedByExperiment": 8,
+      "outcome": "regressed"
     },
     {
       "id": 2,
