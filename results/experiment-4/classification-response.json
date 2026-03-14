@@ -1,0 +1,6 @@
+```json
+{
+  "scope": "narrow",
+  "reasoning": "All performance issues (per-item SaveChanges, full table scans, N+1 queries) are implementation internals in this single file that can be fixed by optimizing LINQ queries and batching database operations without changing the API contract, adding dependencies, or modifying other files."
+}
+```
