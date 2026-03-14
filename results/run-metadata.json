@@ -1,40 +1,4 @@
 {
-  "BaselineRun": null,
-  "LoopCompletedAt": null,
-  "Experiments": [
-    {
-      "Experiment": 1,
-      "StartedAt": "2026-03-13T14:36:38.499596-07:00",
-      "CompletedAt": "2026-03-13T14:40:33.9600839-07:00",
-      "Improved": true,
-      "Regression": false,
-      "P95": 844.12,
-      "RPS": 717.3,
-      "Outcome": "improved",
-      "BranchName": "hone/experiment-1",
-      "BaseBranch": "master",
-      "PrNumber": null,
-      "PrUrl": null,
-      "StaleCount": 0,
-      "ConsecutiveFailures": 0
-    },
-    {
-      "Experiment": 2,
-      "StartedAt": "2026-03-13T19:03:11.5902534-07:00",
-      "CompletedAt": "2026-03-13T19:04:00.0079495-07:00",
-      "Improved": true,
-      "Regression": false,
-      "P95": 844.12,
-      "RPS": 717.3,
-      "Outcome": "improved",
-      "BranchName": "hone/experiment-2",
-      "BaseBranch": "hone/experiment-1",
-      "PrNumber": null,
-      "PrUrl": null,
-      "StaleCount": 0,
-      "ConsecutiveFailures": 0
-    }
-  ],
   "Machine": {
     "Cpu": {
       "Name": "AMD Ryzen 7 3700X 8-Core Processor",
@@ -45,7 +9,7 @@
     },
     "Memory": {
       "TotalGB": 63.9,
-      "AvailableGB": 40.5
+      "AvailableGB": 44.2
     },
     "OS": {
       "Description": "Windows 10",
@@ -56,7 +20,11 @@
       "DotnetSdkVersion": "8.0.100-preview.4.23260.5",
       "ClrVersion": ".NET 8.0.21"
     },
-    "CollectedAt": "2026-03-14T02:03:11.4904465Z"
+    "CollectedAt": "2026-03-14T18:04:09.6410142Z"
   },
-  "LoopStartedAt": "2026-03-13T19:03:11.5063529-07:00"
+  "BaselineRun": {
+    "StartedAt": "2026-03-14T18:04:09.6410142Z",
+    "CompletedAt": "2026-03-14T11:16:16.3644033-07:00"
+  },
+  "Experiments": []
 }
