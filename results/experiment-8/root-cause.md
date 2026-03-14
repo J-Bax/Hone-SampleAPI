@@ -1,3 +1,14 @@
+# Root Cause Analysis — Experiment 8
+
+> Generated: 2026-03-14 15:14:43 | Classification: narrow — Adding AsNoTracking() to read-only query endpoints (GetProducts, GetProduct, GetProductsByCategory, SearchProducts) modifies only method bodies within a single controller file, requires no package changes, no database migrations, and does not alter API contracts or responses.
+
+| Metric | Current | Baseline |
+|--------|---------|----------|
+| p95 Latency | 482.42257ms | 2054.749925ms |
+| Requests/sec | 1321.2 | 427.3 |
+| Error Rate | 11.11% | 11.11% |
+
+---
 # Add AsNoTracking to all read-only query endpoints
 
 > **File:** `SampleApi/Controllers/ProductsController.cs` | **Scope:** narrow
@@ -57,3 +68,4 @@ The GC analysis confirms: "92% of Gen0 collections escalate to Gen1, meaning obj
 - **RPS:** ~3-4% improvement from freed CPU cycles (less InternalEntityEntry construction, fewer GC pauses)
 - **Allocation rate:** ~44 MB/sec reduction (~6.6% of 664 MB/sec), directly reducing GC pause frequency and duration
 - **Error rate:** Unlikely to change (11.11% appears structural, not performance-related)
+

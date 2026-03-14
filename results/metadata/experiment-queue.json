@@ -1,39 +1,28 @@
 {
-  "generatedByExperiment": 6,
-  "generatedAt": "2026-03-14T14:06:00.3813037-07:00",
+  "generatedByExperiment": 8,
+  "generatedAt": "2026-03-14T15:14:32.7746758-07:00",
   "items": [
     {
       "id": 1,
-      "filePath": "SampleApi/Pages/Products/Index.cshtml.cs",
-      "title": "Products page loads entire Products table for client-side pagination",
-      "explanation": "Products page loads entire Products table for client-side pagination",
+      "filePath": "SampleApi/Controllers/ProductsController.cs",
+      "title": "Add AsNoTracking to all read-only query endpoints",
+      "explanation": "Add AsNoTracking to all read-only query endpoints",
       "scope": "narrow",
       "rootCausePath": "C:\\Projects\\Hone\\sample-api\\results\\metadata\\root-causes\\rca-1.md",
-      "status": "done",
-      "triedByExperiment": 6,
-      "outcome": "regressed"
-    },
-    {
-      "id": 2,
-      "filePath": "SampleApi/Data/AppDbContext.cs",
-      "title": "No database indexes on frequently filtered columns",
-      "explanation": "No database indexes on frequently filtered columns",
-      "scope": "architecture",
-      "rootCausePath": "C:\\Projects\\Hone\\sample-api\\results\\metadata\\root-causes\\rca-2.md",
-      "status": "pending",
+      "status": "in_progress",
       "triedByExperiment": null,
       "outcome": null
     },
     {
-      "id": 3,
-      "filePath": "SampleApi/Pages/Products/Detail.cshtml.cs",
-      "title": "Product detail OnPost loads entire CartItems table to find one row",
-      "explanation": "Product detail OnPost loads entire CartItems table to find one row",
+      "id": 2,
+      "filePath": "SampleApi/Controllers/ReviewsController.cs",
+      "title": "Replace tracked FindAsync existence checks with AnyAsync and add AsNoTracking",
+      "explanation": "Replace tracked FindAsync existence checks with AnyAsync and add AsNoTracking",
       "scope": "narrow",
-      "rootCausePath": "C:\\Projects\\Hone\\sample-api\\results\\metadata\\root-causes\\rca-3.md",
-      "status": "done",
-      "triedByExperiment": 7,
-      "outcome": "regressed"
+      "rootCausePath": "C:\\Projects\\Hone\\sample-api\\results\\metadata\\root-causes\\rca-2.md",
+      "status": "pending",
+      "triedByExperiment": null,
+      "outcome": null
     }
   ]
 }

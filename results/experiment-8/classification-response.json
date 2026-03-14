@@ -1,0 +1,6 @@
+```json
+{
+  "scope": "narrow",
+  "reasoning": "Adding AsNoTracking() to read-only query endpoints (GetProducts, GetProduct, GetProductsByCategory, SearchProducts) modifies only method bodies within a single controller file, requires no package changes, no database migrations, and does not alter API contracts or responses."
+}
+```
