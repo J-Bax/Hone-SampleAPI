@@ -1,40 +1,46 @@
-# CreateOrder has N+1 product lookups and double SaveChanges
+# Cart page loads entire CartItems table and has N+1 product lookups
 
-> **File:** `SampleApi/Controllers/OrdersController.cs` | **Scope:** narrow
+> **File:** `SampleApi/Pages/Cart/Index.cshtml.cs` | **Scope:** narrow
 
 ## Evidence
 
-At `OrdersController.cs:98-99`, the order is saved immediately just to obtain an auto-generated ID:
-
+The Cart page's `LoadCart` method (called by both `OnGetAsync` and all POST handlers) loads the entire CartItems table at `Index.cshtml.cs:109`:
 ```csharp
-_context.Orders.Add(order);
-await _context.SaveChangesAsync(); // Save to get order ID
+var allItems = await _context.CartItems.ToListAsync();
+var sessionItems = allItems.Where(c => c.SessionId == sessionId).ToList();
+```
+Then performs N+1 product lookups at `Index.cshtml.cs:117`:
+```csharp
+foreach (var item in sessionItems)
+{
+    var product = await _context.Products.FindAsync(item.ProductId);
 ```
 
-At `OrdersController.cs:103-118`, each order item triggers a separate `FindAsync` to look up the product price:
-
+Additionally, `OnPostClearAsync` at lines 91-98 has the same full-table scan plus per-item SaveChangesAsync:
 ```csharp
-foreach (var itemReq in request.Items)
+var allItems = await _context.CartItems.ToListAsync();
+var sessionItems = allItems.Where(c => c.SessionId == sessionId).ToList();
+foreach (var item in sessionItems)
 {
-    var product = await _context.Products.FindAsync(itemReq.ProductId);
-    ...
+    _context.CartItems.Remove(item);
+    await _context.SaveChangesAsync(); // per-item round-trip
 }
 ```
 
-Then at line 122, a second `SaveChangesAsync()` persists the order items and updated total. With the k6 scenario sending 2 items per order, this is 4 database round trips per request (1 save + 2 FindAsync + 1 save).
-
 ## Theory
 
-Every VU iteration creates one order (7.7% of traffic). The N+1 pattern means each order creation requires N+2 database round trips (2 saves + N product lookups). Under 500 VUs, this creates significant connection pool contention and serialized I/O waits. Each round trip adds ~2-5ms of network/protocol overhead on LocalDB, so 4 round trips waste ~8-15ms compared to a batched approach.
+The CartItems table grows with concurrent VU sessions. Under 500 VUs, each VU adds cart items (via `POST /Products/Detail/{id}`), so the table accumulates hundreds to thousands of rows. Loading the full table for every cart view wastes memory and CPU on materializing and filtering unrelated sessions' items. The N+1 product lookups add one DB round-trip per cart item. The `OnPostClearAsync` handler compounds this with per-item deletes.
+
+The Cart page is ~5.6% of traffic (1 of 18 requests), but `LoadCart` is also called after every POST handler on this page (update quantity, remove, clear), amplifying its impact.
 
 ## Proposed Fixes
 
-1. **Batch product lookup:** Replace the per-item `FindAsync` loop with a single query: `var productIds = request.Items.Select(i => i.ProductId).Distinct().ToList(); var products = await _context.Products.Where(p => productIds.Contains(p.Id)).ToDictionaryAsync(p => p.Id);` Then look up prices from the dictionary in the loop.
+1. **Server-side filtering:** Replace `_context.CartItems.ToListAsync()` with `_context.CartItems.Where(c => c.SessionId == sessionId).ToListAsync()` at line 109 (and line 91). Replace N+1 product lookups with a single batch query using `Where(p => productIds.Contains(p.Id))`.
 
-2. **Single SaveChangesAsync:** EF Core tracks the Order entity and will assign the ID after a single `SaveChangesAsync`. Add both the Order and all OrderItems to the context, then call `SaveChangesAsync` once. Use a temporary variable for the order reference since EF will populate `order.Id` after save.
+2. **Batch cart clearing:** In `OnPostClearAsync`, use `RemoveRange` and a single `SaveChangesAsync` instead of per-item saves.
 
 ## Expected Impact
 
-- p95 latency reduction per request: ~20-35ms (eliminating 2-3 unnecessary round trips)
-- Overall p95 improvement: ~2-3% (7.7% traffic share × ~25ms saving)
-- Additional benefit: reduced connection pool pressure under high concurrency
+- **p95 latency:** ~3-5% overall p95 reduction (~50-80ms). Server-side filtering eliminates the growing full-table scan, and batch product lookup removes N+1 queries.
+- **Memory:** Reduced allocation per request as only the session's items are materialized instead of the full table.
+- **GC:** Marginal improvement in allocation rate, contributing to lower GC pause frequency.

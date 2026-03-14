@@ -1,55 +1,66 @@
 # Root Cause Analysis — Experiment 3
 
-> Generated: 2026-03-13 19:05:53 | Classification: narrow — Fix loads entire Reviews and Products tables into memory then filters—optimization to use LINQ `.Where()` and `.Include()` for server-side filtering fits entirely within this single file's OnGetAsync method.
+> Generated: 2026-03-14 12:37:32 | Classification: narrow — The N+1 optimization only requires rewriting the OnGetAsync method to use `.Include()` for eager loading and eliminate the product loop — no file additions, no package changes, no schema changes, no API contract changes.
 
 | Metric | Current | Baseline |
 |--------|---------|----------|
-| p95 Latency | 844.12ms | 888.549155000001ms |
-| Requests/sec | 717.3 | 683.2 |
-| Error Rate | 0% | 0% |
+| p95 Latency | 1641.868ms | 2054.749925ms |
+| Requests/sec | 533.7 | 427.3 |
+| Error Rate | 11.11% | 11.11% |
 
 ---
-# Product detail page loads entire Reviews and Products tables
+# Orders page loads entire Orders and OrderItems tables with N+1 product lookups
 
-> **File:** `SampleApi/Pages/Products/Detail.cshtml.cs` | **Scope:** narrow
+> **File:** `SampleApi/Pages/Orders/Index.cshtml.cs` | **Scope:** narrow
 
 ## Evidence
 
-At `Pages/Products/Detail.cshtml.cs:34-36`, the detail page loads every review in the database into memory, then filters client-side:
+CPU profiling identifies `SampleApi.Pages.Orders.IndexModel.<OnGetAsync>` at **45.2% inclusive CPU** — the single largest application hotspot. The method contains three compounding anti-patterns:
 
+1. **Full table scan on Orders** at `Index.cshtml.cs:40`:
 ```csharp
-var allReviews = await _context.Reviews.ToListAsync();
-Reviews = allReviews.Where(r => r.ProductId == id)
-                    .OrderByDescending(r => r.CreatedAt)
-                    .ToList();
-```
-
-At `Pages/Products/Detail.cshtml.cs:41-46`, it loads every product into memory just to find 4 related products:
-
-```csharp
-var allProducts = await _context.Products.ToListAsync();
-RelatedProducts = allProducts
-    .Where(p => p.Category == Product.Category && p.Id != id)
-    .OrderBy(_ => Guid.NewGuid())
-    .Take(4)
+var allOrders = await _context.Orders.ToListAsync();
+Orders = allOrders
+    .Where(o => o.CustomerName.Equals(customer, StringComparison.OrdinalIgnoreCase))
+    .OrderByDescending(o => o.OrderDate)
     .ToList();
 ```
+Loads every order in the database into memory, then filters client-side. Since each k6 VU creates orders every iteration (via both `POST /api/orders` and `POST /Checkout`), the Orders table grows to tens of thousands of rows during the load test.
 
-With seed data of ~2,000 reviews and 1,000 products, every detail page request transfers ~3,000 rows from SQL Server into the app process, only to discard the vast majority.
+2. **Full table scan on OrderItems** at `Index.cshtml.cs:46`:
+```csharp
+var allItems = await _context.OrderItems.ToListAsync();
+```
+Loads every order item regardless of which orders matched the customer filter. With 2 items per order, this is 20,000+ rows.
+
+3. **N+1 product lookups** at `Index.cshtml.cs:55`:
+```csharp
+var product = await _context.Products.FindAsync(item.ProductId);
+```
+Issues a separate DB round-trip for each order item's product.
+
+The profiling data confirms this: SortedDictionary/SortedSet enumeration at 2.8% CPU (EF Core identity map processing thousands of tracked entities), Dictionary.FindValue at 1.1% (identity map lookups), StateManager.StartTrackingFromQuery at 1.8%, and SqlDataReader.TryReadColumnInternal at 5.1% (deserializing massive result sets). Total allocation rate of 1,472 MB/sec and 2.1 GB peak heap are consistent with materializing full tables per request.
 
 ## Theory
 
-Each `/Products/Detail/{id}` request triggers two full-table scans: one on Reviews (~2,000 rows) and one on Products (1,000 rows). Under high concurrency (300-500 VUs), this creates massive memory allocation pressure and database I/O contention. The GC must collect thousands of short-lived objects per request, and SQL Server must scan and transmit entire tables repeatedly. Since this endpoint is hit once per VU iteration (~7.7% of all traffic), the aggregate effect on p95 latency is significant.
+The Orders table grows continuously during the k6 load test (each of 500 VUs creates ~2 orders per iteration). By the stress phase, there are tens of thousands of orders. Every `GET /Orders?customer=...` request materializes the entire Orders table (~10K+ rows) and entire OrderItems table (~20K+ rows) into tracked EF Core entities, then filters in-memory. This causes:
+- **O(N) memory allocation** per request where N = total orders (not just the customer's)
+- **O(N) change tracking overhead** — EF Core's StateManager tracks every entity, performing identity map lookups (Dictionary.FindValue), navigation fixup, and diagnostic logging per entity
+- **O(M) additional DB round-trips** for N+1 product lookups where M = number of items in matching orders
+- **Severe GC pressure** — the 1,472 MB/sec allocation rate and inverted Gen2:Gen0 ratio (221:41) directly result from repeatedly allocating and discarding these massive collections
+
+Despite being only ~5.6% of traffic (1 of 18 requests per k6 iteration), this endpoint consumes 45% of CPU, starving all other endpoints of resources and inflating their latencies via CPU contention and GC pauses (10.4% pause ratio, max 236ms pause).
 
 ## Proposed Fixes
 
-1. **Server-side review filtering:** Replace `_context.Reviews.ToListAsync()` with `_context.Reviews.Where(r => r.ProductId == id).OrderByDescending(r => r.CreatedAt).ToListAsync()` at line 34-37. This pushes the filter to SQL Server.
+1. **Server-side filtering with AsNoTracking:** Replace the full table scans at lines 40-44 with a server-side `Where` clause and `AsNoTracking()`. Filter orders by customer name in SQL, and use `Include` or a join to load only the related order items. Replace the N+1 product lookups with a single batch query (e.g., load all needed product IDs in one `Where(p => productIds.Contains(p.Id))` call).
 
-2. **Server-side related products query:** Replace `_context.Products.ToListAsync()` with `_context.Products.Where(p => p.Category == Product.Category && p.Id != id).Take(4).ToListAsync()` at lines 41-46. The random ordering can be dropped (or use a SQL-compatible approach) since the goal is just 4 related products.
+2. **Single efficient query:** Combine the orders + items + product names into a single LINQ query with joins and projections, selecting only the fields needed for `OrderItemView`. This eliminates all three table scans and the N+1 pattern in one change.
 
 ## Expected Impact
 
-- p95 latency reduction per request: ~60-80ms (eliminating transfer and materialization of ~3,000 unnecessary rows)
-- Overall p95 improvement: ~5-7% (7.7% traffic share × ~70ms reduction on 844ms baseline)
-- Memory allocation reduction: significant decrease in Gen0 GC pressure from short-lived entity objects
+- **p95 latency:** Expect 25-35% overall reduction (~400-575ms). The freed CPU (from 45% down to <5%) eliminates contention that inflates latency for ALL endpoints.
+- **RPS:** Expect 30-50% increase as CPU headroom allows more concurrent request processing.
+- **Error rate:** The 11.11% error rate may partially stem from GC-induced timeouts under load; reducing allocation volume from this endpoint should help.
+- **GC:** Dramatic reduction in allocation rate and heap size as full-table materializations are eliminated. Gen2 collection count and pause ratio should improve significantly.
 
