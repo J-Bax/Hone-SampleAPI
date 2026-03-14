@@ -1,52 +1,40 @@
-# Review queries load entire table instead of filtering server-side
+# CreateOrder has N+1 product lookups and double SaveChanges
 
-> **File:** `SampleApi/Controllers/ReviewsController.cs` | **Scope:** narrow
+> **File:** `SampleApi/Controllers/OrdersController.cs` | **Scope:** narrow
 
 ## Evidence
 
-**GetReviewsByProduct (lines 54-55)** loads ALL reviews and filters in memory:
+At `OrdersController.cs:98-99`, the order is saved immediately just to obtain an auto-generated ID:
 
 ```csharp
-var allReviews = await _context.Reviews.ToListAsync();
-var filtered = allReviews.Where(r => r.ProductId == productId).ToList();
+_context.Orders.Add(order);
+await _context.SaveChangesAsync(); // Save to get order ID
 ```
 
-**GetAverageRating (lines 70-74)** also loads ALL reviews to compute a single aggregate:
+At `OrdersController.cs:103-118`, each order item triggers a separate `FindAsync` to look up the product price:
 
 ```csharp
-var allReviews = await _context.Reviews.ToListAsync();
-var productReviews = allReviews.Where(r => r.ProductId == productId).ToList();
-var average = productReviews.Any()
-    ? Math.Round(productReviews.Average(r => r.Rating), 2)
-    : 0.0;
+foreach (var itemReq in request.Items)
+{
+    var product = await _context.Products.FindAsync(itemReq.ProductId);
+    ...
+}
 ```
 
-Additionally, **CreateReview (lines 95-97)** performs a wasted post-insert computation — loading ALL reviews just to compute an unused average:
-
-```csharp
-var allReviews = await _context.Reviews.ToListAsync();
-var productReviews = allReviews.Where(r => r.ProductId == review.ProductId).ToList();
-var _ = productReviews.Average(r => r.Rating);
-```
-
-The same pattern appears in Razor pages: `Pages/Products/Detail.cshtml.cs:34` and `Pages/Index.cshtml.cs:36` also call `_context.Reviews.ToListAsync()`.
+Then at line 122, a second `SaveChangesAsync()` persists the order items and updated total. With the k6 scenario sending 2 items per order, this is 4 database round trips per request (1 save + 2 FindAsync + 1 save).
 
 ## Theory
 
-The Reviews table is likely the largest seeded table (products × reviews-per-product). Loading every review row for every request — when only a handful match the target `ProductId` — wastes significant DB I/O, network bandwidth, and memory. The `GetAverageRating` endpoint is particularly wasteful: SQL Server can compute `AVG(Rating) WHERE ProductId = @id` in microseconds using an index scan, but instead the app transfers every review row to .NET and computes the average in C#. Under 500 concurrent VUs, the 2 review API endpoints plus 2 Razor pages all compete for the same full-table scan, creating heavy read contention.
-
-The dead computation in `CreateReview` (line 97) adds an unnecessary full-table scan on every review creation, though this endpoint isn't in the k6 hot path.
+Every VU iteration creates one order (7.7% of traffic). The N+1 pattern means each order creation requires N+2 database round trips (2 saves + N product lookups). Under 500 VUs, this creates significant connection pool contention and serialized I/O waits. Each round trip adds ~2-5ms of network/protocol overhead on LocalDB, so 4 round trips waste ~8-15ms compared to a batched approach.
 
 ## Proposed Fixes
 
-1. **Push WHERE to SQL for GetReviewsByProduct:** Replace `_context.Reviews.ToListAsync()` + client-side `.Where()` with `_context.Reviews.Where(r => r.ProductId == productId).ToListAsync()`.
+1. **Batch product lookup:** Replace the per-item `FindAsync` loop with a single query: `var productIds = request.Items.Select(i => i.ProductId).Distinct().ToList(); var products = await _context.Products.Where(p => productIds.Contains(p.Id)).ToDictionaryAsync(p => p.Id);` Then look up prices from the dictionary in the loop.
 
-2. **Use server-side aggregate for GetAverageRating:** Replace the full-table load with `_context.Reviews.Where(r => r.ProductId == productId).AverageAsync(r => r.Rating)` and `CountAsync()`. This translates to a single SQL `SELECT AVG(Rating), COUNT(*) WHERE ProductId = @id`.
-
-3. **Remove dead computation in CreateReview:** Delete lines 95-97 which load all reviews and compute an unused average after every insert.
+2. **Single SaveChangesAsync:** EF Core tracks the Order entity and will assign the ID after a single `SaveChangesAsync`. Add both the Order and all OrderItems to the context, then call `SaveChangesAsync` once. Use a temporary variable for the order reference since EF will populate `order.Id` after save.
 
 ## Expected Impact
 
-- **p95 latency:** GetAverageRating should drop ~60-100ms (server-side aggregate vs. full scan + client computation). GetReviewsByProduct should drop ~50-80ms.
-- **Memory/GC:** Large reduction in per-request allocations — only matching reviews materialized instead of entire table.
-- **Overall p95 improvement:** ~5-8% (estimated ~70ms average reduction across ~15% of traffic).
+- p95 latency reduction per request: ~20-35ms (eliminating 2-3 unnecessary round trips)
+- Overall p95 improvement: ~2-3% (7.7% traffic share × ~25ms saving)
+- Additional benefit: reduced connection pool pressure under high concurrency

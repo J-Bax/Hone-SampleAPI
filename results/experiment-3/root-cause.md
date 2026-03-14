@@ -1,3 +1,14 @@
+# Root Cause Analysis — Experiment 3
+
+> Generated: 2026-03-13 19:05:53 | Classification: narrow — Fix loads entire Reviews and Products tables into memory then filters—optimization to use LINQ `.Where()` and `.Include()` for server-side filtering fits entirely within this single file's OnGetAsync method.
+
+| Metric | Current | Baseline |
+|--------|---------|----------|
+| p95 Latency | 844.12ms | 888.549155000001ms |
+| Requests/sec | 717.3 | 683.2 |
+| Error Rate | 0% | 0% |
+
+---
 # Product detail page loads entire Reviews and Products tables
 
 > **File:** `SampleApi/Pages/Products/Detail.cshtml.cs` | **Scope:** narrow
@@ -41,3 +52,4 @@ Each `/Products/Detail/{id}` request triggers two full-table scans: one on Revie
 - p95 latency reduction per request: ~60-80ms (eliminating transfer and materialization of ~3,000 unnecessary rows)
 - Overall p95 improvement: ~5-7% (7.7% traffic share × ~70ms reduction on 844ms baseline)
 - Memory allocation reduction: significant decrease in Gen0 GC pressure from short-lived entity objects
+

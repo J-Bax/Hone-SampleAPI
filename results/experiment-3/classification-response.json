@@ -1,0 +1,6 @@
+```json
+{
+  "scope": "narrow",
+  "reasoning": "Fix loads entire Reviews and Products tables into memory then filters—optimization to use LINQ `.Where()` and `.Include()` for server-side filtering fits entirely within this single file's OnGetAsync method."
+}
+```
