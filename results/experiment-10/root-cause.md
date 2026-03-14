@@ -1,3 +1,14 @@
+# Root Cause Analysis — Experiment 10
+
+> Generated: 2026-03-14 16:26:59 | Classification: narrow — DbContext pooling is enabled by changing line 12-13 from `AddDbContext` to `AddPooledDbContext`, which is a pure configuration change contained to Program.cs with no impact on APIs, dependencies, database schema, or tests.
+
+| Metric | Current | Baseline |
+|--------|---------|----------|
+| p95 Latency | 496.6681ms | 2054.749925ms |
+| Requests/sec | 1295.4 | 427.3 |
+| Error Rate | 11.11% | 11.11% |
+
+---
 # Enable DbContext pooling to reduce per-request allocation and GC pressure
 
 > **File:** `SampleApi/Program.cs` | **Scope:** narrow
@@ -41,3 +52,4 @@ These objects live for the duration of the request (spanning multiple `await` po
 - Gen0→Gen1 promotion rate should decrease, reducing Gen1 collection frequency
 - Max GC pause should decrease (less heap pressure → less aggressive compaction)
 - The GC-related tail latency spikes that blow out p95 should become less frequent
+

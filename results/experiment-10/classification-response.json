@@ -1,0 +1,6 @@
+```json
+{
+  "scope": "narrow",
+  "reasoning": "DbContext pooling is enabled by changing line 12-13 from `AddDbContext` to `AddPooledDbContext`, which is a pure configuration change contained to Program.cs with no impact on APIs, dependencies, database schema, or tests."
+}
+```

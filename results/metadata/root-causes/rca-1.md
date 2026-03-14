@@ -1,59 +1,74 @@
-# Add AsNoTracking to all read-only query endpoints
+# Add database indexes for all high-traffic query filter columns
 
-> **File:** `SampleApi/Controllers/ProductsController.cs` | **Scope:** narrow
+> **File:** `SampleApi/Data/AppDbContext.cs` | **Scope:** architecture
 
 ## Evidence
 
-All four read endpoints in `ProductsController.cs` materialize entities with full EF Core change tracking enabled:
+At `AppDbContext.cs:19-63`, the `OnModelCreating` method defines only primary keys and column constraints — **zero secondary indexes** on any table:
 
-At line 25 (`GetProducts`):
 ```csharp
-var products = await _context.Products.ToListAsync();
+modelBuilder.Entity<CartItem>(entity =>
+{
+    entity.HasKey(e => e.Id);
+    entity.Property(e => e.SessionId).HasMaxLength(100).IsRequired();
+    // No index on SessionId or (SessionId, ProductId)
+});
 ```
 
-At lines 75-78 (`SearchProducts`):
 ```csharp
-var results = await _context.Products
-    .Where(p => p.Name.ToLower().Contains(lowerQ) ||
-                (p.Description != null && p.Description.ToLower().Contains(lowerQ)))
-    .ToListAsync();
+modelBuilder.Entity<Review>(entity =>
+{
+    entity.HasKey(e => e.Id);
+    // No index on ProductId
+});
 ```
 
-At lines 55-57 (`GetProductsByCategory`):
-```csharp
-var filtered = await _context.Products
-    .Where(p => p.Category.ToLower() == categoryName.ToLower())
-    .ToListAsync();
-```
+Yet these columns appear in WHERE clauses across virtually every endpoint:
 
-At line 35 (`GetProduct`):
-```csharp
-var product = await _context.Products.FindAsync(id);
-```
+- `CartController.cs:25-29` — `where ci.SessionId == sessionId` (GetCart)
+- `CartController.cs:72-73` — `WHERE SessionId = ? AND ProductId = ?` (AddToCart)
+- `CartController.cs:142-143` — `WHERE SessionId = ?` (ClearCart)
+- `ReviewsController.cs:50` — `AnyAsync(p => p.Id == productId)` + `Where(r => r.ProductId == productId)` (lines 50-54)
+- `ReviewsController.cs:65-70` — same pattern for GetAverageRating
+- `ProductsController.cs:49-57` — `WHERE Category = ?` (GetProductsByCategory)
+- `Pages/Orders/Index.cshtml.cs:40-44` — `WHERE CustomerName = ?` (Orders page)
+- `Pages/Orders/Index.cshtml.cs:51-53` — `WHERE OrderId IN (...)` (OrderItems join)
+- `Pages/Products/Detail.cshtml.cs:41-44` — `WHERE Category = ? AND Id != ?` (related products)
+- `Pages/Checkout/Index.cshtml.cs:61-62` — `WHERE SessionId = ?`
+- `Pages/Cart/Index.cshtml.cs:107-108` — `WHERE SessionId = ?`
 
-The database seeds 1,000 products (`SeedData.cs:37`: `for (int i = 1; i <= 1000; i++)`). `GetProducts()` and `SearchProducts("Product")` (which matches all product names like "Product 0001 - Electronics") each materialize all 1,000 products with full change tracking on every call.
-
-The CPU profiler confirms this is costly: `InternalEntityEntry..ctor` shows 272 exclusive samples from change-tracker construction, and `CastHelpers` aggregate shows ~6,625 samples from EF Core materialization type-checking. The GC analysis reports a catastrophic 664 MB/sec allocation rate averaging 515KB per request, with a 16.2% GC pause ratio and a max pause of 1,931ms.
-
-For each tracked entity, EF Core allocates an `InternalEntityEntry` (~250 bytes) storing original-value snapshots plus identity-map bookkeeping (~50 bytes). For 1,000 products: ~300KB of pure tracking overhead per call, on top of the entity data itself.
+The CPU profiler confirms excessive data reading: **TdsParserStateObject.TryReadChar at 4.55% inclusive** is the #1 application hotspot, and **SQL Server engine (sqlmin) at 7.6% CPU**. The memory profiler shows **779 MB/sec allocation rate** driven partly by materializing large result sets from unoptimized queries.
 
 ## Theory
 
-These four endpoints are read-only — they never call `SaveChangesAsync()`. Yet EF Core creates full change-tracking state for every materialized entity, including original-value snapshot copies and identity-map entries. This is entirely wasted work.
+Without secondary indexes, every filtered query performs a **full table scan** in SQL Server. With 1000 products, ~2000 reviews, growing CartItems (each of 500 VUs adds items per iteration), and accumulating Orders/OrderItems, the database must read every row to find matches.
 
-`GetProducts()` and `SearchProducts("Product")` are called once each per VU iteration (~73 calls/sec each at peak), materializing ~1,000 tracked entities per call. That's ~300KB × 2 × 73 = ~43.8 MB/sec of unnecessary allocation solely from tracking overhead. This directly fuels the 664 MB/sec allocation rate that produces the 16.2% GC pause ratio (threshold: 5%) and the catastrophic 1.9-second max GC pause.
+Under 500 concurrent VUs executing 18 requests each (many with WHERE clauses), SQL Server performs hundreds of concurrent full table scans. This causes:
+1. **High SQL CPU** (7.6%) from scanning page after page of data
+2. **Lock contention** — table scans acquire shared locks on many rows, blocking concurrent writers
+3. **Slow connection turnover** — queries take longer, holding connections from the pool longer, increasing pool contention
+4. **Excess TDS traffic** — SQL Server reads and transmits more data pages to EF Core than needed
 
-The GC analysis confirms: "92% of Gen0 collections escalate to Gen1, meaning objects survive Gen0 at an alarming rate, likely due to mid-request allocations that outlive the ephemeral segment budget." The `InternalEntityEntry` objects, with their many reference fields, create complex GC object graphs that extend tracing time during collection.
+The CartItems table is particularly problematic: it grows continuously during the test as VUs add items. By mid-test, hundreds of rows must be scanned for every cart query.
 
 ## Proposed Fixes
 
-1. **Add `.AsNoTracking()` to all read query chains:** Insert `.AsNoTracking()` before `.ToListAsync()` on lines 25, 57, 71, and 78. For `FindAsync` on line 35, replace with `_context.Products.AsNoTracking().FirstOrDefaultAsync(p => p.Id == id)` since `FindAsync` always tracks.
+Add `HasIndex()` calls in `OnModelCreating` (AppDbContext.cs) for all frequently filtered columns:
 
-2. **Also add `.AsNoTracking()` to the category existence check** on lines 49-50 (`_context.Categories.AnyAsync(...)`) — `AnyAsync` doesn't materialize entities so this is minor, but the `GetProductsByCategory` product query on line 55 is the key target.
+- **CartItem**: Composite index on `(SessionId, ProductId)` — covers cart add (exact match on both), get/clear (prefix match on SessionId)
+- **Review**: Index on `ProductId` — covers reviews-by-product and average-rating queries
+- **OrderItem**: Index on `OrderId` — covers order detail lookups and the Orders page join
+- **Product**: Index on `Category` — covers category filter and related products queries
+- **Order**: Index on `CustomerName` — covers the Orders page customer lookup
+
+Since `EnsureCreated()` (Program.cs:49) won't update an existing database schema, also add a public `EnsureIndexes(AppDbContext)` method that uses `Database.ExecuteSqlRaw` with `IF NOT EXISTS` guards to create the indexes idempotently, and call it from Program.cs after `EnsureCreated()`.
 
 ## Expected Impact
 
-- **p95 latency:** ~4% reduction (482ms → ~463ms) from reduced GC pressure across all endpoints
-- **RPS:** ~3-4% improvement from freed CPU cycles (less InternalEntityEntry construction, fewer GC pauses)
-- **Allocation rate:** ~44 MB/sec reduction (~6.6% of 664 MB/sec), directly reducing GC pause frequency and duration
-- **Error rate:** Unlikely to change (11.11% appears structural, not performance-related)
+- ~72% of k6 traffic (13 of 18 requests) hits filtered queries on these unindexed columns
+- With proper indexes, filtered queries use index seeks (O(log N)) instead of table scans (O(N)), typically 10-100x faster
+- Estimated per-request savings: 15-30ms for affected queries (higher under concurrency due to reduced lock contention)
+- p95 latency: estimated 5-10% improvement
+- RPS: should increase proportionally as query throughput improves
+- SQL Server CPU should drop significantly (from 7.6%), freeing headroom for higher concurrency
+- Error rate may improve if timeouts under stress are caused by long-running table scans

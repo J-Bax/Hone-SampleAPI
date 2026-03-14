@@ -1,28 +1,28 @@
 {
-  "generatedByExperiment": 8,
-  "generatedAt": "2026-03-14T15:14:32.7746758-07:00",
+  "generatedByExperiment": 10,
+  "generatedAt": "2026-03-14T16:26:49.1535096-07:00",
   "items": [
     {
       "id": 1,
-      "filePath": "SampleApi/Controllers/ProductsController.cs",
-      "title": "Add AsNoTracking to all read-only query endpoints",
-      "explanation": "Add AsNoTracking to all read-only query endpoints",
-      "scope": "narrow",
+      "filePath": "SampleApi/Data/AppDbContext.cs",
+      "title": "Add database indexes for all high-traffic query filter columns",
+      "explanation": "Add database indexes for all high-traffic query filter columns",
+      "scope": "architecture",
       "rootCausePath": "C:\\Projects\\Hone\\sample-api\\results\\metadata\\root-causes\\rca-1.md",
-      "status": "done",
-      "triedByExperiment": 8,
-      "outcome": "regressed"
+      "status": "pending",
+      "triedByExperiment": null,
+      "outcome": null
     },
     {
       "id": 2,
-      "filePath": "SampleApi/Controllers/ReviewsController.cs",
-      "title": "Replace tracked FindAsync existence checks with AnyAsync and add AsNoTracking",
-      "explanation": "Replace tracked FindAsync existence checks with AnyAsync and add AsNoTracking",
+      "filePath": "SampleApi/Program.cs",
+      "title": "Enable DbContext pooling to reduce per-request allocation and GC pressure",
+      "explanation": "Enable DbContext pooling to reduce per-request allocation and GC pressure",
       "scope": "narrow",
       "rootCausePath": "C:\\Projects\\Hone\\sample-api\\results\\metadata\\root-causes\\rca-2.md",
-      "status": "done",
-      "triedByExperiment": 9,
-      "outcome": "improved"
+      "status": "in_progress",
+      "triedByExperiment": null,
+      "outcome": null
     }
   ]
 }
