@@ -1,12 +1,12 @@
 {
   "generatedByExperiment": 3,
-  "generatedAt": "2026-03-13T19:05:39.6658161-07:00",
+  "generatedAt": "2026-03-14T12:37:20.9871952-07:00",
   "items": [
     {
       "id": 1,
-      "filePath": "SampleApi/Pages/Products/Detail.cshtml.cs",
-      "title": "Product detail page loads entire Reviews and Products tables",
-      "explanation": "Product detail page loads entire Reviews and Products tables",
+      "filePath": "SampleApi/Pages/Orders/Index.cshtml.cs",
+      "title": "Orders page loads entire Orders and OrderItems tables with N+1 product lookups",
+      "explanation": "Orders page loads entire Orders and OrderItems tables with N+1 product lookups",
       "scope": "narrow",
       "rootCausePath": "C:\\Projects\\Hone\\sample-api\\results\\metadata\\root-causes\\rca-1.md",
       "status": "done",
@@ -15,23 +15,23 @@
     },
     {
       "id": 2,
-      "filePath": "SampleApi/Pages/Index.cshtml.cs",
-      "title": "Home page loads all products and reviews for sampling",
-      "explanation": "Home page loads all products and reviews for sampling",
+      "filePath": "SampleApi/Pages/Checkout/Index.cshtml.cs",
+      "title": "Checkout page has per-item SaveChanges, full table scans, and N+1 queries",
+      "explanation": "Checkout page has per-item SaveChanges, full table scans, and N+1 queries",
       "scope": "narrow",
       "rootCausePath": "C:\\Projects\\Hone\\sample-api\\results\\metadata\\root-causes\\rca-2.md",
-      "status": "done",
-      "triedByExperiment": 1,
-      "outcome": "improved"
+      "status": "pending",
+      "triedByExperiment": null,
+      "outcome": null
     },
     {
       "id": 3,
-      "filePath": "SampleApi/Controllers/OrdersController.cs",
-      "title": "CreateOrder has N+1 product lookups and double SaveChanges",
-      "explanation": "CreateOrder has N+1 product lookups and double SaveChanges",
+      "filePath": "SampleApi/Pages/Cart/Index.cshtml.cs",
+      "title": "Cart page loads entire CartItems table and has N+1 product lookups",
+      "explanation": "Cart page loads entire CartItems table and has N+1 product lookups",
       "scope": "narrow",
       "rootCausePath": "C:\\Projects\\Hone\\sample-api\\results\\metadata\\root-causes\\rca-3.md",
-      "status": "in_progress",
+      "status": "pending",
       "triedByExperiment": null,
       "outcome": null
     }

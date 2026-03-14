@@ -37,33 +37,45 @@ public class IndexModel : PageModel
         if (string.IsNullOrWhiteSpace(customer))
             return;
 
-        var allOrders = await _context.Orders.ToListAsync();
-        Orders = allOrders
-            .Where(o => o.CustomerName.Equals(customer, StringComparison.OrdinalIgnoreCase))
+        Orders = await _context.Orders
+            .AsNoTracking()
+            .Where(o => o.CustomerName == customer)
             .OrderByDescending(o => o.OrderDate)
-            .ToList();
+            .ToListAsync();
 
-        var allItems = await _context.OrderItems.ToListAsync();
+        if (Orders.Count == 0)
+            return;
 
-        foreach (var order in Orders)
-        {
-            var items = allItems.Where(i => i.OrderId == order.Id).ToList();
-            var itemViews = new List<OrderItemView>();
+        var orderIds = Orders.Select(o => o.Id).ToHashSet();
 
-            foreach (var item in items)
-            {
-                var product = await _context.Products.FindAsync(item.ProductId);
-                itemViews.Add(new OrderItemView
+        var itemViews = await _context.OrderItems
+            .AsNoTracking()
+            .Where(i => orderIds.Contains(i.OrderId))
+            .Join(
+                _context.Products.AsNoTracking(),
+                i => i.ProductId,
+                p => p.Id,
+                (i, p) => new
                 {
-                    ProductId = item.ProductId,
-                    ProductName = product?.Name ?? "Unknown",
-                    Quantity = item.Quantity,
-                    UnitPrice = item.UnitPrice,
-                    Subtotal = item.UnitPrice * item.Quantity
-                });
-            }
+                    i.OrderId,
+                    i.ProductId,
+                    ProductName = p.Name,
+                    i.Quantity,
+                    i.UnitPrice
+                })
+            .ToListAsync();
 
-            OrderItemsMap[order.Id] = itemViews;
-        }
+        OrderItemsMap = itemViews
+            .GroupBy(x => x.OrderId)
+            .ToDictionary(
+                g => g.Key,
+                g => g.Select(x => new OrderItemView
+                {
+                    ProductId = x.ProductId,
+                    ProductName = x.ProductName,
+                    Quantity = x.Quantity,
+                    UnitPrice = x.UnitPrice,
+                    Subtotal = x.UnitPrice * x.Quantity
+                }).ToList());
     }
 }
