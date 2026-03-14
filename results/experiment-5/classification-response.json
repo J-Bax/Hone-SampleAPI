@@ -1,0 +1,6 @@
+```json
+{
+  "scope": "narrow",
+  "reasoning": "The optimization (adding .Include(ci => ci.Product) to CartItems query and removing the loop-based FindAsync calls) is contained entirely to the LoadCart() method body, requires no package changes, no database migrations, no API contract changes, and no test modifications."
+}
+```
