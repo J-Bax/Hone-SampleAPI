@@ -22,7 +22,7 @@ public class ProductsController : ControllerBase
     [HttpGet]
     public async Task<ActionResult<IEnumerable<Product>>> GetProducts()
     {
-        var products = await _context.Products.AsNoTracking().ToListAsync();
+        var products = await _context.Products.ToListAsync();
         return Ok(products);
     }
 
@@ -32,7 +32,7 @@ public class ProductsController : ControllerBase
     [HttpGet("{id}")]
     public async Task<ActionResult<Product>> GetProduct(int id)
     {
-        var product = await _context.Products.AsNoTracking().FirstOrDefaultAsync(p => p.Id == id);
+        var product = await _context.Products.FindAsync(id);
 
         if (product == null)
             return NotFound();
@@ -53,7 +53,6 @@ public class ProductsController : ControllerBase
             return NotFound(new { message = $"Category '{categoryName}' not found" });
 
         var filtered = await _context.Products
-            .AsNoTracking()
             .Where(p => p.Category.ToLower() == categoryName.ToLower())
             .ToListAsync();
 
@@ -68,13 +67,12 @@ public class ProductsController : ControllerBase
     {
         if (string.IsNullOrWhiteSpace(q))
         {
-            var all = await _context.Products.AsNoTracking().ToListAsync();
+            var all = await _context.Products.ToListAsync();
             return Ok(all);
         }
 
         var lowerQ = q.ToLower();
         var results = await _context.Products
-            .AsNoTracking()
             .Where(p => p.Name.ToLower().Contains(lowerQ) ||
                         (p.Description != null && p.Description.ToLower().Contains(lowerQ)))
             .ToListAsync();
