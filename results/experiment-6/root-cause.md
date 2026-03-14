@@ -1,3 +1,14 @@
+# Root Cause Analysis — Experiment 6
+
+> Generated: 2026-03-14 14:06:12 | Classification: narrow — Optimization moves filtering and pagination to database queries instead of loading all products into memory, modifying only this file's OnGetAsync method with existing DbContext calls.
+
+| Metric | Current | Baseline |
+|--------|---------|----------|
+| p95 Latency | 482.42257ms | 2054.749925ms |
+| Requests/sec | 1321.2 | 427.3 |
+| Error Rate | 11.11% | 11.11% |
+
+---
 # Products page loads entire Products table for client-side pagination
 
 > **File:** `SampleApi/Pages/Products/Index.cshtml.cs` | **Scope:** narrow
@@ -35,3 +46,4 @@ Every VU iteration loads all 1,000 Product entities from SQL Server, materialize
 - GC pressure: ~318KB fewer allocations per request, reducing overall allocation rate by ~5-6% and proportionally reducing GC pause frequency
 - RPS: modest improvement from reduced per-request CPU time
 - The p95 has plateaued at ~480ms across experiments 3-5, suggesting GC pauses are the dominant remaining bottleneck. Reducing a major allocation source should help break through this plateau.
+

@@ -1,46 +1,36 @@
-# Cart page loads entire CartItems table and has N+1 product lookups
+# Product detail OnPost loads entire CartItems table to find one row
 
-> **File:** `SampleApi/Pages/Cart/Index.cshtml.cs` | **Scope:** narrow
+> **File:** `SampleApi/Pages/Products/Detail.cshtml.cs` | **Scope:** narrow
 
 ## Evidence
 
-The Cart page's `LoadCart` method (called by both `OnGetAsync` and all POST handlers) loads the entire CartItems table at `Index.cshtml.cs:109`:
+At `Pages/Products/Detail.cshtml.cs:63-65`, the `OnPostAsync` method (add-to-cart from product detail page) loads the **entire CartItems table** into memory to check for a duplicate:
+
 ```csharp
-var allItems = await _context.CartItems.ToListAsync();
-var sessionItems = allItems.Where(c => c.SessionId == sessionId).ToList();
-```
-Then performs N+1 product lookups at `Index.cshtml.cs:117`:
-```csharp
-foreach (var item in sessionItems)
-{
-    var product = await _context.Products.FindAsync(item.ProductId);
+var allCartItems = await _context.CartItems.ToListAsync();
+var existing = allCartItems.FirstOrDefault(c =>
+    c.SessionId == sessionId && c.ProductId == productId);
 ```
 
-Additionally, `OnPostClearAsync` at lines 91-98 has the same full-table scan plus per-item SaveChangesAsync:
-```csharp
-var allItems = await _context.CartItems.ToListAsync();
-var sessionItems = allItems.Where(c => c.SessionId == sessionId).ToList();
-foreach (var item in sessionItems)
-{
-    _context.CartItems.Remove(item);
-    await _context.SaveChangesAsync(); // per-item round-trip
-}
-```
+The k6 scenario calls this endpoint once per iteration (`POST /Products/Detail/{id}` at line `const addToCartPageRes = http.post(...)`). During the stress phase with 500 VUs, the CartItems table grows rapidly — each VU adds items via both the API (`POST /api/cart`) and this page form, while deletions (cart clear, checkout) lag behind the additions. By mid-test, the table may contain thousands of rows, all loaded into memory just to find 0 or 1 matching rows.
+
+Note: The `OnGetAsync` method in this file was already optimized in experiment 3 (Reviews/Products loading). This is a **separate issue** in `OnPostAsync` that was not addressed.
 
 ## Theory
 
-The CartItems table grows with concurrent VU sessions. Under 500 VUs, each VU adds cart items (via `POST /Products/Detail/{id}`), so the table accumulates hundreds to thousands of rows. Loading the full table for every cart view wastes memory and CPU on materializing and filtering unrelated sessions' items. The N+1 product lookups add one DB round-trip per cart item. The `OnPostClearAsync` handler compounds this with per-item deletes.
-
-The Cart page is ~5.6% of traffic (1 of 18 requests), but `LoadCart` is also called after every POST handler on this page (update quantity, remove, clear), amplifying its impact.
+Loading a growing table into memory on every POST creates two problems: (1) linear O(n) cost as n grows throughout the test — early iterations are fast, later iterations under stress are slow, which inflates the p95 tail; (2) each materialized CartItem entity generates allocations (entity object, change tracker entry, string for SessionId), contributing to the 524 MB/sec allocation rate and 32.7% GC pause ratio. The growing nature of this scan means its cost peaks exactly when the system is under maximum stress (500 VUs), amplifying its impact on p95.
 
 ## Proposed Fixes
 
-1. **Server-side filtering:** Replace `_context.CartItems.ToListAsync()` with `_context.CartItems.Where(c => c.SessionId == sessionId).ToListAsync()` at line 109 (and line 91). Replace N+1 product lookups with a single batch query using `Where(p => productIds.Contains(p.Id))`.
-
-2. **Batch cart clearing:** In `OnPostClearAsync`, use `RemoveRange` and a single `SaveChangesAsync` instead of per-item saves.
+1. **Server-side query:** Replace the full table load with a targeted server-side query:
+   ```csharp
+   var existing = await _context.CartItems.FirstOrDefaultAsync(c =>
+       c.SessionId == sessionId && c.ProductId == productId);
+   ```
+   This translates to `SELECT TOP 1 ... WHERE SessionId = @p0 AND ProductId = @p1`, returning at most one row regardless of table size.
 
 ## Expected Impact
 
-- **p95 latency:** ~3-5% overall p95 reduction (~50-80ms). Server-side filtering eliminates the growing full-table scan, and batch product lookup removes N+1 queries.
-- **Memory:** Reduced allocation per request as only the session's items are materialized instead of the full table.
-- **GC:** Marginal improvement in allocation rate, contributing to lower GC pause frequency.
+- p95 latency: ~15-30ms reduction per request (eliminates growing table scan and materialization)
+- GC pressure: eliminates thousands of unnecessary CartItem allocations per request during stress phase
+- The improvement grows as the test progresses — the fix is most impactful exactly when the system is under highest load, which is when p95 is determined

@@ -1,0 +1,6 @@
+```
+{
+  "scope": "narrow",
+  "reasoning": "Optimization moves filtering and pagination to database queries instead of loading all products into memory, modifying only this file's OnGetAsync method with existing DbContext calls."
+}
+```
