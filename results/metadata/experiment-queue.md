@@ -7,4 +7,4 @@
 
 - [x] **#1** `SampleApi/Pages/Products/Index.cshtml.cs` — Products page loads entire Products table for client-side pagination *(experiment 6 — regressed)*
 - [ ] **#2** [ARCHITECTURE] `SampleApi/Data/AppDbContext.cs` — No database indexes on frequently filtered columns
-- [ ] **#3** `SampleApi/Pages/Products/Detail.cshtml.cs` — Product detail OnPost loads entire CartItems table to find one row
+- [ ] **#3** `SampleApi/Pages/Products/Detail.cshtml.cs` — Product detail OnPost loads entire CartItems table to find one row *(in progress)*

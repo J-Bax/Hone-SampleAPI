@@ -1,0 +1,6 @@
+```json
+{
+  "scope": "narrow",
+  "reasoning": "Fixing the N+1 query on line 63 (loading all CartItems then filtering in-memory) to use a WHERE clause is a pure query optimization within a single file, requires no dependency changes, no schema changes, and no API contract changes."
+}
+```

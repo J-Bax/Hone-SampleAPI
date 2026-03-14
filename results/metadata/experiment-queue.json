@@ -31,7 +31,7 @@
       "explanation": "Product detail OnPost loads entire CartItems table to find one row",
       "scope": "narrow",
       "rootCausePath": "C:\\Projects\\Hone\\sample-api\\results\\metadata\\root-causes\\rca-3.md",
-      "status": "pending",
+      "status": "in_progress",
       "triedByExperiment": null,
       "outcome": null
     }
