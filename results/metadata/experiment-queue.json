@@ -20,9 +20,9 @@
       "explanation": "Full CartItems table scan with N+1 lookups and per-item SaveChanges",
       "scope": "narrow",
       "rootCausePath": "C:\\Projects\\Hone\\sample-api\\results\\metadata\\root-causes\\rca-2.md",
-      "status": "pending",
-      "triedByExperiment": null,
-      "outcome": null
+      "status": "done",
+      "triedByExperiment": 8,
+      "outcome": "improved"
     },
     {
       "id": 3,
