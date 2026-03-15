@@ -1,0 +1,1 @@
+{"scope":"narrow","reasoning":"The optimization involves replacing client-side filtering (full-table ToListAsync + in-memory Where) with server-side query filtering, and eliminating the N+1 product lookups via Include/join — all changes are confined to query logic within the single OnGetAsync method of this PageModel, with no contract, dependency, or schema changes."}
