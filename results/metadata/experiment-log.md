@@ -24,3 +24,4 @@
 | 14 | 2026-03-14 19:13 | `SampleApi/Controllers/ProductsController.cs` | GetProducts re-queries all 1000 products from the database on every request | improved |
 | 15 | 2026-03-14 19:54 | `SampleApi/Controllers/ProductsController.cs` | SearchProducts and GetProductsByCategory bypass existing product cache | improved |
 | 16 | 2026-03-14 20:19 | `SampleApi/Controllers/ReviewsController.cs` | GetAverageRating makes 3 separate database round-trips per request | improved |
+| 17 | 2026-03-14 20:44 | `SampleApi/Pages/Checkout/Index.cshtml.cs` | Checkout OnPostAsync uses 3 SaveChangesAsync calls where 2 suffice | improved |

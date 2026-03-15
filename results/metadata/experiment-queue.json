@@ -31,9 +31,9 @@
       "explanation": "Checkout OnPostAsync uses 3 SaveChangesAsync calls where 2 suffice",
       "scope": "narrow",
       "rootCausePath": "C:\\Projects\\Hone\\sample-api\\results\\metadata\\root-causes\\rca-3.md",
-      "status": "pending",
-      "triedByExperiment": null,
-      "outcome": null
+      "status": "done",
+      "triedByExperiment": 17,
+      "outcome": "improved"
     }
   ]
 }

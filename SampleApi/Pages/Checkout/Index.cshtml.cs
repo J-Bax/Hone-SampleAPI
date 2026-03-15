@@ -104,11 +104,8 @@ public class IndexModel : PageModel
         }
 
         order.TotalAmount = Math.Round(total, 2);
-        await _context.SaveChangesAsync(); // Batch: all order items + total update
-
-        // Clear cart in a single round-trip
-        _context.CartItems.RemoveRange(sessionItems);
-        await _context.SaveChangesAsync();
+        _context.CartItems.RemoveRange(sessionItems); // stage cart deletion
+        await _context.SaveChangesAsync(); // Batch: all order items + total update + cart clear
 
         OrderPlaced = true;
         OrderId = order.Id;
