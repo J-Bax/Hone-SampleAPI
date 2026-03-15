@@ -1,0 +1,1 @@
+{"scope":"narrow","reasoning":"The full table scans of Reviews (line 34) and Products (line 41) can be fixed by adding server-side .Where() filters directly in the LINQ queries within this single file, replacing client-side filtering with database-side filtering — no API contract, dependency, or multi-file changes needed."}
