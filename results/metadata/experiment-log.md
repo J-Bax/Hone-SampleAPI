@@ -27,3 +27,4 @@
 | 17 | 2026-03-14 20:44 | `SampleApi/Pages/Checkout/Index.cshtml.cs` | Checkout OnPostAsync uses 3 SaveChangesAsync calls where 2 suffice | improved |
 | 18 | 2026-03-14 21:03 | `SampleApi/Pages/Products/Index.cshtml.cs` | Cache product list to eliminate per-request full-table DB load | queued |
 | 19 | 2026-03-14 21:28 | `SampleApi/Pages/Index.cshtml.cs` | Cache featured products to avoid ORDER BY NEWID() on every request | improved |
+| 20 | 2026-03-14 22:12 | `SampleApi/Pages/Index.cshtml.cs` | Cache categories and eliminate redundant CountAsync on home page | improved |

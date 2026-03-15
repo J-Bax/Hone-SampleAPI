@@ -1,0 +1,6 @@
+```json
+{
+  "scope": "narrow",
+  "reasoning": "The proposed change adds static caching variables for categories and avoids redundant CountAsync on line 54 by reusing the already-loaded Categories list, all contained within a single PageModel class with no dependency additions, API changes, or migration files required."
+}
+```

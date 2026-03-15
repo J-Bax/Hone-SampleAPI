@@ -1,38 +1,37 @@
-# Cache product list to eliminate per-request full-table DB load
+# Serve single product lookups from the existing in-memory cache
 
-> **File:** `SampleApi/Pages/Products/Index.cshtml.cs` | **Scope:** narrow
+> **File:** `SampleApi/Controllers/ProductsController.cs` | **Scope:** narrow
 
 ## Evidence
 
-At `Products/Index.cshtml.cs:35`, every Products page request loads all 1000 products from the database:
+At `Controllers/ProductsController.cs:56`, the `GetProduct` endpoint always hits the database:
 
 ```csharp
-var allProducts = await _context.Products.AsNoTracking().ToListAsync();
+var product = await _context.Products.FindAsync(id);
 ```
 
-This materializes 1000 `Product` entities (each with Name, Description, Category, Price, timestamps) on every request, then filters and paginates in memory at lines 38-60. Meanwhile, `ProductsController.cs:14-17` already maintains a static product cache with a 30-second TTL:
+However, the same controller already maintains a comprehensive in-memory cache of all 1,000 products (lines 14–17):
 
 ```csharp
 private static List<Product>? _cachedProducts;
 private static DateTime _cacheExpiry = DateTime.MinValue;
 private static readonly TimeSpan _cacheTtl = TimeSpan.FromSeconds(30);
-private static readonly SemaphoreSlim _cacheLock = new SemaphoreSlim(1, 1);
 ```
 
-The Products page does not use this cache and re-queries the DB independently, generating redundant SQL traffic and allocation pressure.
-
-The memory profiler reports **402 MB/sec allocation rate** and **238ms max GC pause** — each Products page request allocates ~1000 Product objects plus backing strings, contributing to the Gen0/Gen1 collection pressure.
+This cache is populated by `GetOrPopulateCacheAsync()` (line 160) and is actively used by `GetProducts` (line 30), `SearchProducts` (line 93), and `GetProductsByCategory` (line 70) — all optimized in experiments 14 and 15. But `GetProduct` (single by ID) was never connected to the cache.
 
 ## Theory
 
-With 500 VUs and the Products page representing ~5.6% of traffic, the DB receives dozens of concurrent `SELECT * FROM Products` queries per second just from this page. Each query returns all 1000 rows, transfers them over TDS, and materializes 1000 entity objects (even with AsNoTracking, the objects and their string properties are allocated). This drives both SQL Server CPU (confirmed by the 12.1% `sqlmin` hotspot) and managed heap allocation pressure (contributing to the 47GB total allocation volume). Since product data is static during the test, every query after the first is pure waste.
+`FindAsync(id)` performs two operations: (1) checks the EF change tracker for a tracked entity with that key, (2) if not found, issues a `SELECT TOP 1 ... WHERE Id = @p0` database query. Since the change tracker is empty for most requests (read-only endpoints), it always hits the database. The returned entity is then change-tracked, adding allocation overhead for an entity that is immediately serialized to JSON and discarded.
+
+With the products cache warm (refreshed every 30s by the heavily-called list/search/category endpoints), the single-product lookup can be served from the in-memory list in microseconds instead of milliseconds. The cache is proven reliable — experiments 14 and 15 used the same cache for list, search, and category endpoints and both improved.
 
 ## Proposed Fixes
 
-1. **Add a static product cache** to `Products/Index.cshtml.cs` using the same double-check-lock pattern as `ProductsController.GetOrPopulateCacheAsync()`: a `static List<Product>?` with a `SemaphoreSlim` gate and 30-second TTL. Replace the `ToListAsync()` call at line 35 with a cache lookup.
+1. **Check the existing cache before `FindAsync`:** Before the database call, check if `_cachedProducts` is non-null and `DateTime.UtcNow < _cacheExpiry`. If so, search the cached list for the product by ID using `FirstOrDefault(p => p.Id == id)`. Only fall back to `FindAsync` if the cache is cold or the product isn't in the cache (handles newly-created products not yet cached).
 
 ## Expected Impact
 
-- p95 latency: ~35ms reduction for Products page requests (eliminating DB round trip and 1000-entity materialization)
-- Allocation reduction: ~1000 fewer Product allocations per cached request, reducing GC pressure
-- Overall p95 improvement: ~0.5%
+- p95 latency: ~6ms reduction per request from eliminating 1 DB round trip and change tracking overhead
+- Connection pool: 1 fewer connection checkout per GetProduct request
+- High confidence: identical pattern already proven in experiments 14 (cache for GetProducts) and 15 (cache for Search/Category)

@@ -1,39 +1,39 @@
 {
-  "generatedByExperiment": 18,
-  "generatedAt": "2026-03-14T21:03:32.9204912-07:00",
+  "generatedByExperiment": 20,
+  "generatedAt": "2026-03-14T21:47:52.8841987-07:00",
   "items": [
     {
       "id": 1,
-      "filePath": "SampleApi/Data/AppDbContext.cs",
-      "title": "Add database indexes on frequently filtered foreign-key columns",
-      "explanation": "Add database indexes on frequently filtered foreign-key columns",
-      "scope": "architecture",
+      "filePath": "SampleApi/Pages/Index.cshtml.cs",
+      "title": "Cache categories and eliminate redundant CountAsync on home page",
+      "explanation": "Cache categories and eliminate redundant CountAsync on home page",
+      "scope": "narrow",
       "rootCausePath": "C:\\Projects\\Hone\\sample-api\\results\\metadata\\root-causes\\rca-1.md",
+      "status": "done",
+      "triedByExperiment": 20,
+      "outcome": "improved"
+    },
+    {
+      "id": 2,
+      "filePath": "SampleApi/Controllers/ProductsController.cs",
+      "title": "Serve single product lookups from the existing in-memory cache",
+      "explanation": "Serve single product lookups from the existing in-memory cache",
+      "scope": "narrow",
+      "rootCausePath": "C:\\Projects\\Hone\\sample-api\\results\\metadata\\root-causes\\rca-2.md",
       "status": "pending",
       "triedByExperiment": null,
       "outcome": null
     },
     {
-      "id": 2,
-      "filePath": "SampleApi/Pages/Products/Index.cshtml.cs",
-      "title": "Cache product list to eliminate per-request full-table DB load",
-      "explanation": "Cache product list to eliminate per-request full-table DB load",
-      "scope": "narrow",
-      "rootCausePath": "C:\\Projects\\Hone\\sample-api\\results\\metadata\\root-causes\\rca-2.md",
-      "status": "done",
-      "triedByExperiment": 18,
-      "outcome": "skipped"
-    },
-    {
       "id": 3,
-      "filePath": "SampleApi/Pages/Index.cshtml.cs",
-      "title": "Cache featured products to avoid ORDER BY NEWID() on every request",
-      "explanation": "Cache featured products to avoid ORDER BY NEWID() on every request",
+      "filePath": "SampleApi/Controllers/ReviewsController.cs",
+      "title": "Skip redundant product existence check when reviews are found",
+      "explanation": "Skip redundant product existence check when reviews are found",
       "scope": "narrow",
       "rootCausePath": "C:\\Projects\\Hone\\sample-api\\results\\metadata\\root-causes\\rca-3.md",
-      "status": "done",
-      "triedByExperiment": 19,
-      "outcome": "improved"
+      "status": "pending",
+      "triedByExperiment": null,
+      "outcome": null
     }
   ]
 }

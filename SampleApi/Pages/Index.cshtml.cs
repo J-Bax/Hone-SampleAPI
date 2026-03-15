@@ -15,6 +15,11 @@ public class IndexModel : PageModel
     private static List<Product> _cachedFeaturedProducts = new();
     private static DateTime _featuredProductsCacheExpiry = DateTime.MinValue;
     private static readonly object _featuredProductsLock = new();
+    private static int _cachedProductCount;
+
+    private static List<Category> _cachedCategories = new();
+    private static DateTime _categoriesCacheExpiry = DateTime.MinValue;
+    private static readonly object _categoriesLock = new();
 
     public IndexModel(AppDbContext context)
     {
@@ -32,25 +37,42 @@ public class IndexModel : PageModel
         if (DateTime.UtcNow < _featuredProductsCacheExpiry)
         {
             FeaturedProducts = _cachedFeaturedProducts;
+            TotalProducts = _cachedProductCount;
         }
         else
         {
             var fresh = await _context.Products.AsNoTracking().OrderBy(p => EF.Functions.Random()).Take(12).ToListAsync();
+            var count = await _context.Products.CountAsync();
             lock (_featuredProductsLock)
             {
                 if (DateTime.UtcNow >= _featuredProductsCacheExpiry)
                 {
                     _cachedFeaturedProducts = fresh;
+                    _cachedProductCount = count;
                     _featuredProductsCacheExpiry = DateTime.UtcNow.AddSeconds(30);
                 }
             }
             FeaturedProducts = fresh;
+            TotalProducts = count;
         }
 
-        TotalProducts = await _context.Products.CountAsync();
-
-        // Separate query for categories
-        Categories = await _context.Categories.ToListAsync();
+        if (DateTime.UtcNow < _categoriesCacheExpiry)
+        {
+            Categories = _cachedCategories;
+        }
+        else
+        {
+            var freshCategories = await _context.Categories.AsNoTracking().ToListAsync();
+            lock (_categoriesLock)
+            {
+                if (DateTime.UtcNow >= _categoriesCacheExpiry)
+                {
+                    _cachedCategories = freshCategories;
+                    _categoriesCacheExpiry = DateTime.UtcNow.AddSeconds(60);
+                }
+            }
+            Categories = freshCategories;
+        }
         TotalCategories = Categories.Count;
 
         RecentReviews = await _context.Reviews.AsNoTracking().OrderByDescending(r => r.CreatedAt).Take(5).ToListAsync();

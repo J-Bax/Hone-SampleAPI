@@ -1,3 +1,14 @@
+# Root Cause Analysis — Experiment 20
+
+> Generated: 2026-03-14 21:48:05 | Classification: narrow — The proposed change adds static caching variables for categories and avoids redundant CountAsync on line 54 by reusing the already-loaded Categories list, all contained within a single PageModel class with no dependency additions, API changes, or migration files required.
+
+| Metric | Current | Baseline |
+|--------|---------|----------|
+| p95 Latency | 390.930625ms | 2054.749925ms |
+| Requests/sec | 1759.2 | 427.3 |
+| Error Rate | 11.11% | 11.11% |
+
+---
 # Cache categories and eliminate redundant CountAsync on home page
 
 > **File:** `SampleApi/Pages/Index.cshtml.cs` | **Scope:** narrow
@@ -39,3 +50,4 @@ Additionally, `Categories.ToListAsync()` without `AsNoTracking()` engages EF Cor
 - p95 latency: ~10ms reduction per home page request from eliminating 2 DB round trips
 - Systemic benefit: reduced connection pool contention improves tail latency across all concurrent requests
 - GC: fewer tracked entities reduces allocation rate slightly
+

@@ -1,36 +1,34 @@
-# Cache featured products to avoid ORDER BY NEWID() on every request
+# Skip redundant product existence check when reviews are found
 
-> **File:** `SampleApi/Pages/Index.cshtml.cs` | **Scope:** narrow
+> **File:** `SampleApi/Controllers/ReviewsController.cs` | **Scope:** narrow
 
 ## Evidence
 
-At `Pages/Index.cshtml.cs:28`, the home page selects 12 random featured products on every request:
+At `Controllers/ReviewsController.cs:50–54`, the `GetReviewsByProduct` endpoint always executes two sequential database queries:
 
 ```csharp
-FeaturedProducts = await _context.Products.OrderBy(p => EF.Functions.Random()).Take(12).ToListAsync();
+var productExists = await _context.Products.AnyAsync(p => p.Id == productId);
+if (!productExists)
+    return NotFound(new { message = $"Product with ID {productId} not found" });
+
+var filtered = await _context.Reviews.AsNoTracking()
+    .Where(r => r.ProductId == productId).ToListAsync();
 ```
 
-`EF.Functions.Random()` translates to `ORDER BY NEWID()` in SQL Server, which generates a random GUID for each of the 1000 product rows and sorts them before returning the top 12. This is followed by three additional tracked queries at lines 29-35:
-
-```csharp
-TotalProducts = await _context.Products.CountAsync();          // round trip 2
-Categories = await _context.Categories.ToListAsync();           // round trip 3 (tracked)
-RecentReviews = await _context.Reviews.OrderByDescending(r => r.CreatedAt).Take(5).ToListAsync(); // round trip 4 (tracked)
-```
-
-That is 4 sequential DB round trips per home page request, with the first being the most expensive due to the full-table random sort. The Categories and Reviews queries also use change tracking unnecessarily for read-only rendering.
+The `AnyAsync` product existence check runs unconditionally on every request, even though finding reviews for a product ID implicitly proves the product exists.
 
 ## Theory
 
-`ORDER BY NEWID()` forces SQL Server to: (1) scan all 1000 product rows, (2) compute a GUID per row, (3) sort all 1000 by GUID, (4) return the top 12. Under 500 VUs, hundreds of these expensive sorts compete for SQL Server CPU and buffer pool resources per second. Categories (10 rows, never changes) and the "top 5 recent reviews" also re-query the DB on every request. The tracked entities from Categories and Reviews queries add change-tracker overhead and allocation pressure for data that is only rendered, never modified.
+The k6 scenario calls this endpoint with `seededId(500, 2)`, generating product IDs in the range [1, 500]. Per `SeedData.cs:86–88`, all products 1–500 have 1–7 reviews each. So for ~100% of k6 traffic to this endpoint, the reviews query returns a non-empty list, making the prior existence check a wasted DB round trip.
+
+The existence check is only meaningful when the reviews list is empty — to distinguish "product exists but has no reviews" (return empty 200) from "product doesn't exist" (return 404). By reversing the query order, we eliminate the extra round trip in the overwhelmingly common case while preserving correct 404 behavior.
 
 ## Proposed Fixes
 
-1. **Cache featured products** with a static `List<Product>` and a short TTL (e.g., 15-30 seconds), using the same double-check-lock pattern as `ProductsController`. This eliminates the `ORDER BY NEWID()` sort from the hot path while still rotating featured products periodically.
-2. **Cache categories** separately (they never change during the test). Add `AsNoTracking()` to the Reviews query at line 35 to eliminate tracking overhead.
+1. **Fetch reviews first, check existence only when empty:** Execute the reviews query first. If the result list is non-empty, return it immediately (the product clearly exists). If the list is empty, then run `AnyAsync` to determine whether to return an empty 200 or a 404. This preserves the exact same API behavior while saving one DB round trip for the common case.
 
 ## Expected Impact
 
-- p95 latency: ~40ms reduction for home page requests (eliminating NEWID() sort + reducing round trips)
-- SQL Server CPU: reduced contention from eliminating the per-request full-table random sort
-- Overall p95 improvement: ~0.55%
+- p95 latency: ~5ms reduction per request for the common case (1 fewer DB round trip)
+- The existence check still runs for the rare empty-reviews case, preserving 404 correctness
+- Clean, low-risk change with no behavioral difference
