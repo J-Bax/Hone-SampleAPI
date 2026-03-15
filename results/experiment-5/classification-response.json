@@ -1,0 +1,1 @@
+{"scope":"narrow","reasoning":"All issues (per-item SaveChangesAsync in loops, full-table CartItems scans, N+1 product lookups) can be fixed within this single PageModel file by batching saves, adding .Where() server-side filters, and using .Include() or batch-fetching products — no new dependencies, schema changes, or API contract modifications required."}

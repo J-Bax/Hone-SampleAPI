@@ -6,5 +6,5 @@
 **Generated:** experiment 4 at 03/15/2026 10:21:19
 
 - [x] **#1** `SampleApi/Pages/Orders/Index.cshtml.cs` — Orders page loads entire database into memory *(experiment 4 — improved)*
-- [ ] **#2** `SampleApi/Pages/Checkout/Index.cshtml.cs` — Checkout page per-item SaveChanges and full table scans
+- [ ] **#2** `SampleApi/Pages/Checkout/Index.cshtml.cs` — Checkout page per-item SaveChanges and full table scans *(in progress)*
 - [ ] **#3** `SampleApi/Controllers/ReviewsController.cs` — Reviews endpoints load all reviews then filter in memory
