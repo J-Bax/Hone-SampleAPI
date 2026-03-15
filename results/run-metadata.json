@@ -1,4 +1,58 @@
 {
+  "BaselineRun": {
+    "StartedAt": "2026-03-15T16:25:05.1511798Z",
+    "CompletedAt": "2026-03-15T09:37:45.2912097-07:00"
+  },
+  "Experiments": [
+    {
+      "Experiment": 1,
+      "StartedAt": "2026-03-15T09:57:05.4844799-07:00",
+      "CompletedAt": "2026-03-15T10:09:31.7957328-07:00",
+      "Improved": false,
+      "Regression": false,
+      "P95": null,
+      "RPS": null,
+      "Outcome": "invalid_target",
+      "BranchName": "hone/experiment-1",
+      "BaseBranch": "master",
+      "PrNumber": null,
+      "PrUrl": null,
+      "StaleCount": 1,
+      "ConsecutiveFailures": 1
+    },
+    {
+      "Experiment": 2,
+      "StartedAt": "2026-03-15T10:09:31.7986408-07:00",
+      "CompletedAt": "2026-03-15T10:10:07.8569624-07:00",
+      "Improved": false,
+      "Regression": false,
+      "P95": null,
+      "RPS": null,
+      "Outcome": "invalid_target",
+      "BranchName": "hone/experiment-2",
+      "BaseBranch": "master",
+      "PrNumber": null,
+      "PrUrl": null,
+      "StaleCount": 2,
+      "ConsecutiveFailures": 2
+    },
+    {
+      "Experiment": 3,
+      "StartedAt": "2026-03-15T10:10:07.8576055-07:00",
+      "CompletedAt": "2026-03-15T10:10:37.7010181-07:00",
+      "Improved": false,
+      "Regression": false,
+      "P95": null,
+      "RPS": null,
+      "Outcome": "invalid_target",
+      "BranchName": "hone/experiment-3",
+      "BaseBranch": "master",
+      "PrNumber": null,
+      "PrUrl": null,
+      "StaleCount": 3,
+      "ConsecutiveFailures": 3
+    }
+  ],
   "Machine": {
     "Cpu": {
       "Name": "AMD Ryzen 7 3700X 8-Core Processor",
@@ -9,7 +63,7 @@
     },
     "Memory": {
       "TotalGB": 63.9,
-      "AvailableGB": 35.7
+      "AvailableGB": 38.8
     },
     "OS": {
       "Description": "Windows 10",
@@ -20,11 +74,7 @@
       "DotnetSdkVersion": "8.0.100-preview.4.23260.5",
       "ClrVersion": ".NET 8.0.21"
     },
-    "CollectedAt": "2026-03-15T16:25:05.1511798Z"
+    "CollectedAt": "2026-03-15T16:57:05.4088270Z"
   },
-  "BaselineRun": {
-    "StartedAt": "2026-03-15T16:25:05.1511798Z",
-    "CompletedAt": "2026-03-15T09:37:45.2912097-07:00"
-  },
-  "Experiments": []
+  "LoopStartedAt": "2026-03-15T09:57:05.4277341-07:00"
 }

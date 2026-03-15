@@ -11,6 +11,7 @@ namespace SampleApi.Pages.Orders;
 public class IndexModel : PageModel
 {
     private readonly AppDbContext _context;
+    private const int PageSize = 20;
 
     public IndexModel(AppDbContext context)
     {
@@ -37,33 +38,48 @@ public class IndexModel : PageModel
         if (string.IsNullOrWhiteSpace(customer))
             return;
 
-        var allOrders = await _context.Orders.ToListAsync();
-        Orders = allOrders
-            .Where(o => o.CustomerName.Equals(customer, StringComparison.OrdinalIgnoreCase))
+        Orders = await _context.Orders
+            .AsNoTracking()
+            .Where(o => o.CustomerName == customer)
             .OrderByDescending(o => o.OrderDate)
-            .ToList();
+            .Take(PageSize)
+            .ToListAsync();
 
-        var allItems = await _context.OrderItems.ToListAsync();
+        if (Orders.Count == 0)
+            return;
+
+        var orderIds = Orders.Select(o => o.Id).ToList();
+
+        var items = await _context.OrderItems
+            .AsNoTracking()
+            .Where(i => orderIds.Contains(i.OrderId))
+            .Join(
+                _context.Products.AsNoTracking(),
+                item => item.ProductId,
+                product => product.Id,
+                (item, product) => new
+                {
+                    item.OrderId,
+                    item.ProductId,
+                    ProductName = product.Name,
+                    item.Quantity,
+                    item.UnitPrice
+                })
+            .ToListAsync();
 
         foreach (var order in Orders)
         {
-            var items = allItems.Where(i => i.OrderId == order.Id).ToList();
-            var itemViews = new List<OrderItemView>();
-
-            foreach (var item in items)
-            {
-                var product = await _context.Products.FindAsync(item.ProductId);
-                itemViews.Add(new OrderItemView
+            OrderItemsMap[order.Id] = items
+                .Where(i => i.OrderId == order.Id)
+                .Select(i => new OrderItemView
                 {
-                    ProductId = item.ProductId,
-                    ProductName = product?.Name ?? "Unknown",
-                    Quantity = item.Quantity,
-                    UnitPrice = item.UnitPrice,
-                    Subtotal = item.UnitPrice * item.Quantity
-                });
-            }
-
-            OrderItemsMap[order.Id] = itemViews;
+                    ProductId = i.ProductId,
+                    ProductName = i.ProductName,
+                    Quantity = i.Quantity,
+                    UnitPrice = i.UnitPrice,
+                    Subtotal = i.UnitPrice * i.Quantity
+                })
+                .ToList();
         }
     }
 }

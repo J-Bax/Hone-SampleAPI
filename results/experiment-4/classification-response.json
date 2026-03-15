@@ -1,0 +1,1 @@
+{"scope":"narrow","reasoning":"The fix involves replacing client-side filtering (ToListAsync + in-memory Where) with server-side queries (Where before ToListAsync, Include/Join for related data) entirely within this single PageModel file, with no dependency, schema, or API contract changes."}
