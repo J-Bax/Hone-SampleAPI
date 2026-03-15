@@ -22,3 +22,4 @@
 | 12 | 2026-03-14 17:35 | `SampleApi/Controllers/OrdersController.cs` | OrdersController has N+1 queries and full table scans across multiple endpoints | improved |
 | 13 | 2026-03-14 18:00 | `SampleApi/Pages/Products/Detail.cshtml.cs` | Product detail page uses tracked queries for read-only rendering | improved |
 | 14 | 2026-03-14 19:13 | `SampleApi/Controllers/ProductsController.cs` | GetProducts re-queries all 1000 products from the database on every request | improved |
+| 15 | 2026-03-14 19:54 | `SampleApi/Controllers/ProductsController.cs` | SearchProducts and GetProductsByCategory bypass existing product cache | improved |

@@ -1,3 +1,14 @@
+# Root Cause Analysis — Experiment 15
+
+> Generated: 2026-03-14 19:30:03 | Classification: narrow — The optimization modifies only GetProductsByCategory and SearchProducts method bodies to use the existing _cachedProducts cache, requiring no changes to dependencies, database schema, API contracts, or other files.
+
+| Metric | Current | Baseline |
+|--------|---------|----------|
+| p95 Latency | 453.409225ms | 2054.749925ms |
+| Requests/sec | 1420.3 | 427.3 |
+| Error Rate | 11.11% | 11.11% |
+
+---
 # SearchProducts and GetProductsByCategory bypass existing product cache
 
 > **File:** `SampleApi/Controllers/ProductsController.cs` | **Scope:** narrow
@@ -55,3 +66,4 @@ The category filter adds another ~100 tracked entity materializations per reques
 - p95 latency: ~35ms reduction per affected request by eliminating DB round-trips, entity materialization, and change-tracking overhead for ~1000 products
 - Allocation reduction: ~30 MB/s less allocation volume, reducing Gen0/Gen1 collection frequency and 40.5ms max GC pause spikes
 - Overall p95 improvement: estimated 3-5% from combined per-request latency savings and reduced GC tail-latency interference
+
