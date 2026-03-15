@@ -7,4 +7,4 @@
 
 - [x] **#1** `SampleApi/Pages/Cart/Index.cshtml.cs` — Eliminate full CartItems table scan and N+1 product lookups in Cart page LoadCart *(experiment 7 — improved)*
 - [x] **#2** `SampleApi/Pages/Index.cshtml.cs` — Replace dual full-table scans with targeted queries on Home page *(experiment 8 — improved)*
-- [ ] **#3** `SampleApi/Pages/Products/Index.cshtml.cs` — Replace full product table scan with server-side filtering and pagination
+- [x] **#3** `SampleApi/Pages/Products/Index.cshtml.cs` — Replace full product table scan with server-side filtering and pagination *(experiment 9 — improved)*
