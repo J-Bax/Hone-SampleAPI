@@ -6,5 +6,5 @@
 **Generated:** experiment 4 at 03/15/2026 13:05:10
 
 - [x] **#1** `SampleApi/Pages/Orders/Index.cshtml.cs` — Eliminate full-table scans and N+1 queries in Orders page *(experiment 4 — improved)*
-- [ ] **#2** `SampleApi/Controllers/CartController.cs` — Replace full CartItems table scans with server-side filtering
+- [x] **#2** `SampleApi/Controllers/CartController.cs` — Replace full CartItems table scans with server-side filtering *(experiment 5 — improved)*
 - [ ] **#3** `SampleApi/Pages/Products/Detail.cshtml.cs` — Eliminate full Reviews and Products table scans in product detail page
