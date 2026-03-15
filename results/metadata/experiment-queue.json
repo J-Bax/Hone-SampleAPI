@@ -20,9 +20,9 @@
       "explanation": "Replace full CartItems table scans with server-side filtering",
       "scope": "narrow",
       "rootCausePath": "C:\\Projects\\Hone\\sample-api\\results\\metadata\\root-causes\\rca-2.md",
-      "status": "pending",
-      "triedByExperiment": null,
-      "outcome": null
+      "status": "done",
+      "triedByExperiment": 5,
+      "outcome": "improved"
     },
     {
       "id": 3,

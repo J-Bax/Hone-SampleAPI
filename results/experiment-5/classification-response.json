@@ -1,0 +1,1 @@
+{"scope":"narrow","reasoning":"The optimization replaces client-side `.ToListAsync()` + LINQ `.Where()` with server-side `.Where()` before materialization, which is a single-file query logic change inside method bodies with no dependency, schema, or API contract modifications."}
