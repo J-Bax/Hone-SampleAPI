@@ -25,3 +25,5 @@
 | 15 | 2026-03-14 19:54 | `SampleApi/Controllers/ProductsController.cs` | SearchProducts and GetProductsByCategory bypass existing product cache | improved |
 | 16 | 2026-03-14 20:19 | `SampleApi/Controllers/ReviewsController.cs` | GetAverageRating makes 3 separate database round-trips per request | improved |
 | 17 | 2026-03-14 20:44 | `SampleApi/Pages/Checkout/Index.cshtml.cs` | Checkout OnPostAsync uses 3 SaveChangesAsync calls where 2 suffice | improved |
+| 18 | 2026-03-14 21:03 | `SampleApi/Pages/Products/Index.cshtml.cs` | Cache product list to eliminate per-request full-table DB load | queued |
+| 19 | 2026-03-14 21:28 | `SampleApi/Pages/Index.cshtml.cs` | Cache featured products to avoid ORDER BY NEWID() on every request | improved |

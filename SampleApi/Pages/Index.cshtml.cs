@@ -12,6 +12,10 @@ public class IndexModel : PageModel
 {
     private readonly AppDbContext _context;
 
+    private static List<Product> _cachedFeaturedProducts = new();
+    private static DateTime _featuredProductsCacheExpiry = DateTime.MinValue;
+    private static readonly object _featuredProductsLock = new();
+
     public IndexModel(AppDbContext context)
     {
         _context = context;
@@ -25,13 +29,30 @@ public class IndexModel : PageModel
 
     public async Task OnGetAsync()
     {
-        FeaturedProducts = await _context.Products.OrderBy(p => EF.Functions.Random()).Take(12).ToListAsync();
+        if (DateTime.UtcNow < _featuredProductsCacheExpiry)
+        {
+            FeaturedProducts = _cachedFeaturedProducts;
+        }
+        else
+        {
+            var fresh = await _context.Products.AsNoTracking().OrderBy(p => EF.Functions.Random()).Take(12).ToListAsync();
+            lock (_featuredProductsLock)
+            {
+                if (DateTime.UtcNow >= _featuredProductsCacheExpiry)
+                {
+                    _cachedFeaturedProducts = fresh;
+                    _featuredProductsCacheExpiry = DateTime.UtcNow.AddSeconds(30);
+                }
+            }
+            FeaturedProducts = fresh;
+        }
+
         TotalProducts = await _context.Products.CountAsync();
 
         // Separate query for categories
         Categories = await _context.Categories.ToListAsync();
         TotalCategories = Categories.Count;
 
-        RecentReviews = await _context.Reviews.OrderByDescending(r => r.CreatedAt).Take(5).ToListAsync();
+        RecentReviews = await _context.Reviews.AsNoTracking().OrderByDescending(r => r.CreatedAt).Take(5).ToListAsync();
     }
 }

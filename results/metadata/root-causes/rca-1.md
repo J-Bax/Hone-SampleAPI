@@ -1,57 +1,43 @@
-# SearchProducts and GetProductsByCategory bypass existing product cache
+# Add database indexes on frequently filtered foreign-key columns
 
-> **File:** `SampleApi/Controllers/ProductsController.cs` | **Scope:** narrow
+> **File:** `SampleApi/Data/AppDbContext.cs` | **Scope:** architecture
 
 ## Evidence
 
-At `ProductsController.cs:14-17`, `GetProducts()` maintains a 30-second in-memory cache:
+At `AppDbContext.cs:19-63`, `OnModelCreating` defines entity configuration but **no indexes** beyond the auto-generated primary keys:
 
 ```csharp
-private static List<Product>? _cachedProducts;
-private static DateTime _cacheExpiry = DateTime.MinValue;
-private static readonly TimeSpan _cacheTtl = TimeSpan.FromSeconds(30);
+modelBuilder.Entity<CartItem>(entity =>
+{
+    entity.HasKey(e => e.Id);
+    entity.Property(e => e.SessionId).HasMaxLength(100).IsRequired();
+    // No index on SessionId
+});
 ```
 
-However, `SearchProducts` and `GetProductsByCategory` bypass this cache entirely.
+Every filtered query on these columns performs a full table scan:
 
-At `ProductsController.cs:91`, the empty-query path loads all products with change tracking:
+- `CartItems.SessionId` — used by 6 requests/iteration: `CartController.cs:72` (`FirstOrDefaultAsync` by SessionId+ProductId), `CartController.cs:27` (join filtered by SessionId), `CartController.cs:142` (delete by SessionId), `Cart/Index.cshtml.cs:108`, `Checkout/Index.cshtml.cs:61,122`
+- `Reviews.ProductId` — used by 3 requests/iteration: `ReviewsController.cs:54`, `ReviewsController.cs:66`, `Products/Detail.cshtml.cs:34`
+- `OrderItems.OrderId` — used by `Orders/Index.cshtml.cs:52` (join on OrderId)
+- `Orders.CustomerName` — used by `Orders/Index.cshtml.cs:41` (filter by customer)
 
-```csharp
-var all = await _context.Products.ToListAsync();
-```
-
-At `ProductsController.cs:96-99`, the k6 scenario sends `q=Product` which matches all ~1000 products, materializing them with full change tracking:
-
-```csharp
-var results = await _context.Products
-    .Where(p => p.Name.ToLower().Contains(lowerQ) || ...)
-    .ToListAsync();
-```
-
-At `ProductsController.cs:76-78`, the category filter also queries the DB independently:
-
-```csharp
-var filtered = await _context.Products
-    .Where(p => p.Category.ToLower() == categoryName.ToLower())
-    .ToListAsync();
-```
-
-The CPU profile confirms EF Core materialization (12.8% inclusive) and SQL string reading (`TryReadChar` 2.3%) dominate CPU. The memory profile shows 580 MB/sec allocation rate and a 92% Gen0→Gen1 promotion mid-life crisis. `StringConverter.Write` at 2.4% indicates large response payloads from serializing ~1000 Product entities including their Description fields.
+The CPU profiler confirms SQL Server internals (`sqlmin`) dominate at **12.1% inclusive / 8.2% exclusive CPU** (~60,577 samples), with combined SQL engine components totaling ~90K samples — consistent with repeated full table scans on unindexed columns.
 
 ## Theory
 
-Under the k6 scenario, `GetProducts` keeps `_cachedProducts` warm (1420 RPS, 30s TTL). But `SearchProducts` and `GetProductsByCategory` — also called once each per VU iteration — ignore this cached data. Each independently queries SQL Server, materializes entities with change tracking (creating snapshot copies of every property, roughly doubling per-entity memory), decodes NVARCHAR columns character-by-character (`TryReadChar`), and serializes large response payloads.
+Without indexes, every `WHERE SessionId = @p`, `WHERE ProductId = @p`, `WHERE OrderId = @p`, and `WHERE CustomerName = @p` clause forces SQL Server to scan the entire table row-by-row. Under 500 VUs with 10 indexed-column-dependent queries per iteration, this produces thousands of full table scans per second. Each scan holds page latches longer than an index seek would, creating contention that cascades into higher latency for all queries — including those on other tables competing for the same buffer pool and CPU.
 
-For `q=Product`, all ~1000 products match. SearchProducts materializes the entire Product table with EF tracking snapshots — the same data already sitting in `_cachedProducts` without tracking overhead. This generates ~15 MB/s of unnecessary allocations just from this endpoint, contributing to the mid-life crisis where objects survive Gen0 collection but die in Gen1.
-
-The category filter adds another ~100 tracked entity materializations per request (1000 products / 10 categories), plus a redundant `AnyAsync` round-trip to verify the category exists.
+The CartItems table grows dynamically during the test (each VU adds/removes items), so scans on CartItems.SessionId become progressively more expensive as the test continues. The Reviews table has ~2000 rows and the Orders/OrderItems tables grow with each `CreateOrder` call.
 
 ## Proposed Fixes
 
-1. **Reuse product cache for search and category filter:** When `_cachedProducts` is warm (`_cachedProducts != null && DateTime.UtcNow < _cacheExpiry`), filter it in-memory using case-insensitive `string.Contains` / `string.Equals` instead of querying the database. For `SearchProducts`: filter the cached list by Name/Description. For `GetProductsByCategory`: filter cached list by Category. The category existence check can also be performed against the cached data. Fall back to the current DB path when the cache is cold. If the cache is cold, populate it (using the same locking pattern from `GetProducts`) before filtering.
+1. **Add HasIndex declarations in OnModelCreating** for all frequently filtered columns: `CartItem.SessionId`, a composite `(CartItem.SessionId, CartItem.ProductId)` for the AddToCart duplicate check, `Review.ProductId`, `OrderItem.OrderId`, and `Order.CustomerName`.
+2. **Add raw SQL index creation in Program.cs** after `EnsureCreated()` using `IF NOT EXISTS` guards, so indexes are created even if the database already exists from a prior run.
 
 ## Expected Impact
 
-- p95 latency: ~35ms reduction per affected request by eliminating DB round-trips, entity materialization, and change-tracking overhead for ~1000 products
-- Allocation reduction: ~30 MB/s less allocation volume, reducing Gen0/Gen1 collection frequency and 40.5ms max GC pause spikes
-- Overall p95 improvement: estimated 3-5% from combined per-request latency savings and reduced GC tail-latency interference
+- p95 latency: ~25ms reduction per affected request (scan → index seek), with compound benefit from reduced SQL Server contention
+- RPS: moderate increase from reduced per-query cost
+- Error rate: may improve if connection hold times decrease, reducing pool contention
+- Overall p95 improvement: ~3.4% (55.6% of traffic × 25ms / 407ms)

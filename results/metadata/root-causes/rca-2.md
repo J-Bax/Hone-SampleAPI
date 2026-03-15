@@ -1,48 +1,38 @@
-# GetAverageRating makes 3 separate database round-trips per request
+# Cache product list to eliminate per-request full-table DB load
 
-> **File:** `SampleApi/Controllers/ReviewsController.cs` | **Scope:** narrow
+> **File:** `SampleApi/Pages/Products/Index.cshtml.cs` | **Scope:** narrow
 
 ## Evidence
 
-At `ReviewsController.cs:65-73`, `GetAverageRating` executes 3 sequential database queries:
+At `Products/Index.cshtml.cs:35`, every Products page request loads all 1000 products from the database:
 
 ```csharp
-// Query 1 (line 65): Check product exists
-var productExists = await _context.Products.AnyAsync(p => p.Id == productId);
-
-// Query 2 (line 70): Count reviews
-var reviewCount = await productReviewsQuery.CountAsync();
-
-// Query 3 (line 72): Average rating  
-var average = reviewCount > 0
-    ? Math.Round(await productReviewsQuery.AverageAsync(r => r.Rating), 2)
-    : 0.0;
+var allProducts = await _context.Products.AsNoTracking().ToListAsync();
 ```
 
-The k6 scenario calls this endpoint once per VU iteration (`/api/reviews/average/{reviewProductId}`), representing 5.6% of total traffic. Under 500 VUs at ~79 requests/second, this generates ~237 SQL query executions/second just for this endpoint.
+This materializes 1000 `Product` entities (each with Name, Description, Category, Price, timestamps) on every request, then filters and paginates in memory at lines 38-60. Meanwhile, `ProductsController.cs:14-17` already maintains a static product cache with a 30-second TTL:
 
-The CPU profile shows `StateSnapshot.Snap` (0.8%) and `PrepareAsyncInvocation` (0.6%) — async infrastructure overhead that scales linearly with the number of awaited DB calls.
+```csharp
+private static List<Product>? _cachedProducts;
+private static DateTime _cacheExpiry = DateTime.MinValue;
+private static readonly TimeSpan _cacheTtl = TimeSpan.FromSeconds(30);
+private static readonly SemaphoreSlim _cacheLock = new SemaphoreSlim(1, 1);
+```
+
+The Products page does not use this cache and re-queries the DB independently, generating redundant SQL traffic and allocation pressure.
+
+The memory profiler reports **402 MB/sec allocation rate** and **238ms max GC pause** — each Products page request allocates ~1000 Product objects plus backing strings, contributing to the Gen0/Gen1 collection pressure.
 
 ## Theory
 
-Each database round-trip incurs connection acquisition from the pool, SQL compilation/execution, result deserialization, and async state machine overhead (snapshot, prepare, clear). At 500 concurrent VUs, the 3 sequential queries hold a DB connection approximately 3× longer than necessary per request, reducing effective connection pool throughput and increasing queuing latency for other requests.
-
-The existence check (`AnyAsync` on Products by primary key) and the two aggregate queries (`CountAsync` + `AverageAsync` on Reviews by ProductId) can all be answered in a single SQL round-trip using a grouped projection. This reduces per-request connection hold time by ~66% and eliminates 2 async state machine cycles.
+With 500 VUs and the Products page representing ~5.6% of traffic, the DB receives dozens of concurrent `SELECT * FROM Products` queries per second just from this page. Each query returns all 1000 rows, transfers them over TDS, and materializes 1000 entity objects (even with AsNoTracking, the objects and their string properties are allocated). This drives both SQL Server CPU (confirmed by the 12.1% `sqlmin` hotspot) and managed heap allocation pressure (contributing to the 47GB total allocation volume). Since product data is static during the test, every query after the first is pure waste.
 
 ## Proposed Fixes
 
-1. **Single aggregate query:** Replace the 3 queries with one grouped projection that returns count and average in a single round-trip:
-   ```csharp
-   var stats = await _context.Reviews
-       .Where(r => r.ProductId == productId)
-       .GroupBy(r => r.ProductId)
-       .Select(g => new { Count = g.Count(), Average = g.Average(r => r.Rating) })
-       .FirstOrDefaultAsync();
-   ```
-   When `stats` is null (no reviews), check product existence with a single `AnyAsync` to preserve the 404 behavior. When `stats` is non-null, the product implicitly exists (reviews reference it), so no extra query is needed. This reduces the common case from 3 queries to 1, and the no-reviews case from 3 to 2.
+1. **Add a static product cache** to `Products/Index.cshtml.cs` using the same double-check-lock pattern as `ProductsController.GetOrPopulateCacheAsync()`: a `static List<Product>?` with a `SemaphoreSlim` gate and 30-second TTL. Replace the `ToListAsync()` call at line 35 with a cache lookup.
 
 ## Expected Impact
 
-- p95 latency: ~10-15ms reduction per request from eliminating 2 DB round-trips and their async overhead
-- Connection pool: ~66% fewer connections held per request for this endpoint, reducing queuing under high concurrency
-- Overall p95 improvement: estimated 1.5-2% from direct latency savings and reduced connection pool contention at 500 VUs
+- p95 latency: ~35ms reduction for Products page requests (eliminating DB round trip and 1000-entity materialization)
+- Allocation reduction: ~1000 fewer Product allocations per cached request, reducing GC pressure
+- Overall p95 improvement: ~0.5%

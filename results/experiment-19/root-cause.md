@@ -1,3 +1,14 @@
+# Root Cause Analysis — Experiment 19
+
+> Generated: 2026-03-14 21:04:00 | Classification: narrow — Caching featured products can be implemented entirely within Index.cshtml.cs by injecting IMemoryCache and adding cache logic to OnGetAsync(), requiring no additional files, packages, migrations, or API contract changes.
+
+| Metric | Current | Baseline |
+|--------|---------|----------|
+| p95 Latency | 407.72407ms | 2054.749925ms |
+| Requests/sec | 1693.7 | 427.3 |
+| Error Rate | 11.11% | 11.11% |
+
+---
 # Cache featured products to avoid ORDER BY NEWID() on every request
 
 > **File:** `SampleApi/Pages/Index.cshtml.cs` | **Scope:** narrow
@@ -34,3 +45,4 @@ That is 4 sequential DB round trips per home page request, with the first being 
 - p95 latency: ~40ms reduction for home page requests (eliminating NEWID() sort + reducing round trips)
 - SQL Server CPU: reduced contention from eliminating the per-request full-table random sort
 - Overall p95 improvement: ~0.55%
+

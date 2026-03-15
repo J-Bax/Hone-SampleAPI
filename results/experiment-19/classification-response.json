@@ -1,0 +1,6 @@
+```json
+{
+  "scope": "narrow",
+  "reasoning": "Caching featured products can be implemented entirely within Index.cshtml.cs by injecting IMemoryCache and adding cache logic to OnGetAsync(), requiring no additional files, packages, migrations, or API contract changes."
+}
+```
