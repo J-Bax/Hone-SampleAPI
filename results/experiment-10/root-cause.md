@@ -1,3 +1,14 @@
+# Root Cause Analysis — Experiment 10
+
+> Generated: 2026-03-15 08:17:35 | Classification: narrow — All fixes—adding .AsNoTracking() to read-only queries and replacing client-side table scans (lines 34, 41, 65) with server-side .Where() filters—are contained within this single PageModel file with no dependency, schema, or API contract changes.
+
+| Metric | Current | Baseline |
+|--------|---------|----------|
+| p95 Latency | 531.09704ms | 1596.242785ms |
+| Requests/sec | 1195.2 | 468.5 |
+| Error Rate | 11.11% | 11.11% |
+
+---
 # Change tracking overhead on bulk queries and CartItems table scan in POST handler
 
 > **File:** `SampleApi/Pages/Products/Detail.cshtml.cs` | **Scope:** narrow
@@ -55,3 +66,4 @@ The CartItems table scan in OnPostAsync compounds this by loading all cart items
 - **RPS:** Should increase ~3–5% from freed CPU cycles (6255 SortedSet samples + materialization overhead).
 - **Error rate:** May decrease if some of the 11.11% errors are caused by GC-induced request timeouts.
 - The p95 benefit extends **beyond** the Detail page because reduced GC pauses benefit all concurrent requests.
+

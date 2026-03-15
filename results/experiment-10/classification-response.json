@@ -1,0 +1,1 @@
+{"scope":"narrow","reasoning":"All fixes—adding .AsNoTracking() to read-only queries and replacing client-side table scans (lines 34, 41, 65) with server-side .Where() filters—are contained within this single PageModel file with no dependency, schema, or API contract changes."}

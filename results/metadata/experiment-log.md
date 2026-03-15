@@ -13,3 +13,4 @@
 | 7 | 2026-03-15 07:07 | `SampleApi/Pages/Index.cshtml.cs` | Full table scans of Products and Reviews on home page | improved |
 | 8 | 2026-03-15 07:32 | `SampleApi/Pages/Cart/Index.cshtml.cs` | Full CartItems table scan with N+1 lookups and per-item SaveChanges | improved |
 | 9 | 2026-03-15 07:57 | `SampleApi/Pages/Products/Index.cshtml.cs` | Full Products table scan with in-memory filtering and no AsNoTracking | improved |
+| 10 | 2026-03-15 08:42 | `SampleApi/Pages/Products/Detail.cshtml.cs` | Change tracking overhead on bulk queries and CartItems table scan in POST handler | improved |
