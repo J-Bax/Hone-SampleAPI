@@ -1,49 +1,54 @@
-# Full table scan of ~2000 Reviews with in-memory filtering
+# Triple full table scan with N+1 on growing tables in order history
 
-> **File:** `SampleApi/Controllers/ReviewsController.cs` | **Scope:** narrow
+> **File:** `SampleApi/Pages/Orders/Index.cshtml.cs` | **Scope:** narrow
 
 ## Evidence
 
-Both review read endpoints exercised by k6 load the entire ~2,000-row Reviews table:
+At `Pages/Orders/Index.cshtml.cs:40-43`, the order history page loads ALL orders and filters in memory:
 
-**GetReviewsByProduct** (`ReviewsController.cs:54-55`):
 ```csharp
-var allReviews = await _context.Reviews.ToListAsync();
-var filtered = allReviews.Where(r => r.ProductId == productId).ToList();
+var allOrders = await _context.Orders.ToListAsync();
+Orders = allOrders
+    .Where(o => o.CustomerName.Equals(customer, StringComparison.OrdinalIgnoreCase))
+    .OrderByDescending(o => o.OrderDate)
+    .ToList();
 ```
-Loads all ~2,000 reviews with full change tracking, then filters in memory for a single product's reviews (typically 1-7 rows).
 
-**GetAverageRating** (`ReviewsController.cs:70-75`):
+At line 46, it loads ALL order items:
+
 ```csharp
-var allReviews = await _context.Reviews.ToListAsync();
-var productReviews = allReviews.Where(r => r.ProductId == productId).ToList();
-var average = productReviews.Any()
-    ? Math.Round(productReviews.Average(r => r.Rating), 2)
-    : 0.0;
+var allItems = await _context.OrderItems.ToListAsync();
 ```
-Loads all ~2,000 reviews just to compute a single average — an operation SQL Server can do natively with `AVG()`. Each Review includes a Comment string (~80 chars), so materializing 2,000 reviews transfers ~160KB of comment text per request that is immediately discarded.
 
-Additionally, both endpoints first verify the product exists with a separate `FindAsync` (lines 50, 66), adding an extra DB round trip before the full table scan.
+At lines 53-55, it performs N+1 Product lookups for each order item:
+
+```csharp
+foreach (var item in items)
+{
+    var product = await _context.Products.FindAsync(item.ProductId);
+    // ...
+}
+```
 
 ## Theory
 
-Under the k6 scenario, the `by-product` and `average` endpoints together account for ~11.1% of all traffic (2 of 18 requests per VU iteration). Each request:
+The Orders and OrderItems tables grow continuously during the k6 test. Every iteration creates 2 orders (1 via API, 1 via Checkout POST) with 2-3 items each. At 500 VUs doing back-to-back iterations, thousands of orders accumulate within seconds. The full table scan at line 40 materializes ALL of them — including orders from every other VU — with change tracking enabled.
 
-1. **Transfers ~2,000 rows** including Comment strings via TDS protocol — the `UnicodeEncoding.GetChars` hotspot (1.5% exclusive CPU) is partly driven by decoding these string columns.
-2. **Materializes 2,000 Review entities** with full change tracking — each entity goes through `StartTrackingFromQuery` → `IdentityMap.Add` → `NavigationFixer.InitialFixup`, contributing to the 4.8% inclusive CPU in NavigationFixer.
-3. **Allocates ~200KB+ per request** for the List<Review> backing array plus 2,000 Review objects. Under 500 VUs, this adds ~100MB/sec to the allocation rate for these two endpoints alone.
-4. **GetAverageRating is especially wasteful**: SQL Server's `AVG()` function could return a single scalar value in one row, but instead the app transfers 2,000 rows and computes the average in C#.
+The cascading pattern is devastating: full scan Orders (growing) → full scan OrderItems (growing faster, ~2-3x orders) → N+1 Product lookups per item. Under stress load, a single request to this page could easily materialize thousands of entities across 3 separate queries plus dozens of individual FindAsync calls.
 
-The `seededId(500, 2)` in k6 means `reviewProductId` ranges 1-500, matching seeded data — so every review request hits a valid product with reviews, maximizing the per-request cost.
+This progressive degradation explains why the p95 only improved 4.4% from baseline despite 3 prior optimizations — the growing-table endpoints get worse as the test runs, pulling up tail latency in the stress phase.
 
 ## Proposed Fixes
 
-1. **Server-side WHERE + AsNoTracking()**: Replace `_context.Reviews.ToListAsync()` followed by in-memory `Where()` with `_context.Reviews.AsNoTracking().Where(r => r.ProductId == productId).ToListAsync()` in GetReviewsByProduct. This reduces result sets from ~2,000 to 1-7 rows.
+1. **Server-side customer filtering:** Replace line 40's full scan with `_context.Orders.Where(o => o.CustomerName == customer).OrderByDescending(o => o.OrderDate).ToListAsync()`. Note: use case-insensitive collation or `EF.Functions.Like()` if case-insensitive matching is needed.
 
-2. **Push AVG to SQL**: In GetAverageRating, replace the full table scan + in-memory Average with server-side aggregation: use `_context.Reviews.Where(r => r.ProductId == productId).AverageAsync(r => r.Rating)` and `CountAsync()`. This returns a single scalar instead of 2,000 rows.
+2. **Server-side OrderItems filter:** Replace line 46's full scan with `_context.OrderItems.Where(oi => orderIds.Contains(oi.OrderId)).ToListAsync()` where `orderIds` is the list of matching order IDs.
+
+3. **Batch Product lookup:** Replace the N+1 loop at lines 53-55 with a single `_context.Products.Where(p => productIds.Contains(p.Id)).ToDictionaryAsync(p => p.Id)` call using the distinct ProductIds from the filtered order items.
 
 ## Expected Impact
 
-- **p95 latency**: Estimated ~200ms reduction per request. GetReviewsByProduct drops from ~2,000 to ~4 materialized entities. GetAverageRating drops from ~2,000 materialized entities to a single SQL aggregate returning 1 row.
-- **GC pressure**: Eliminating ~2,000 Review entity allocations per request across 11.1% of traffic reduces allocation rate by an estimated ~100MB/sec, helping reduce the 14.3% GC pause ratio.
-- **Overall p95 improvement**: ~1.4% (11.1% traffic × 200ms / 1596ms). Reduced allocation pressure provides secondary benefits to all endpoints.
+- p95 latency: ~250ms reduction on affected requests (eliminates scans of growing tables + N+1)
+- The improvement compounds over the test duration — the heaviest stress-phase requests see the biggest benefit
+- Overall p95 improvement: ~0.9% (5.6% of traffic * 250ms / 1527ms p95)
+- GC: noticeable reduction in Gen2 pressure from fewer large materializations

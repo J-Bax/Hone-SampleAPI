@@ -1,39 +1,39 @@
 {
-  "generatedByExperiment": 1,
-  "generatedAt": "2026-03-15T03:45:03.0303837-07:00",
+  "generatedByExperiment": 4,
+  "generatedAt": "2026-03-15T05:14:47.1957314-07:00",
   "items": [
     {
       "id": 1,
-      "filePath": "SampleApi/Controllers/ProductsController.cs",
-      "title": "Full table scans with in-memory filtering on Products",
-      "explanation": "Full table scans with in-memory filtering on Products",
+      "filePath": "SampleApi/Pages/Checkout/Index.cshtml.cs",
+      "title": "Per-item SaveChanges and full table scans in Checkout",
+      "explanation": "Per-item SaveChanges and full table scans in Checkout",
       "scope": "narrow",
       "rootCausePath": "C:\\Projects\\Hone\\sample-api\\results\\metadata\\root-causes\\rca-1.md",
       "status": "done",
-      "triedByExperiment": 1,
+      "triedByExperiment": 4,
       "outcome": "improved"
     },
     {
       "id": 2,
-      "filePath": "SampleApi/Controllers/CartController.cs",
-      "title": "N+1 queries, full table scans, and per-item SaveChanges in Cart",
-      "explanation": "N+1 queries, full table scans, and per-item SaveChanges in Cart",
+      "filePath": "SampleApi/Pages/Products/Detail.cshtml.cs",
+      "title": "Full table scans of Reviews and Products in product detail page",
+      "explanation": "Full table scans of Reviews and Products in product detail page",
       "scope": "narrow",
       "rootCausePath": "C:\\Projects\\Hone\\sample-api\\results\\metadata\\root-causes\\rca-2.md",
-      "status": "done",
-      "triedByExperiment": 2,
-      "outcome": "improved"
+      "status": "pending",
+      "triedByExperiment": null,
+      "outcome": null
     },
     {
       "id": 3,
-      "filePath": "SampleApi/Controllers/ReviewsController.cs",
-      "title": "Full table scan of ~2000 Reviews with in-memory filtering",
-      "explanation": "Full table scan of ~2000 Reviews with in-memory filtering",
+      "filePath": "SampleApi/Pages/Orders/Index.cshtml.cs",
+      "title": "Triple full table scan with N+1 on growing tables in order history",
+      "explanation": "Triple full table scan with N+1 on growing tables in order history",
       "scope": "narrow",
       "rootCausePath": "C:\\Projects\\Hone\\sample-api\\results\\metadata\\root-causes\\rca-3.md",
-      "status": "done",
-      "triedByExperiment": 3,
-      "outcome": "improved"
+      "status": "pending",
+      "triedByExperiment": null,
+      "outcome": null
     }
   ]
 }

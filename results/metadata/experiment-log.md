@@ -7,3 +7,4 @@
 | 1 | 2026-03-15 04:10 | `SampleApi/Controllers/ProductsController.cs` | Full table scans with in-memory filtering on Products | improved |
 | 2 | 2026-03-15 04:36 | `SampleApi/Controllers/CartController.cs` | N+1 queries, full table scans, and per-item SaveChanges in Cart | improved |
 | 3 | 2026-03-15 05:01 | `SampleApi/Controllers/ReviewsController.cs` | Full table scan of ~2000 Reviews with in-memory filtering | improved |
+| 4 | 2026-03-15 05:40 | `SampleApi/Pages/Checkout/Index.cshtml.cs` | Per-item SaveChanges and full table scans in Checkout | improved |

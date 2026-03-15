@@ -1,3 +1,14 @@
+# Root Cause Analysis — Experiment 4
+
+> Generated: 2026-03-15 05:15:01 | Classification: narrow — All issues — per-item SaveChangesAsync loops (lines 84-100, 106-110), full-table CartItems scans filtered in-memory (lines 61-62, 124-125), and N+1 product lookups (lines 86, 132) — are implementation internals within a single PageModel file and can be fixed by batching saves, adding server-side Where filters, and using Include/join queries without changing any API contract, dependency, or additional file.
+
+| Metric | Current | Baseline |
+|--------|---------|----------|
+| p95 Latency | 1526.65415ms | 1596.242785ms |
+| Requests/sec | 494.4 | 468.5 |
+| Error Rate | 11.11% | 11.11% |
+
+---
 # Per-item SaveChanges and full table scans in Checkout
 
 > **File:** `SampleApi/Pages/Checkout/Index.cshtml.cs` | **Scope:** narrow
@@ -57,3 +68,4 @@ Every materialized entity goes through EF Core change tracking (confirmed by the
 - RPS: moderate improvement from reduced connection pool contention
 - Overall p95 improvement: ~2.5% (11.1% of traffic * 350ms / 1527ms p95)
 - GC pressure: significant reduction from fewer entity materializations and fewer SaveChanges allocations
+
