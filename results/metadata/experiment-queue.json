@@ -20,9 +20,9 @@
       "explanation": "OrdersController has N+1 queries and full table scans across multiple endpoints",
       "scope": "narrow",
       "rootCausePath": "C:\\Projects\\Hone\\sample-api\\results\\metadata\\root-causes\\rca-2.md",
-      "status": "pending",
-      "triedByExperiment": null,
-      "outcome": null
+      "status": "done",
+      "triedByExperiment": 12,
+      "outcome": "improved"
     },
     {
       "id": 3,

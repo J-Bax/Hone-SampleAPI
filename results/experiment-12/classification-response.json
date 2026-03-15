@@ -1,0 +1,6 @@
+```json
+{
+  "scope": "narrow",
+  "reasoning": "All N+1 and full table scan issues can be fixed by adding `.Include()` and `.Where()` clauses to EF Core queries within this single controller file, without modifying dependencies, endpoints, or tests."
+}
+```

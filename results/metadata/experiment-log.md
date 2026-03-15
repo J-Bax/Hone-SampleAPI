@@ -19,3 +19,4 @@
 | 9 | 2026-03-14 16:04 | `SampleApi/Controllers/ReviewsController.cs` | Replace tracked FindAsync existence checks with AnyAsync and add AsNoTracking | improved |
 | 10 | 2026-03-14 16:27 | `SampleApi/Program.cs` | Test failure: Enable DbContext pooling to reduce per-request allocation and GC pressure | regressed |
 | 11 | 2026-03-14 17:11 | `SampleApi/Pages/Products/Index.cshtml.cs` | Products page tracks 1000 entities needlessly on read-only render | improved |
+| 12 | 2026-03-14 17:35 | `SampleApi/Controllers/OrdersController.cs` | OrdersController has N+1 queries and full table scans across multiple endpoints | improved |

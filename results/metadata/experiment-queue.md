@@ -6,5 +6,5 @@
 **Generated:** experiment 11 at 03/14/2026 16:46:25
 
 - [x] **#1** `SampleApi/Pages/Products/Index.cshtml.cs` — Products page tracks 1000 entities needlessly on read-only render *(experiment 11 — improved)*
-- [ ] **#2** `SampleApi/Controllers/OrdersController.cs` — OrdersController has N+1 queries and full table scans across multiple endpoints
+- [x] **#2** `SampleApi/Controllers/OrdersController.cs` — OrdersController has N+1 queries and full table scans across multiple endpoints *(experiment 12 — improved)*
 - [ ] **#3** `SampleApi/Pages/Products/Detail.cshtml.cs` — Product detail page uses tracked queries for read-only rendering
