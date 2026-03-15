@@ -1,0 +1,1 @@
+{"scope":"narrow","reasoning":"The fix replaces full-table ToListAsync() calls with server-side .Where() filtering in GetProductsByCategory and SearchProducts, which is a single-file query optimization that does not change API contracts, dependencies, or schema."}
