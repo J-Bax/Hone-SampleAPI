@@ -6,5 +6,5 @@
 **Generated:** experiment 15 at 03/14/2026 19:29:51
 
 - [x] **#1** `SampleApi/Controllers/ProductsController.cs` — SearchProducts and GetProductsByCategory bypass existing product cache *(experiment 15 — improved)*
-- [ ] **#2** `SampleApi/Controllers/ReviewsController.cs` — GetAverageRating makes 3 separate database round-trips per request
+- [x] **#2** `SampleApi/Controllers/ReviewsController.cs` — GetAverageRating makes 3 separate database round-trips per request *(experiment 16 — improved)*
 - [ ] **#3** `SampleApi/Pages/Checkout/Index.cshtml.cs` — Checkout OnPostAsync uses 3 SaveChangesAsync calls where 2 suffice

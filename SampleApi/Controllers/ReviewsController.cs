@@ -62,21 +62,31 @@ public class ReviewsController : ControllerBase
     [HttpGet("average/{productId}")]
     public async Task<ActionResult<object>> GetAverageRating(int productId)
     {
-        var productExists = await _context.Products.AnyAsync(p => p.Id == productId);
-        if (!productExists)
-            return NotFound(new { message = $"Product with ID {productId} not found" });
+        var stats = await _context.Reviews
+            .Where(r => r.ProductId == productId)
+            .GroupBy(r => r.ProductId)
+            .Select(g => new { Count = g.Count(), Average = g.Average(r => r.Rating) })
+            .FirstOrDefaultAsync();
 
-        var productReviewsQuery = _context.Reviews.Where(r => r.ProductId == productId);
-        var reviewCount = await productReviewsQuery.CountAsync();
-        var average = reviewCount > 0
-            ? Math.Round(await productReviewsQuery.AverageAsync(r => r.Rating), 2)
-            : 0.0;
+        if (stats == null)
+        {
+            var productExists = await _context.Products.AnyAsync(p => p.Id == productId);
+            if (!productExists)
+                return NotFound(new { message = $"Product with ID {productId} not found" });
+
+            return Ok(new
+            {
+                ProductId = productId,
+                AverageRating = 0.0,
+                ReviewCount = 0
+            });
+        }
 
         return Ok(new
         {
             ProductId = productId,
-            AverageRating = average,
-            ReviewCount = reviewCount
+            AverageRating = Math.Round(stats.Average, 2),
+            ReviewCount = stats.Count
         });
     }
 

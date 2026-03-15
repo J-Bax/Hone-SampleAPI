@@ -1,0 +1,6 @@
+```json
+{
+  "scope": "narrow",
+  "reasoning": "The optimization combines three database round-trips (AnyAsync, CountAsync, AverageAsync) into a single query by using Sum/Count aggregation, which is purely an implementation change to the GetAverageRating method body with no changes to dependencies, migrations, API contract, or other files."
+}
+```
