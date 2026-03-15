@@ -21,6 +21,12 @@ export const options = {
 
 const BASE_URL = __ENV.BASE_URL || 'http://localhost:5000';
 
+// Extract ASP.NET anti-forgery token from a Razor Page HTML response.
+function extractAntiForgeryToken(response) {
+  const match = response.body.match(/name="__RequestVerificationToken"[^>]*value="([^"]+)"/);
+  return match ? match[1] : '';
+}
+
 // Deterministic ID generation for reproducible traffic patterns.
 function seededId(max, salt) {
   const h = ((__VU * 997 + __ITER * 8191 + salt * 127) * 2654435761) >>> 0;
@@ -67,9 +73,10 @@ export default function () {
   sleep(0.2);
 
   // Step 6: Add to cart via product detail form POST (sets CartSessionId cookie)
+  const detailToken = extractAntiForgeryToken(detailRes);
   const addToCartRes = http.post(
     `${BASE_URL}/Products/Detail/${productId}`,
-    { productId: String(productId), quantity: '2' }
+    { productId: String(productId), quantity: '2', __RequestVerificationToken: detailToken }
   );
   check(addToCartRes, {
     'add to cart: status 200': (r) => r.status === 200,
@@ -78,9 +85,11 @@ export default function () {
 
   // Add a second product to make cart operations more realistic
   const secondProductId = seededId(100, 2);
+  const secondDetailRes = http.get(`${BASE_URL}/Products/Detail/${secondProductId}`);
+  const secondToken = extractAntiForgeryToken(secondDetailRes);
   const addSecondRes = http.post(
     `${BASE_URL}/Products/Detail/${secondProductId}`,
-    { productId: String(secondProductId), quantity: '1' }
+    { productId: String(secondProductId), quantity: '1', __RequestVerificationToken: secondToken }
   );
   check(addSecondRes, {
     'add second item: status 200': (r) => r.status === 200,
@@ -102,9 +111,10 @@ export default function () {
   sleep(0.2);
 
   // Step 9: Submit order via checkout (heaviest: N+1 + per-item SaveChanges + cart clear)
+  const checkoutToken = extractAntiForgeryToken(checkoutRes);
   const submitRes = http.post(
     `${BASE_URL}/Checkout`,
-    { customerName: customerName }
+    { customerName: customerName, __RequestVerificationToken: checkoutToken }
   );
   check(submitRes, {
     'checkout submit: status 200': (r) => r.status === 200,

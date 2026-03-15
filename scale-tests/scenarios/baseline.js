@@ -23,6 +23,12 @@ export const options = {
 
 const BASE_URL = __ENV.BASE_URL || 'http://localhost:5000';
 
+// Extract ASP.NET anti-forgery token from a Razor Page HTML response.
+function extractAntiForgeryToken(response) {
+  const match = response.body.match(/name="__RequestVerificationToken"[^>]*value="([^"]+)"/);
+  return match ? match[1] : '';
+}
+
 // Deterministic ID generation for reproducible traffic patterns.
 // Same VU + iteration + salt always produces the same ID across runs.
 function seededId(max, salt) {
@@ -129,9 +135,10 @@ export default function () {
 
   // Add to cart via the product detail page form (sets CartSessionId cookie)
   const cartProductId = seededId(100, 5);
+  const addToCartToken = extractAntiForgeryToken(detailPageRes);
   const addToCartPageRes = http.post(
     `${BASE_URL}/Products/Detail/${cartProductId}`,
-    { productId: String(cartProductId), quantity: '1' }
+    { productId: String(cartProductId), quantity: '1', __RequestVerificationToken: addToCartToken }
   );
   check(addToCartPageRes, {
     'add to cart (page): status 200': (r) => r.status === 200,
@@ -151,9 +158,10 @@ export default function () {
 
   // Submit order via checkout form (heaviest operation: N+1 + per-item SaveChanges)
   const customerName = `k6-checkout-${__VU}`;
+  const checkoutToken = extractAntiForgeryToken(checkoutPageRes);
   const checkoutSubmitRes = http.post(
     `${BASE_URL}/Checkout`,
-    { customerName: customerName }
+    { customerName: customerName, __RequestVerificationToken: checkoutToken }
   );
   check(checkoutSubmitRes, {
     'checkout submit: status 200': (r) => r.status === 200,
