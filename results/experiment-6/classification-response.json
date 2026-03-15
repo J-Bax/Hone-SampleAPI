@@ -1,0 +1,1 @@
+{"scope":"narrow","reasoning":"The full table scans on Reviews (line 34) and Products (line 41) can be replaced with server-side filtered queries (e.g., .Where().ToListAsync()) entirely within this single PageModel file, requiring no dependency changes, no new files, and no API contract modifications."}

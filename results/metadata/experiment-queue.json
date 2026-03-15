@@ -31,9 +31,9 @@
       "explanation": "Eliminate full Reviews and Products table scans in product detail page",
       "scope": "narrow",
       "rootCausePath": "C:\\Projects\\Hone\\sample-api\\results\\metadata\\root-causes\\rca-3.md",
-      "status": "pending",
-      "triedByExperiment": null,
-      "outcome": null
+      "status": "done",
+      "triedByExperiment": 6,
+      "outcome": "improved"
     }
   ]
 }

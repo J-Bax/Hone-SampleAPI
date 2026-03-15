@@ -1,0 +1,161 @@
+{
+    "metrics": {
+        "iterations": {
+            "count": 10229,
+            "rate": 84.75156700005012
+        },
+        "http_req_receiving": {
+            "max": 1.5098,
+            "p(90)": 0.5323400000000001,
+            "p(95)": 0.7018599999999992,
+            "avg": 0.12796087934110556,
+            "min": 0,
+            "med": 0
+        },
+        "http_req_blocked": {
+            "p(95)": 0,
+            "avg": 0.001094014712711098,
+            "min": 0,
+            "med": 0,
+            "max": 1.2324,
+            "p(90)": 0
+        },
+        "http_req_waiting": {
+            "min": 0,
+            "med": 1.0766,
+            "max": 18.2856,
+            "p(90)": 1.7556,
+            "p(95)": 2.0271199999999996,
+            "avg": 1.1396713346530563
+        },
+        "http_req_failed": {
+            "fails": 40917,
+            "passes": 0,
+            "thresholds": {
+                "rate<0.03": false
+            },
+            "value": 0
+        },
+        "data_received": {
+            "count": 9406074,
+            "rate": 77933.27899290541
+        },
+        "http_req_duration": {
+            "max": 18.8102,
+            "p(90)": 1.8424,
+            "p(95)": 2.1215399999999995,
+            "avg": 1.2696973434024845,
+            "min": 0,
+            "med": 1.2192,
+            "thresholds": {
+                "p(95)<1500": false
+            }
+        },
+        "vus": {
+            "value": 7,
+            "min": 1,
+            "max": 199
+        },
+        "iteration_duration": {
+            "avg": 906.9797550884721,
+            "min": 902.901,
+            "med": 906.8065,
+            "max": 928.0304,
+            "p(90)": 908.59634,
+            "p(95)": 909.2813600000001
+        },
+        "vus_max": {
+            "max": 200,
+            "value": 200,
+            "min": 200
+        },
+        "http_req_duration{expected_response:true}": {
+            "min": 0,
+            "med": 1.2192,
+            "max": 18.8102,
+            "p(90)": 1.8424,
+            "p(95)": 2.1215399999999995,
+            "avg": 1.2696973434024845
+        },
+        "checks": {
+            "passes": 51145,
+            "fails": 0,
+            "value": 1
+        },
+        "data_sent": {
+            "count": 7210456,
+            "rate": 59741.66045409262
+        },
+        "http_reqs": {
+            "rate": 339.01455342076946,
+            "count": 40917
+        },
+        "http_req_sending": {
+            "avg": 0.0020651294083143938,
+            "min": 0,
+            "med": 0,
+            "max": 0.9991,
+            "p(90)": 0,
+            "p(95)": 0
+        },
+        "http_req_tls_handshaking": {
+            "avg": 0,
+            "min": 0,
+            "med": 0,
+            "max": 0,
+            "p(90)": 0,
+            "p(95)": 0
+        },
+        "http_req_connecting": {
+            "avg": 0.0004428306083046167,
+            "min": 0,
+            "med": 0,
+            "max": 1.2324,
+            "p(90)": 0,
+            "p(95)": 0
+        }
+    },
+    "root_group": {
+        "groups": {},
+        "checks": {
+                "create product: status 201": {
+                    "name": "create product: status 201",
+                    "path": "::create product: status 201",
+                    "id": "d93f8db8db344695f776e44ec6b18c58",
+                    "passes": 10229,
+                    "fails": 0
+                },
+                "get created product: status 200": {
+                    "fails": 0,
+                    "name": "get created product: status 200",
+                    "path": "::get created product: status 200",
+                    "id": "afdc866b141a243ae294ef9ad1f445e9",
+                    "passes": 10229
+                },
+                "get created product: name matches": {
+                    "name": "get created product: name matches",
+                    "path": "::get created product: name matches",
+                    "id": "c11a53a8914fcb33931d909ab82d155e",
+                    "passes": 10229,
+                    "fails": 0
+                },
+                "update product: status 200 or 204": {
+                    "passes": 10229,
+                    "fails": 0,
+                    "name": "update product: status 200 or 204",
+                    "path": "::update product: status 200 or 204",
+                    "id": "fed812f077cab05d9d142603607e1679"
+                },
+                "delete product: status 200 or 204": {
+                    "name": "delete product: status 200 or 204",
+                    "path": "::delete product: status 200 or 204",
+                    "id": "bc7117db1fa07e5c01728435a48a565a",
+                    "passes": 10229,
+                    "fails": 0
+                }
+            },
+        "name": "",
+        "path": "",
+        "id": "d41d8cd98f00b204e9800998ecf8427e"
+    }
+}
