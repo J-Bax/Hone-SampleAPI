@@ -32,9 +32,9 @@ public class OrdersController : ControllerBase
     [HttpGet("by-customer/{customerName}")]
     public async Task<ActionResult<IEnumerable<Order>>> GetOrdersByCustomer(string customerName)
     {
-        var allOrders = await _context.Orders.ToListAsync();
-        var filtered = allOrders.Where(o =>
-            o.CustomerName.Equals(customerName, StringComparison.OrdinalIgnoreCase)).ToList();
+        var filtered = await _context.Orders
+            .Where(o => o.CustomerName == customerName)
+            .ToListAsync();
 
         return Ok(filtered);
     }
@@ -49,14 +49,19 @@ public class OrdersController : ControllerBase
         if (order == null)
             return NotFound();
 
-        var allItems = await _context.OrderItems.ToListAsync();
-        var items = allItems.Where(i => i.OrderId == id).ToList();
+        var items = await _context.OrderItems
+            .Where(i => i.OrderId == id)
+            .ToListAsync();
 
-        var itemDetails = new List<object>();
-        foreach (var item in items)
+        var productIds = items.Select(i => i.ProductId).ToList();
+        var products = await _context.Products
+            .Where(p => productIds.Contains(p.Id))
+            .ToDictionaryAsync(p => p.Id);
+
+        var itemDetails = items.Select(item =>
         {
-            var product = await _context.Products.FindAsync(item.ProductId);
-            itemDetails.Add(new
+            products.TryGetValue(item.ProductId, out var product);
+            return (object)new
             {
                 item.Id,
                 item.ProductId,
@@ -64,8 +69,8 @@ public class OrdersController : ControllerBase
                 item.Quantity,
                 item.UnitPrice,
                 Subtotal = item.Quantity * item.UnitPrice
-            });
-        }
+            };
+        }).ToList();
 
         return Ok(new
         {
@@ -98,12 +103,16 @@ public class OrdersController : ControllerBase
         _context.Orders.Add(order);
         await _context.SaveChangesAsync(); // Save to get order ID
 
+        var productIds = request.Items.Select(i => i.ProductId).ToList();
+        var products = await _context.Products
+            .Where(p => productIds.Contains(p.Id))
+            .ToDictionaryAsync(p => p.Id);
+
         decimal total = 0m;
 
         foreach (var itemReq in request.Items)
         {
-            var product = await _context.Products.FindAsync(itemReq.ProductId);
-            if (product == null)
+            if (!products.TryGetValue(itemReq.ProductId, out var product))
                 continue; // Skip unknown products silently
 
             var orderItem = new OrderItem
