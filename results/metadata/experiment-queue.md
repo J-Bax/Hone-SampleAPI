@@ -6,5 +6,5 @@
 **Generated:** experiment 4 at 03/15/2026 05:14:47
 
 - [x] **#1** `SampleApi/Pages/Checkout/Index.cshtml.cs` — Per-item SaveChanges and full table scans in Checkout *(experiment 4 — improved)*
-- [ ] **#2** `SampleApi/Pages/Products/Detail.cshtml.cs` — Full table scans of Reviews and Products in product detail page *(in progress)*
+- [x] **#2** `SampleApi/Pages/Products/Detail.cshtml.cs` — Full table scans of Reviews and Products in product detail page *(experiment 5 — regressed)*
 - [ ] **#3** `SampleApi/Pages/Orders/Index.cshtml.cs` — Triple full table scan with N+1 on growing tables in order history
