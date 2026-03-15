@@ -20,9 +20,9 @@
       "explanation": "N+1 queries, full table scans, and per-item SaveChanges in Cart",
       "scope": "narrow",
       "rootCausePath": "C:\\Projects\\Hone\\sample-api\\results\\metadata\\root-causes\\rca-2.md",
-      "status": "pending",
-      "triedByExperiment": null,
-      "outcome": null
+      "status": "done",
+      "triedByExperiment": 2,
+      "outcome": "improved"
     },
     {
       "id": 3,

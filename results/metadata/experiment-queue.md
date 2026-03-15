@@ -6,5 +6,5 @@
 **Generated:** experiment 1 at 03/15/2026 03:45:03
 
 - [x] **#1** `SampleApi/Controllers/ProductsController.cs` — Full table scans with in-memory filtering on Products *(experiment 1 — improved)*
-- [ ] **#2** `SampleApi/Controllers/CartController.cs` — N+1 queries, full table scans, and per-item SaveChanges in Cart
+- [x] **#2** `SampleApi/Controllers/CartController.cs` — N+1 queries, full table scans, and per-item SaveChanges in Cart *(experiment 2 — improved)*
 - [ ] **#3** `SampleApi/Controllers/ReviewsController.cs` — Full table scan of ~2000 Reviews with in-memory filtering
