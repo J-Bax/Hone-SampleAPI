@@ -1,0 +1,39 @@
+{
+  "generatedByExperiment": 4,
+  "generatedAt": "2026-03-15T10:21:19.6350147-07:00",
+  "items": [
+    {
+      "id": 1,
+      "filePath": "SampleApi/Pages/Orders/Index.cshtml.cs",
+      "title": "Orders page loads entire database into memory",
+      "explanation": "Orders page loads entire database into memory",
+      "scope": "narrow",
+      "rootCausePath": "C:\\Projects\\Hone\\sample-api\\results\\metadata\\root-causes\\rca-1.md",
+      "status": "done",
+      "triedByExperiment": 4,
+      "outcome": "improved"
+    },
+    {
+      "id": 2,
+      "filePath": "SampleApi/Pages/Checkout/Index.cshtml.cs",
+      "title": "Checkout page per-item SaveChanges and full table scans",
+      "explanation": "Checkout page per-item SaveChanges and full table scans",
+      "scope": "narrow",
+      "rootCausePath": "C:\\Projects\\Hone\\sample-api\\results\\metadata\\root-causes\\rca-2.md",
+      "status": "pending",
+      "triedByExperiment": null,
+      "outcome": null
+    },
+    {
+      "id": 3,
+      "filePath": "SampleApi/Controllers/ReviewsController.cs",
+      "title": "Reviews endpoints load all reviews then filter in memory",
+      "explanation": "Reviews endpoints load all reviews then filter in memory",
+      "scope": "narrow",
+      "rootCausePath": "C:\\Projects\\Hone\\sample-api\\results\\metadata\\root-causes\\rca-3.md",
+      "status": "pending",
+      "triedByExperiment": null,
+      "outcome": null
+    }
+  ]
+}
