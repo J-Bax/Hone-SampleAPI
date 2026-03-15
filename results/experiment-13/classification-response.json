@@ -1,0 +1,6 @@
+```json
+{
+  "scope": "narrow",
+  "reasoning": "Optimization adds AsNoTracking() to read-only queries in OnGetAsync (Product, Reviews, RelatedProducts), a pure implementation change to a single file's method body with no API, dependency, database, or test implications."
+}
+```

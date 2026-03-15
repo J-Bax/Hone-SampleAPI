@@ -31,9 +31,9 @@
       "explanation": "Product detail page uses tracked queries for read-only rendering",
       "scope": "narrow",
       "rootCausePath": "C:\\Projects\\Hone\\sample-api\\results\\metadata\\root-causes\\rca-3.md",
-      "status": "pending",
-      "triedByExperiment": null,
-      "outcome": null
+      "status": "done",
+      "triedByExperiment": 13,
+      "outcome": "improved"
     }
   ]
 }
