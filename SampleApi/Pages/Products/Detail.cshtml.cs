@@ -31,17 +31,19 @@ public class DetailModel : PageModel
         if (Product == null)
             return Page();
 
-        Reviews = await _context.Reviews
-            .Where(r => r.ProductId == id)
-            .OrderByDescending(r => r.CreatedAt)
-            .ToListAsync();
+        var allReviews = await _context.Reviews.ToListAsync();
+        Reviews = allReviews.Where(r => r.ProductId == id)
+                            .OrderByDescending(r => r.CreatedAt)
+                            .ToList();
 
         AverageRating = Reviews.Any() ? Math.Round(Reviews.Average(r => r.Rating), 1) : 0;
 
-        RelatedProducts = await _context.Products
+        var allProducts = await _context.Products.ToListAsync();
+        RelatedProducts = allProducts
             .Where(p => p.Category == Product.Category && p.Id != id)
+            .OrderBy(_ => Guid.NewGuid())
             .Take(4)
-            .ToListAsync();
+            .ToList();
 
         return Page();
     }

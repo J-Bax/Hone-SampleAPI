@@ -46,15 +46,16 @@ public class ProductsController : ControllerBase
     [HttpGet("by-category/{categoryName}")]
     public async Task<ActionResult<IEnumerable<Product>>> GetProductsByCategory(string categoryName)
     {
-        var categoryExists = await _context.Categories
-            .AnyAsync(c => c.Name.ToLower() == categoryName.ToLower());
+        var categories = await _context.Categories.ToListAsync();
+        var matchingCategory = categories.FirstOrDefault(c =>
+            c.Name.Equals(categoryName, StringComparison.OrdinalIgnoreCase));
 
-        if (!categoryExists)
+        if (matchingCategory == null)
             return NotFound(new { message = $"Category '{categoryName}' not found" });
 
-        var filtered = await _context.Products
-            .Where(p => p.Category.ToLower() == categoryName.ToLower())
-            .ToListAsync();
+        var allProducts = await _context.Products.ToListAsync();
+        var filtered = allProducts.Where(p =>
+            p.Category.Equals(categoryName, StringComparison.OrdinalIgnoreCase)).ToList();
 
         return Ok(filtered);
     }
@@ -65,19 +66,17 @@ public class ProductsController : ControllerBase
     [HttpGet("search")]
     public async Task<ActionResult<IEnumerable<Product>>> SearchProducts([FromQuery] string? q)
     {
-        if (string.IsNullOrWhiteSpace(q))
+        var allProducts = await _context.Products.ToListAsync();
+
+        if (!string.IsNullOrWhiteSpace(q))
         {
-            var all = await _context.Products.ToListAsync();
-            return Ok(all);
+            allProducts = allProducts.Where(p =>
+                p.Name.Contains(q, StringComparison.OrdinalIgnoreCase) ||
+                (p.Description != null && p.Description.Contains(q, StringComparison.OrdinalIgnoreCase))
+            ).ToList();
         }
 
-        var lowerQ = q.ToLower();
-        var results = await _context.Products
-            .Where(p => p.Name.ToLower().Contains(lowerQ) ||
-                        (p.Description != null && p.Description.ToLower().Contains(lowerQ)))
-            .ToListAsync();
-
-        return Ok(results);
+        return Ok(allProducts);
     }
 
     /// <summary>

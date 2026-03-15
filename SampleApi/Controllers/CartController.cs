@@ -22,30 +22,27 @@ public class CartController : ControllerBase
     [HttpGet("{sessionId}")]
     public async Task<ActionResult<object>> GetCart(string sessionId)
     {
-        var sessionItems = await (
-            from ci in _context.CartItems
-            join p in _context.Products on ci.ProductId equals p.Id
-            where ci.SessionId == sessionId
-            select new { ci, p }
-        ).ToListAsync();
+        var allItems = await _context.CartItems.ToListAsync();
+        var sessionItems = allItems.Where(c => c.SessionId == sessionId).ToList();
 
         var cartDetails = new List<object>();
         decimal total = 0m;
 
-        foreach (var row in sessionItems)
+        foreach (var item in sessionItems)
         {
-            var subtotal = row.p.Price * row.ci.Quantity;
+            var product = await _context.Products.FindAsync(item.ProductId);
+            var subtotal = (product?.Price ?? 0m) * item.Quantity;
             total += subtotal;
 
             cartDetails.Add(new
             {
-                row.ci.Id,
-                row.ci.ProductId,
-                ProductName = row.p.Name,
-                ProductPrice = row.p.Price,
-                row.ci.Quantity,
+                item.Id,
+                item.ProductId,
+                ProductName = product?.Name ?? "Unknown",
+                ProductPrice = product?.Price ?? 0m,
+                item.Quantity,
                 Subtotal = subtotal,
-                row.ci.AddedAt
+                item.AddedAt
             });
         }
 
@@ -69,7 +66,8 @@ public class CartController : ControllerBase
         if (product == null)
             return NotFound(new { message = $"Product with ID {request.ProductId} not found" });
 
-        var existing = await _context.CartItems.FirstOrDefaultAsync(c =>
+        var allItems = await _context.CartItems.ToListAsync();
+        var existing = allItems.FirstOrDefault(c =>
             c.SessionId == request.SessionId && c.ProductId == request.ProductId);
 
         if (existing != null)
@@ -139,12 +137,14 @@ public class CartController : ControllerBase
     [HttpDelete("session/{sessionId}")]
     public async Task<IActionResult> ClearCart(string sessionId)
     {
-        var sessionItems = await _context.CartItems
-            .Where(c => c.SessionId == sessionId)
-            .ToListAsync();
+        var allItems = await _context.CartItems.ToListAsync();
+        var sessionItems = allItems.Where(c => c.SessionId == sessionId).ToList();
 
-        _context.CartItems.RemoveRange(sessionItems);
-        await _context.SaveChangesAsync();
+        foreach (var item in sessionItems)
+        {
+            _context.CartItems.Remove(item);
+            await _context.SaveChangesAsync(); // Saves each time — extra round trips
+        }
 
         return NoContent();
     }
