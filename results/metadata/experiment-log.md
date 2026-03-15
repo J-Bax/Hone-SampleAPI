@@ -10,3 +10,4 @@
 | 4 | 2026-03-15 05:40 | `SampleApi/Pages/Checkout/Index.cshtml.cs` | Per-item SaveChanges and full table scans in Checkout | improved |
 | 5 | 2026-03-15 06:05 | `SampleApi/Pages/Products/Detail.cshtml.cs` | Full table scans of Reviews and Products in product detail page | regressed |
 | 6 | 2026-03-15 06:30 | `SampleApi/Pages/Orders/Index.cshtml.cs` | Triple full table scan with N+1 on growing tables in order history | improved |
+| 7 | 2026-03-15 07:07 | `SampleApi/Pages/Index.cshtml.cs` | Full table scans of Products and Reviews on home page | improved |

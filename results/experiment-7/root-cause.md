@@ -1,3 +1,14 @@
+# Root Cause Analysis — Experiment 7
+
+> Generated: 2026-03-15 06:43:15 | Classification: narrow — The optimization involves replacing full table scans (ToListAsync followed by in-memory LINQ) with server-side queries (Take, OrderByDescending, Count) entirely within the single OnGetAsync method of Index.cshtml.cs, requiring no dependency, schema, or API contract changes.
+
+| Metric | Current | Baseline |
+|--------|---------|----------|
+| p95 Latency | 583.09564ms | 1596.242785ms |
+| Requests/sec | 1075.8 | 468.5 |
+| Error Rate | 11.11% | 11.11% |
+
+---
 # Full table scans of Products and Reviews on home page
 
 > **File:** `SampleApi/Pages/Index.cshtml.cs` | **Scope:** narrow
@@ -37,3 +48,4 @@ The `OrderBy(_ => Guid.NewGuid())` at line 29 also forces a full in-memory sort 
 - p95 latency: Per-request latency for the home page should drop by ~40-60ms as entity materialization goes from ~3,000 to ~27 entities (99% reduction) and change tracking is eliminated.
 - GC pressure: Allocation volume from this endpoint drops by ~99%, significantly reducing Gen2 collection frequency and max pause times.
 - Overall p95 improvement: ~5% (5.6% traffic share × ~50ms reduction / 583ms current p95).
+

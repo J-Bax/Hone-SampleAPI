@@ -1,0 +1,1 @@
+{"scope":"narrow","reasoning":"The optimization involves replacing full table scans (ToListAsync followed by in-memory LINQ) with server-side queries (Take, OrderByDescending, Count) entirely within the single OnGetAsync method of Index.cshtml.cs, requiring no dependency, schema, or API contract changes."}

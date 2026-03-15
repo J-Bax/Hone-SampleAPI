@@ -1,54 +1,52 @@
-# Triple full table scan with N+1 on growing tables in order history
+# Full Products table scan with in-memory filtering and no AsNoTracking
 
-> **File:** `SampleApi/Pages/Orders/Index.cshtml.cs` | **Scope:** narrow
+> **File:** `SampleApi/Pages/Products/Index.cshtml.cs` | **Scope:** narrow
 
 ## Evidence
 
-At `Pages/Orders/Index.cshtml.cs:40-43`, the order history page loads ALL orders and filters in memory:
+At `Pages/Products/Index.cshtml.cs:35`, the Products listing page loads all 1,000 products with full change tracking:
 
 ```csharp
-var allOrders = await _context.Orders.ToListAsync();
-Orders = allOrders
-    .Where(o => o.CustomerName.Equals(customer, StringComparison.OrdinalIgnoreCase))
-    .OrderByDescending(o => o.OrderDate)
-    .ToList();
+var allProducts = await _context.Products.ToListAsync();
 ```
 
-At line 46, it loads ALL order items:
+Then at lines 38-51, category and search filtering are applied in memory:
 
 ```csharp
-var allItems = await _context.OrderItems.ToListAsync();
-```
-
-At lines 53-55, it performs N+1 Product lookups for each order item:
-
-```csharp
-foreach (var item in items)
+if (!string.IsNullOrWhiteSpace(category))
 {
-    var product = await _context.Products.FindAsync(item.ProductId);
-    // ...
+    allProducts = allProducts.Where(p =>
+        p.Category.Equals(category, StringComparison.OrdinalIgnoreCase)).ToList();
+}
+if (!string.IsNullOrWhiteSpace(q))
+{
+    allProducts = allProducts.Where(p =>
+        p.Name.Contains(q, StringComparison.OrdinalIgnoreCase) || ...).ToList();
 }
 ```
 
+Pagination at lines 57-60 also happens in memory after loading all rows:
+
+```csharp
+Products = allProducts.Skip((CurrentPage - 1) * PageSize).Take(PageSize).ToList();
+```
+
+No `AsNoTracking()` is used on any query.
+
 ## Theory
 
-The Orders and OrderItems tables grow continuously during the k6 test. Every iteration creates 2 orders (1 via API, 1 via Checkout POST) with 2-3 items each. At 500 VUs doing back-to-back iterations, thousands of orders accumulate within seconds. The full table scan at line 40 materializes ALL of them — including orders from every other VU — with change tracking enabled.
+Every Products page visit materializes all 1,000 Product entities with full EF Core change tracking, then discards most of them (the page only shows 24 items). The k6 scenario always hits `GET /Products` without filters, so all 1,000 entities are materialized, tracked, and paginated in memory every time. The CPU profiler shows heavy costs in `StateManager.StartTrackingFromQuery` (~1,030 samples), `NavigationFixer.InitialFixup` (~1,087 samples), and `CastHelpers` (~18K samples) — all proportional to entity count. The change tracking overhead for a read-only page is entirely wasted.
 
-The cascading pattern is devastating: full scan Orders (growing) → full scan OrderItems (growing faster, ~2-3x orders) → N+1 Product lookups per item. Under stress load, a single request to this page could easily materialize thousands of entities across 3 separate queries plus dozens of individual FindAsync calls.
-
-This progressive degradation explains why the p95 only improved 4.4% from baseline despite 3 prior optimizations — the growing-table endpoints get worse as the test runs, pulling up tail latency in the stress phase.
+This is the same pattern that was fixed in `ProductsController.cs` (experiment 1) for the API endpoint, but the Razor Page version was never optimized.
 
 ## Proposed Fixes
 
-1. **Server-side customer filtering:** Replace line 40's full scan with `_context.Orders.Where(o => o.CustomerName == customer).OrderByDescending(o => o.OrderDate).ToListAsync()`. Note: use case-insensitive collation or `EF.Functions.Like()` if case-insensitive matching is needed.
+1. **Server-side filtering with IQueryable + AsNoTracking:** Build an `IQueryable<Product>` pipeline: start with `_context.Products.AsNoTracking()`, conditionally chain `.Where(p => p.Category == category)` and `.Where(p => p.Name.Contains(q) || p.Description.Contains(q))`, then apply `.Skip().Take()` for pagination before calling `ToListAsync()`. Use a separate `CountAsync()` on the filtered queryable for `TotalPages` calculation.
 
-2. **Server-side OrderItems filter:** Replace line 46's full scan with `_context.OrderItems.Where(oi => orderIds.Contains(oi.OrderId)).ToListAsync()` where `orderIds` is the list of matching order IDs.
-
-3. **Batch Product lookup:** Replace the N+1 loop at lines 53-55 with a single `_context.Products.Where(p => productIds.Contains(p.Id)).ToDictionaryAsync(p => p.Id)` call using the distinct ProductIds from the filtered order items.
+2. **Eliminate full table materialization:** The current code loads 1,000 entities to show 24. With server-side Skip/Take, SQL Server returns only the 24 needed rows, reducing materialization by ~97% and eliminating all associated change tracking, type casting, and serialization overhead.
 
 ## Expected Impact
 
-- p95 latency: ~250ms reduction on affected requests (eliminates scans of growing tables + N+1)
-- The improvement compounds over the test duration — the heaviest stress-phase requests see the biggest benefit
-- Overall p95 improvement: ~0.9% (5.6% of traffic * 250ms / 1527ms p95)
-- GC: noticeable reduction in Gen2 pressure from fewer large materializations
+- p95 latency: Per-request latency should drop ~30ms by materializing 24 entities instead of 1,000 and eliminating change tracking.
+- Memory: ~97% reduction in per-request allocations from this endpoint.
+- Overall p95 improvement: ~2.9% (5.6% traffic share × 30ms / 583ms).

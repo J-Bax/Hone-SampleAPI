@@ -1,56 +1,52 @@
-# Full table scans of Reviews and Products in product detail page
+# Full CartItems table scan with N+1 lookups and per-item SaveChanges
 
-> **File:** `SampleApi/Pages/Products/Detail.cshtml.cs` | **Scope:** narrow
+> **File:** `SampleApi/Pages/Cart/Index.cshtml.cs` | **Scope:** narrow
 
 ## Evidence
 
-At `Pages/Products/Detail.cshtml.cs:34-36`, the GET handler loads ALL ~2000 reviews into memory and filters client-side:
+At `Pages/Cart/Index.cshtml.cs:109-110`, `LoadCart()` loads the entire CartItems table:
 
 ```csharp
-var allReviews = await _context.Reviews.ToListAsync();
-Reviews = allReviews.Where(r => r.ProductId == id)
-                    .OrderByDescending(r => r.CreatedAt)
-                    .ToList();
+var allItems = await _context.CartItems.ToListAsync();
+var sessionItems = allItems.Where(c => c.SessionId == sessionId).ToList();
 ```
 
-At lines 41-46, it loads ALL 1000 products for the related-products feature:
+Then at lines 115-130, it performs N+1 product lookups per session item:
 
 ```csharp
-var allProducts = await _context.Products.ToListAsync();
-RelatedProducts = allProducts
-    .Where(p => p.Category == Product.Category && p.Id != id)
-    .OrderBy(_ => Guid.NewGuid())
-    .Take(4)
-    .ToList();
+foreach (var item in sessionItems)
+{
+    var product = await _context.Products.FindAsync(item.ProductId);
+    ...
+}
 ```
 
-The POST handler at line 65 adds another full table scan:
+Additionally, `OnPostClearAsync` at lines 91-98 loads ALL cart items, filters in memory, then does per-item `SaveChangesAsync()` inside a loop:
 
 ```csharp
-var allCartItems = await _context.CartItems.ToListAsync();
+var allItems = await _context.CartItems.ToListAsync();
+var sessionItems = allItems.Where(c => c.SessionId == sessionId).ToList();
+foreach (var item in sessionItems)
+{
+    _context.CartItems.Remove(item);
+    await _context.SaveChangesAsync();
+}
 ```
-
-And at line 88, the POST re-invokes `OnGetAsync()`, re-loading all 3000+ entities a second time.
 
 ## Theory
 
-Each GET request materializes ~3000 entities (2000 reviews + 1000 products) with full change tracking, only to use ~10-20 of them. Each POST materializes ~6000+ (CartItems + 2× Reviews + 2× Products). This is a primary driver of the 206 GB total allocation and 222 Gen2 GC collections observed in profiling.
+The CartItems table grows continuously during the k6 load test — every VU iteration adds items via both the API and Razor page flows. Under 500 VUs, the table can contain thousands of rows at any point. Loading the ENTIRE table for every Cart page view (just to filter to one session's ~1 item) is extremely wasteful and gets progressively worse as the test runs. The N+1 product lookups add a DB round-trip per cart item. The per-item `SaveChangesAsync` in `OnPostClearAsync` generates a separate SQL transaction per deletion.
 
-The CPU profile confirms this: 25% inclusive CPU in `ToListAsync()`, 5.6% in `NavigationFixer.InitialFixup` (change tracking), 3% in SortedSet enumeration (identity map), and 2.3% in CastHelpers (entity materialization) are all proportional to entity count. With 500 VUs hitting this page back-to-back, the app materializes millions of entities per second, overwhelming the GC.
-
-The `Guid.NewGuid()` random ordering at line 44 cannot be pushed to SQL, so it forces client-side evaluation of all same-category products.
+The CPU profiler's TDS parsing hotspots (8.5% in `TryReadChar`, 5.2% in `TryReadColumnInternal`) and the memory profiler's 1,273 MB/sec allocation rate both reflect the massive data volume being pulled through this path. The `LoadCart()` method is called from `OnGetAsync`, `OnPostUpdateQuantityAsync`, `OnPostRemoveAsync`, and `OnPostClearAsync` — so every Cart page interaction triggers the full table scan.
 
 ## Proposed Fixes
 
-1. **Server-side review filtering:** Replace the full Reviews scan at line 34 with `_context.Reviews.Where(r => r.ProductId == id).OrderByDescending(r => r.CreatedAt).ToListAsync()`. This reduces ~2000 rows to typically 1-7.
+1. **Server-side session filtering + batch product lookup:** Replace `CartItems.ToListAsync()` with `_context.CartItems.AsNoTracking().Where(c => c.SessionId == sessionId).ToListAsync()`. Replace the N+1 product loop with a batch lookup: collect product IDs, then `_context.Products.AsNoTracking().Where(p => productIds.Contains(p.Id)).ToDictionaryAsync(p => p.Id)`.
 
-2. **Server-side related products query:** Replace the full Products scan at line 41 with a server-side query using `_context.Products.Where(p => p.Category == Product.Category && p.Id != id).Take(4).ToListAsync()`. Sacrifice random ordering for a massive reduction in data transfer and allocation. Alternatively use `OrderBy(p => p.Id % someValue)` for pseudo-random server-side ordering.
-
-3. **Server-side CartItems filter in POST:** Replace line 65 with `_context.CartItems.Where(c => c.SessionId == sessionId && c.ProductId == productId).FirstOrDefaultAsync()`.
+2. **Batch clear with single SaveChanges:** In `OnPostClearAsync`, use `_context.CartItems.Where(c => c.SessionId == sessionId)` with `RemoveRange` and a single `SaveChangesAsync()` call instead of per-item saves.
 
 ## Expected Impact
 
-- p95 latency: ~300ms reduction per request (from materializing 3000 entities down to ~10-20)
-- Allocation: ~99% reduction per request on this endpoint, significantly easing GC pressure
-- Overall p95 improvement: ~2.2% (11.1% of traffic * 300ms / 1527ms p95)
-- GC: fewer Gen2 collections due to dramatically lower allocation volume
+- p95 latency: Per-request latency should drop ~40ms by eliminating the full table scan on a growing table and N+1 queries.
+- Throughput: Single SaveChanges in clear operation reduces DB round-trips from N to 1.
+- Overall p95 improvement: ~3.8% (5.6% traffic share × 40ms / 583ms). Impact increases as the test progresses due to the growing table.
