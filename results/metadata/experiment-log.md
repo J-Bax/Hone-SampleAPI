@@ -5,3 +5,4 @@
 | Experiment | Timestamp | File | Optimization | Outcome |
 |-----------|-----------|------|-------------|---------|
 | 4 | 2026-03-15 10:46 | `SampleApi/Pages/Orders/Index.cshtml.cs` | Orders page loads entire database into memory | improved |
+| 5 | 2026-03-15 11:12 | `SampleApi/Pages/Checkout/Index.cshtml.cs` | Checkout page per-item SaveChanges and full table scans | regressed |

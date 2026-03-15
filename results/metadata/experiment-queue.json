@@ -20,9 +20,9 @@
       "explanation": "Checkout page per-item SaveChanges and full table scans",
       "scope": "narrow",
       "rootCausePath": "C:\\Projects\\Hone\\sample-api\\results\\metadata\\root-causes\\rca-2.md",
-      "status": "in_progress",
-      "triedByExperiment": null,
-      "outcome": null
+      "status": "done",
+      "triedByExperiment": 5,
+      "outcome": "regressed"
     },
     {
       "id": 3,
