@@ -1,47 +1,51 @@
-# Replace full reviews table scan with server-side query filtering
+# Replace full CartItems table scans with server-side filtering
 
-> **File:** `SampleApi/Controllers/ReviewsController.cs` | **Scope:** narrow
+> **File:** `SampleApi/Controllers/CartController.cs` | **Scope:** narrow
 
 ## Evidence
 
-Both read-by-product endpoints in `ReviewsController.cs` load the entire `Reviews` table (~2,000 rows from seed data, growing under load) into memory:
+Three methods in `CartController.cs` load the **entire CartItems table** then filter in memory:
 
-- **Line 54** (`GetReviewsByProduct`):
-  ```csharp
-  var allReviews = await _context.Reviews.ToListAsync();
-  var filtered = allReviews.Where(r => r.ProductId == productId).ToList();
-  ```
-- **Line 70** (`GetAverageRating`):
-  ```csharp
-  var allReviews = await _context.Reviews.ToListAsync();
-  var productReviews = allReviews.Where(r => r.ProductId == productId).ToList();
-  var average = productReviews.Any()
-      ? Math.Round(productReviews.Average(r => r.Rating), 2) : 0.0;
-  ```
-- **Lines 95-97** (`CreateReview`): After saving, pointlessly loads ALL reviews again and computes an unused average:
-  ```csharp
-  var allReviews = await _context.Reviews.ToListAsync();
-  var productReviews = allReviews.Where(r => r.ProductId == review.ProductId).ToList();
-  var _ = productReviews.Average(r => r.Rating); // Wasted computation
-  ```
+**GetCart** (line 25-26):
+```csharp
+var allItems = await _context.CartItems.ToListAsync();
+var sessionItems = allItems.Where(c => c.SessionId == sessionId).ToList();
+```
+Plus N+1 product lookups at line 33: `await _context.Products.FindAsync(item.ProductId)`.
 
-The Reviews table starts with ~2,000 rows and each product has 1-7 reviews, meaning each request materializes ~2,000 objects to return ~4. The CPU profile shows the top hotspot chain flowing through EF materialization and TDS parsing, and the GC report confirms 37.3 GB total allocations with catastrophic Gen2 pressure.
+**AddToCart** (line 69-71):
+```csharp
+var allItems = await _context.CartItems.ToListAsync();
+var existing = allItems.FirstOrDefault(c =>
+    c.SessionId == request.SessionId && c.ProductId == request.ProductId);
+```
+
+**ClearCart** (line 140-146):
+```csharp
+var allItems = await _context.CartItems.ToListAsync();
+var sessionItems = allItems.Where(c => c.SessionId == sessionId).ToList();
+foreach (var item in sessionItems)
+{
+    _context.CartItems.Remove(item);
+    await _context.SaveChangesAsync(); // Saves each time — extra round trips
+}
+```
+
+The k6 scenario hits these 3 endpoints per iteration: POST `/api/cart` (add), GET `/api/cart/{sessionId}`, DELETE `/api/cart/session/{sessionId}`. Under stress load with 500 VUs, the CartItems table accumulates thousands of rows, and every cart operation transfers the entire table.
 
 ## Theory
 
-Each call to `GetReviewsByProduct` and `GetAverageRating` materializes ~2,000 Review entities with full change tracking, only to discard ~99.8% of them. With these 2 endpoints representing 11.1% of k6 traffic, this pattern generates ~10% of total allocation volume. The `GetAverageRating` endpoint is particularly wasteful because SQL Server can compute `AVG(Rating)` directly — materializing 2,000 rows to compute an average in C# turns a trivial SQL aggregate into a multi-megabyte allocation.
-
-The `CreateReview` endpoint (line 95-97) adds insult to injury: it loads all reviews *again* after saving, computes an average, and discards it — pure waste. While `CreateReview` isn't called in the k6 scenario, it demonstrates the pervasive anti-pattern.
+Each of the three cart API endpoints materializes all CartItems rows just to find a few belonging to one session. Under load, with 500 concurrent VUs each creating cart items, the table grows rapidly. Three full-table scans per iteration × 500 VUs creates enormous unnecessary I/O and memory pressure. The `ClearCart` method compounds this with per-item `SaveChangesAsync` calls, adding N database round-trips. These contribute to the GC pressure (large List<T> allocations) and inflate latency for all concurrent requests.
 
 ## Proposed Fixes
 
-1. **Server-side WHERE + AsNoTracking:** Replace `ToListAsync()` + LINQ-to-Objects with:
-   - `GetReviewsByProduct` (line 54): `_context.Reviews.AsNoTracking().Where(r => r.ProductId == productId).ToListAsync()`
-   - `GetAverageRating` (lines 70-75): Use database aggregation: `_context.Reviews.Where(r => r.ProductId == productId).AverageAsync(r => (double?)r.Rating) ?? 0.0` and `_context.Reviews.CountAsync(r => r.ProductId == productId)` — zero entity materialization.
-   - `CreateReview` (lines 95-97): Delete the dead code entirely.
+1. **Server-side filtering:** Replace `ToListAsync()` + in-memory `.Where()` with EF Core `.Where()` before materialization in all three methods. For GetCart, batch-load products with `.Where(p => productIds.Contains(p.Id))` instead of N+1. For ClearCart, use `RemoveRange` + single `SaveChangesAsync`.
+   - GetCart: `_context.CartItems.Where(c => c.SessionId == sessionId).ToListAsync()`
+   - AddToCart: `_context.CartItems.FirstOrDefaultAsync(c => c.SessionId == request.SessionId && c.ProductId == request.ProductId)`
+   - ClearCart: `var items = await _context.CartItems.Where(...).ToListAsync(); _context.CartItems.RemoveRange(items); await _context.SaveChangesAsync();`
 
 ## Expected Impact
 
-- **p95 latency:** Estimated 7-9% overall improvement. Per-request allocations drop from ~2,000 entities to ~4 (for by-product) or zero (for average, using SQL aggregation).
-- **RPS:** Moderate increase from reduced GC pressure.
-- **Allocation volume:** Estimated 8-10% reduction in total allocations, directly reducing Gen2 collection frequency.
+- p95 latency: Estimated **200-300ms overall reduction**. Three endpoints × 5.6% each = 16.7% of traffic, each doing unnecessary full table scans.
+- GC pressure: Reduced LOH allocations from large List<CartItem> materializations.
+- RPS: Moderate improvement from reduced per-request DB I/O.

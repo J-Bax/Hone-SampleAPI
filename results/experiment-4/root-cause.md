@@ -1,3 +1,14 @@
+# Root Cause Analysis — Experiment 4
+
+> Generated: 2026-03-15 13:05:29 | Classification: narrow — The optimization involves replacing client-side filtering (full-table ToListAsync + in-memory Where) with server-side query filtering, and eliminating the N+1 product lookups via Include/join — all changes are confined to query logic within the single OnGetAsync method of this PageModel, with no contract, dependency, or schema changes.
+
+| Metric | Current | Baseline |
+|--------|---------|----------|
+| p95 Latency | 2179.352105ms | 7546.103045ms |
+| Requests/sec | 349.3 | 125.5 |
+| Error Rate | 0% | 0% |
+
+---
 # Eliminate full-table scans and N+1 queries in Orders page
 
 > **File:** `SampleApi/Pages/Orders/Index.cshtml.cs` | **Scope:** narrow
@@ -44,3 +55,4 @@ Every request to `/Orders?customer=X` transfers the entire Orders table, the ent
 - GC pressure: Dramatically reduced LOH allocations → fewer Gen2 collections → lower GC pause ratio.
 - RPS: Should increase as server spends far less CPU per request.
 - This is the single highest-impact fix available based on profiling data.
+
