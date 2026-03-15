@@ -1,0 +1,1 @@
+{"scope":"narrow","reasoning":"The three full-table scans (Orders, OrderItems) and the N+1 Products.FindAsync loop on lines 40-63 can all be replaced with server-side filtered queries, eager-loaded joins (.Include/.ThenInclude), and .AsNoTracking() entirely within this single PageModel file, requiring no dependency, schema, or API contract changes."}

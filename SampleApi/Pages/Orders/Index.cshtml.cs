@@ -37,22 +37,34 @@ public class IndexModel : PageModel
         if (string.IsNullOrWhiteSpace(customer))
             return;
 
-        var allOrders = await _context.Orders.ToListAsync();
-        Orders = allOrders
-            .Where(o => o.CustomerName.Equals(customer, StringComparison.OrdinalIgnoreCase))
+        Orders = await _context.Orders
+            .Where(o => o.CustomerName == customer)
             .OrderByDescending(o => o.OrderDate)
-            .ToList();
+            .ToListAsync();
 
-        var allItems = await _context.OrderItems.ToListAsync();
+        if (Orders.Count == 0)
+            return;
+
+        var orderIds = Orders.Select(o => o.Id).ToList();
+
+        var items = await _context.OrderItems
+            .Where(oi => orderIds.Contains(oi.OrderId))
+            .ToListAsync();
+
+        var productIds = items.Select(i => i.ProductId).Distinct().ToList();
+
+        var productMap = await _context.Products
+            .Where(p => productIds.Contains(p.Id))
+            .ToDictionaryAsync(p => p.Id);
 
         foreach (var order in Orders)
         {
-            var items = allItems.Where(i => i.OrderId == order.Id).ToList();
+            var orderItems = items.Where(i => i.OrderId == order.Id).ToList();
             var itemViews = new List<OrderItemView>();
 
-            foreach (var item in items)
+            foreach (var item in orderItems)
             {
-                var product = await _context.Products.FindAsync(item.ProductId);
+                productMap.TryGetValue(item.ProductId, out var product);
                 itemViews.Add(new OrderItemView
                 {
                     ProductId = item.ProductId,

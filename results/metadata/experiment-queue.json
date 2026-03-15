@@ -31,9 +31,9 @@
       "explanation": "Triple full table scan with N+1 on growing tables in order history",
       "scope": "narrow",
       "rootCausePath": "C:\\Projects\\Hone\\sample-api\\results\\metadata\\root-causes\\rca-3.md",
-      "status": "pending",
-      "triedByExperiment": null,
-      "outcome": null
+      "status": "done",
+      "triedByExperiment": 6,
+      "outcome": "improved"
     }
   ]
 }
