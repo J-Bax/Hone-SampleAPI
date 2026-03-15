@@ -1,0 +1,1 @@
+{"scope":"narrow","reasoning":"The fix involves replacing `ToListAsync()` + in-memory `.Where()` with server-side `.Where().ToListAsync()` queries in `GetReviewsByProduct`, `GetAverageRating`, and `CreateReview` — all changes are confined to method bodies within this single controller file, with no dependency, schema, or API contract changes."}
