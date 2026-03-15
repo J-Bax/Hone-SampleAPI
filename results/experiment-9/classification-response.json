@@ -1,0 +1,1 @@
+{"scope":"narrow","reasoning":"The optimization replaces in-memory filtering and pagination with server-side IQueryable operations (.Where, .Skip, .Take) entirely within the OnGetAsync method body of this single file, with no changes to API contracts, dependencies, or other files."}
