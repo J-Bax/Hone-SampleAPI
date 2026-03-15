@@ -1,28 +1,39 @@
 {
-  "generatedByExperiment": 14,
-  "generatedAt": "2026-03-14T18:48:25.3311557-07:00",
+  "generatedByExperiment": 15,
+  "generatedAt": "2026-03-14T19:29:51.8026553-07:00",
   "items": [
     {
       "id": 1,
-      "filePath": "SampleApi/Data/AppDbContext.cs",
-      "title": "Missing database indexes on high-traffic filter columns",
-      "explanation": "Missing database indexes on high-traffic filter columns",
-      "scope": "architecture",
+      "filePath": "SampleApi/Controllers/ProductsController.cs",
+      "title": "SearchProducts and GetProductsByCategory bypass existing product cache",
+      "explanation": "SearchProducts and GetProductsByCategory bypass existing product cache",
+      "scope": "narrow",
       "rootCausePath": "C:\\Projects\\Hone\\sample-api\\results\\metadata\\root-causes\\rca-1.md",
+      "status": "done",
+      "triedByExperiment": 15,
+      "outcome": "improved"
+    },
+    {
+      "id": 2,
+      "filePath": "SampleApi/Controllers/ReviewsController.cs",
+      "title": "GetAverageRating makes 3 separate database round-trips per request",
+      "explanation": "GetAverageRating makes 3 separate database round-trips per request",
+      "scope": "narrow",
+      "rootCausePath": "C:\\Projects\\Hone\\sample-api\\results\\metadata\\root-causes\\rca-2.md",
       "status": "pending",
       "triedByExperiment": null,
       "outcome": null
     },
     {
-      "id": 2,
-      "filePath": "SampleApi/Controllers/ProductsController.cs",
-      "title": "GetProducts re-queries all 1000 products from the database on every request",
-      "explanation": "GetProducts re-queries all 1000 products from the database on every request",
+      "id": 3,
+      "filePath": "SampleApi/Pages/Checkout/Index.cshtml.cs",
+      "title": "Checkout OnPostAsync uses 3 SaveChangesAsync calls where 2 suffice",
+      "explanation": "Checkout OnPostAsync uses 3 SaveChangesAsync calls where 2 suffice",
       "scope": "narrow",
-      "rootCausePath": "C:\\Projects\\Hone\\sample-api\\results\\metadata\\root-causes\\rca-2.md",
-      "status": "done",
-      "triedByExperiment": 14,
-      "outcome": "improved"
+      "rootCausePath": "C:\\Projects\\Hone\\sample-api\\results\\metadata\\root-causes\\rca-3.md",
+      "status": "pending",
+      "triedByExperiment": null,
+      "outcome": null
     }
   ]
 }

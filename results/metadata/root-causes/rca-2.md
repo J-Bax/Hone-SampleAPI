@@ -1,46 +1,48 @@
-# GetProducts re-queries all 1000 products from the database on every request
+# GetAverageRating makes 3 separate database round-trips per request
 
-> **File:** `SampleApi/Controllers/ProductsController.cs` | **Scope:** narrow
+> **File:** `SampleApi/Controllers/ReviewsController.cs` | **Scope:** narrow
 
 ## Evidence
 
-At `ProductsController.cs:24-27`, `GetProducts` materializes all 1000 products from the database on every call:
+At `ReviewsController.cs:65-73`, `GetAverageRating` executes 3 sequential database queries:
 
 ```csharp
-// ProductsController.cs:24-27
-[HttpGet]
-public async Task<ActionResult<IEnumerable<Product>>> GetProducts()
-{
-    var products = await _context.Products.ToListAsync();
-    return Ok(products);
-}
+// Query 1 (line 65): Check product exists
+var productExists = await _context.Products.AnyAsync(p => p.Id == productId);
+
+// Query 2 (line 70): Count reviews
+var reviewCount = await productReviewsQuery.CountAsync();
+
+// Query 3 (line 72): Average rating  
+var average = reviewCount > 0
+    ? Math.Round(await productReviewsQuery.AverageAsync(r => r.Rating), 2)
+    : 0.0;
 ```
 
-The Products table is seeded once at startup (`SeedData.cs:37-49`, 1000 products) and **never modified** during k6 load tests — no k6 request writes to the Products table. Yet every VU iteration triggers a full table scan of all 1000 products with entity change tracking.
+The k6 scenario calls this endpoint once per VU iteration (`/api/reviews/average/{reviewProductId}`), representing 5.6% of total traffic. Under 500 VUs at ~79 requests/second, this generates ~237 SQL query executions/second just for this endpoint.
 
-The CPU profiler shows `TdsParserStateObject.TryReadChar` as the top exclusive-time method (1.72%) and `TryReadPlpUnicodeCharsChunk` at 0.33%, both driven by reading large nvarchar columns (Product.Description) from SQL. The GC profiler reports 730 MB/sec allocation rate — each GetProducts call creates 1000 tracked Product entities plus identity-map entries and snapshot copies, contributing significantly to the Gen0→Gen1 mid-life promotion storm (131 Gen0 vs 123 Gen1 collections).
+The CPU profile shows `StateSnapshot.Snap` (0.8%) and `PrepareAsyncInvocation` (0.6%) — async infrastructure overhead that scales linearly with the number of awaited DB calls.
 
 ## Theory
 
-At ~73.6 calls/sec (5.56% of 1325 RPS), GetProducts materializes ~73,600 Product entities per second — all identical data that hasn't changed since startup. Each entity involves:
-- SQL round-trip reading 1000 rows with Description nvarchar columns (~150 bytes each)
-- EF Core identity-map lookup and tracking-entry creation per entity
-- Original-values snapshot allocation per entity (~200 bytes overhead)
-- JSON serialization of the full 1000-element array
+Each database round-trip incurs connection acquisition from the pool, SQL compilation/execution, result deserialization, and async state machine overhead (snapshot, prepare, clear). At 500 concurrent VUs, the 3 sequential queries hold a DB connection approximately 3× longer than necessary per request, reducing effective connection pool throughput and increasing queuing latency for other requests.
 
-This produces ~30-40 MB/sec of allocations from this single endpoint alone. The entities survive Gen0 (because the request hasn't completed when Gen0 runs), get promoted to Gen1, then die — the classic mid-life crisis pattern that causes expensive Gen0 pauses (up to 119ms observed).
-
-Since the underlying data never changes during load tests, every one of these queries returns the exact same result.
+The existence check (`AnyAsync` on Products by primary key) and the two aggregate queries (`CountAsync` + `AverageAsync` on Reviews by ProductId) can all be answered in a single SQL round-trip using a grouped projection. This reduces per-request connection hold time by ~66% and eliminates 2 async state machine cycles.
 
 ## Proposed Fixes
 
-1. **In-memory cache with time-based expiration**: Add a static cached result field to the controller. On the first request (or after expiry), query the database once and store the result. Subsequent requests return the cached list directly, bypassing the database entirely. A 30-second TTL is more than sufficient since products don't change during load tests. The JSON response is identical to the current implementation.
-
-   The cache should populate using a non-tracked query (projection to anonymous types or a detached list) so the cached objects don't hold references to a disposed DbContext.
+1. **Single aggregate query:** Replace the 3 queries with one grouped projection that returns count and average in a single round-trip:
+   ```csharp
+   var stats = await _context.Reviews
+       .Where(r => r.ProductId == productId)
+       .GroupBy(r => r.ProductId)
+       .Select(g => new { Count = g.Count(), Average = g.Average(r => r.Rating) })
+       .FirstOrDefaultAsync();
+   ```
+   When `stats` is null (no reviews), check product existence with a single `AnyAsync` to preserve the 404 behavior. When `stats` is non-null, the product implicitly exists (reviews reference it), so no extra query is needed. This reduces the common case from 3 queries to 1, and the no-reviews case from 3 to 2.
 
 ## Expected Impact
 
-- **p95 latency**: ~15-20ms direct reduction per GetProducts request (eliminates SQL round-trip + materialization)
-- **RPS**: Modest improvement from freeing ~73.6 DB connections/sec for other endpoints
-- **GC pressure**: Eliminates ~30-40 MB/sec of entity allocations, reducing Gen0 collection frequency and max pause duration
-- The indirect benefit of reduced DB load (fewer connections, less lock contention, less I/O) improves latency for ALL endpoints, amplifying the overall impact beyond the direct 5.56% traffic share
+- p95 latency: ~10-15ms reduction per request from eliminating 2 DB round-trips and their async overhead
+- Connection pool: ~66% fewer connections held per request for this endpoint, reducing queuing under high concurrency
+- Overall p95 improvement: estimated 1.5-2% from direct latency savings and reduced connection pool contention at 500 VUs

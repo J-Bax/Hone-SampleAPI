@@ -67,15 +67,19 @@ public class ProductsController : ControllerBase
     [HttpGet("by-category/{categoryName}")]
     public async Task<ActionResult<IEnumerable<Product>>> GetProductsByCategory(string categoryName)
     {
-        var categoryExists = await _context.Categories
-            .AnyAsync(c => c.Name.ToLower() == categoryName.ToLower());
+        var cached = await GetOrPopulateCacheAsync();
 
-        if (!categoryExists)
-            return NotFound(new { message = $"Category '{categoryName}' not found" });
+        var lowerCategory = categoryName.ToLower();
+        var filtered = cached.Where(p => p.Category.ToLower() == lowerCategory).ToList();
 
-        var filtered = await _context.Products
-            .Where(p => p.Category.ToLower() == categoryName.ToLower())
-            .ToListAsync();
+        if (filtered.Count == 0)
+        {
+            var categoryExists = await _context.Categories
+                .AnyAsync(c => c.Name.ToLower() == lowerCategory);
+
+            if (!categoryExists)
+                return NotFound(new { message = $"Category '{categoryName}' not found" });
+        }
 
         return Ok(filtered);
     }
@@ -86,17 +90,16 @@ public class ProductsController : ControllerBase
     [HttpGet("search")]
     public async Task<ActionResult<IEnumerable<Product>>> SearchProducts([FromQuery] string? q)
     {
+        var cached = await GetOrPopulateCacheAsync();
+
         if (string.IsNullOrWhiteSpace(q))
-        {
-            var all = await _context.Products.ToListAsync();
-            return Ok(all);
-        }
+            return Ok(cached);
 
         var lowerQ = q.ToLower();
-        var results = await _context.Products
+        var results = cached
             .Where(p => p.Name.ToLower().Contains(lowerQ) ||
                         (p.Description != null && p.Description.ToLower().Contains(lowerQ)))
-            .ToListAsync();
+            .ToList();
 
         return Ok(results);
     }
@@ -152,5 +155,27 @@ public class ProductsController : ControllerBase
         await _context.SaveChangesAsync();
 
         return NoContent();
+    }
+
+    private async Task<List<Product>> GetOrPopulateCacheAsync()
+    {
+        if (_cachedProducts != null && DateTime.UtcNow < _cacheExpiry)
+            return _cachedProducts;
+
+        await _cacheLock.WaitAsync();
+        try
+        {
+            if (_cachedProducts != null && DateTime.UtcNow < _cacheExpiry)
+                return _cachedProducts;
+
+            var products = await _context.Products.AsNoTracking().ToListAsync();
+            _cachedProducts = products;
+            _cacheExpiry = DateTime.UtcNow.Add(_cacheTtl);
+            return _cachedProducts;
+        }
+        finally
+        {
+            _cacheLock.Release();
+        }
     }
 }
