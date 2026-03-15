@@ -1,51 +1,43 @@
-# Replace full CartItems table scans with server-side filtering
+# Replace dual full-table scans with targeted queries on Home page
 
-> **File:** `SampleApi/Controllers/CartController.cs` | **Scope:** narrow
+> **File:** `SampleApi/Pages/Index.cshtml.cs` | **Scope:** narrow
 
 ## Evidence
 
-Three methods in `CartController.cs` load the **entire CartItems table** then filter in memory:
+At `Pages/Index.cshtml.cs:28-29`, the home page loads **every product** into memory with change tracking just to select 12 random featured items:
 
-**GetCart** (line 25-26):
 ```csharp
-var allItems = await _context.CartItems.ToListAsync();
-var sessionItems = allItems.Where(c => c.SessionId == sessionId).ToList();
-```
-Plus N+1 product lookups at line 33: `await _context.Products.FindAsync(item.ProductId)`.
-
-**AddToCart** (line 69-71):
-```csharp
-var allItems = await _context.CartItems.ToListAsync();
-var existing = allItems.FirstOrDefault(c =>
-    c.SessionId == request.SessionId && c.ProductId == request.ProductId);
+var allProducts = await _context.Products.ToListAsync();
+FeaturedProducts = allProducts.OrderBy(_ => Guid.NewGuid()).Take(12).ToList();
+TotalProducts = allProducts.Count;
 ```
 
-**ClearCart** (line 140-146):
+At lines 36-37, it does the same with **all reviews** just to get the 5 most recent:
+
 ```csharp
-var allItems = await _context.CartItems.ToListAsync();
-var sessionItems = allItems.Where(c => c.SessionId == sessionId).ToList();
-foreach (var item in sessionItems)
-{
-    _context.CartItems.Remove(item);
-    await _context.SaveChangesAsync(); // Saves each time — extra round trips
-}
+var allReviews = await _context.Reviews.ToListAsync();
+RecentReviews = allReviews.OrderByDescending(r => r.CreatedAt).Take(5).ToList();
 ```
 
-The k6 scenario hits these 3 endpoints per iteration: POST `/api/cart` (add), GET `/api/cart/{sessionId}`, DELETE `/api/cart/session/{sessionId}`. Under stress load with 500 VUs, the CartItems table accumulates thousands of rows, and every cart operation transfers the entire table.
+Neither query uses `AsNoTracking()`. The CPU profile shows EF Core change tracking as a significant overhead: NavigationFixer (756 samples), InternalEntityEntry constructor (628 samples), SortedDictionary enumeration (~5300 samples). The GC report shows 95.4GB total allocations over ~120s — materializing two large tables with full tracking on every home page request is a major contributor.
 
 ## Theory
 
-Each of the three cart API endpoints materializes all CartItems rows just to find a few belonging to one session. Under load, with 500 concurrent VUs each creating cart items, the table grows rapidly. Three full-table scans per iteration × 500 VUs creates enormous unnecessary I/O and memory pressure. The `ClearCart` method compounds this with per-item `SaveChangesAsync` calls, adding N database round-trips. These contribute to the GC pressure (large List<T> allocations) and inflate latency for all concurrent requests.
+With potentially thousands of products and reviews seeded in the database, every home page request creates two full table scans, materializes all rows into tracked entity objects, sorts them in memory, then discards all but 12/5 items. This is wasteful in three ways:
+
+1. **SQL data transfer**: All columns of all rows are transmitted over TDS, driving the Unicode decoding hotspot (8900 samples in UnicodeEncoding).
+2. **Change tracking overhead**: Every materialized entity gets an InternalEntityEntry, NavigationFixer fixup, and identity map registration — completely unnecessary for read-only display.
+3. **Memory allocation**: Large List<T> allocations for thousands of entities inflate the managed heap, contributing to the 3.4GB peak and Gen2-dominant GC pattern.
 
 ## Proposed Fixes
 
-1. **Server-side filtering:** Replace `ToListAsync()` + in-memory `.Where()` with EF Core `.Where()` before materialization in all three methods. For GetCart, batch-load products with `.Where(p => productIds.Contains(p.Id))` instead of N+1. For ClearCart, use `RemoveRange` + single `SaveChangesAsync`.
-   - GetCart: `_context.CartItems.Where(c => c.SessionId == sessionId).ToListAsync()`
-   - AddToCart: `_context.CartItems.FirstOrDefaultAsync(c => c.SessionId == request.SessionId && c.ProductId == request.ProductId)`
-   - ClearCart: `var items = await _context.CartItems.Where(...).ToListAsync(); _context.CartItems.RemoveRange(items); await _context.SaveChangesAsync();`
+1. **Server-side random selection + Take for products**: Replace the full scan with `_context.Products.AsNoTracking().OrderBy(_ => EF.Functions.Random()).Take(12).ToListAsync()` or, if EF.Functions.Random() is unavailable, use `_context.Products.AsNoTracking().OrderBy(p => p.Id).Take(12).ToListAsync()` for deterministic featured products. Get TotalProducts via `_context.Products.CountAsync()` instead of loading all.
+
+2. **Server-side ordering + Take for reviews**: Replace `_context.Reviews.ToListAsync()` at line 36 with `_context.Reviews.AsNoTracking().OrderByDescending(r => r.CreatedAt).Take(5).ToListAsync()`.
 
 ## Expected Impact
 
-- p95 latency: Estimated **200-300ms overall reduction**. Three endpoints × 5.6% each = 16.7% of traffic, each doing unnecessary full table scans.
-- GC pressure: Reduced LOH allocations from large List<CartItem> materializations.
-- RPS: Moderate improvement from reduced per-request DB I/O.
+- p95 latency: ~80-120ms reduction per home page request by eliminating two full scans
+- GC pressure: Significant reduction — materializing 17 entities instead of thousands eliminates LOH allocations
+- SQL Server CPU: Reduced TDS parsing and data transfer overhead
+- Overall p95 improvement: ~1.5-2.5%, with indirect benefits to all endpoints from reduced SQL/GC contention

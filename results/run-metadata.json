@@ -83,32 +83,24 @@
       "PrUrl": "https://github.com/J-Bax/Hone-SampleAPI/pull/71",
       "StaleCount": 0,
       "ConsecutiveFailures": 0
+    },
+    {
+      "Experiment": 6,
+      "StartedAt": "2026-03-15T14:52:45.3957019-07:00",
+      "CompletedAt": "2026-03-15T15:18:25.3416124-07:00",
+      "Improved": true,
+      "Regression": false,
+      "P95": 685.0291249999991,
+      "RPS": 884.3,
+      "Outcome": "improved",
+      "BranchName": "hone/experiment-6",
+      "BaseBranch": "hone/experiment-5",
+      "PrNumber": 72,
+      "PrUrl": "https://github.com/J-Bax/Hone-SampleAPI/pull/72",
+      "StaleCount": 0,
+      "ConsecutiveFailures": 0
     }
   ],
-  "Machine": {
-    "Cpu": {
-      "Name": "AMD Ryzen 7 3700X 8-Core Processor",
-      "PhysicalCores": 8,
-      "LogicalProcessors": 16,
-      "MaxClockSpeedMHz": 3593,
-      "Architecture": "X64"
-    },
-    "Memory": {
-      "TotalGB": 63.9,
-      "AvailableGB": 38.3
-    },
-    "OS": {
-      "Description": "Windows 10",
-      "Platform": "Windows"
-    },
-    "Runtime": {
-      "PowerShellVersion": "7.4.13",
-      "DotnetSdkVersion": "8.0.100-preview.4.23260.5",
-      "ClrVersion": ".NET 8.0.21"
-    },
-    "CollectedAt": "2026-03-15T18:24:00.5559510Z"
-  },
-  "LoopStartedAt": "2026-03-15T11:24:00.5774303-07:00",
   "LoopCompletedAt": "2026-03-15T13:56:19.2306033-07:00",
   "PrChain": [
     "67",
@@ -124,5 +116,29 @@
     "hone/experiment-3",
     "hone/experiment-4",
     "hone/experiment-5"
-  ]
+  ],
+  "Machine": {
+    "Cpu": {
+      "Name": "AMD Ryzen 7 3700X 8-Core Processor",
+      "PhysicalCores": 8,
+      "LogicalProcessors": 16,
+      "MaxClockSpeedMHz": 3593,
+      "Architecture": "X64"
+    },
+    "Memory": {
+      "TotalGB": 63.9,
+      "AvailableGB": 35.9
+    },
+    "OS": {
+      "Description": "Windows 10",
+      "Platform": "Windows"
+    },
+    "Runtime": {
+      "PowerShellVersion": "7.4.13",
+      "DotnetSdkVersion": "8.0.100-preview.4.23260.5",
+      "ClrVersion": ".NET 8.0.21"
+    },
+    "CollectedAt": "2026-03-15T21:52:45.2861909Z"
+  },
+  "LoopStartedAt": "2026-03-15T14:52:45.3056766-07:00"
 }

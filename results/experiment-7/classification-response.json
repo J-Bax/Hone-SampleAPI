@@ -1,0 +1,1 @@
+{"scope":"narrow","reasoning":"The LoadCart method loads all CartItems into memory (line 109) then filters in C# (line 110) and does per-item Product lookups in a loop (line 117); replacing this with a server-side .Where() filter and .Include(ci => ci.Product) or a join is a single-file query optimization that does not change any API contract, dependency, or schema."}

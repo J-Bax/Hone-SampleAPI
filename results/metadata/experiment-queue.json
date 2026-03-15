@@ -1,39 +1,39 @@
 {
-  "generatedByExperiment": 4,
-  "generatedAt": "2026-03-15T13:05:10.9408609-07:00",
+  "generatedByExperiment": 7,
+  "generatedAt": "2026-03-15T15:29:30.0105207-07:00",
   "items": [
     {
       "id": 1,
-      "filePath": "SampleApi/Pages/Orders/Index.cshtml.cs",
-      "title": "Eliminate full-table scans and N+1 queries in Orders page",
-      "explanation": "Eliminate full-table scans and N+1 queries in Orders page",
+      "filePath": "SampleApi/Pages/Cart/Index.cshtml.cs",
+      "title": "Eliminate full CartItems table scan and N+1 product lookups in Cart page LoadCart",
+      "explanation": "Eliminate full CartItems table scan and N+1 product lookups in Cart page LoadCart",
       "scope": "narrow",
       "rootCausePath": "C:\\Projects\\Hone\\sample-api\\results\\metadata\\root-causes\\rca-1.md",
       "status": "done",
-      "triedByExperiment": 4,
+      "triedByExperiment": 7,
       "outcome": "improved"
     },
     {
       "id": 2,
-      "filePath": "SampleApi/Controllers/CartController.cs",
-      "title": "Replace full CartItems table scans with server-side filtering",
-      "explanation": "Replace full CartItems table scans with server-side filtering",
+      "filePath": "SampleApi/Pages/Index.cshtml.cs",
+      "title": "Replace dual full-table scans with targeted queries on Home page",
+      "explanation": "Replace dual full-table scans with targeted queries on Home page",
       "scope": "narrow",
       "rootCausePath": "C:\\Projects\\Hone\\sample-api\\results\\metadata\\root-causes\\rca-2.md",
-      "status": "done",
-      "triedByExperiment": 5,
-      "outcome": "improved"
+      "status": "pending",
+      "triedByExperiment": null,
+      "outcome": null
     },
     {
       "id": 3,
-      "filePath": "SampleApi/Pages/Products/Detail.cshtml.cs",
-      "title": "Eliminate full Reviews and Products table scans in product detail page",
-      "explanation": "Eliminate full Reviews and Products table scans in product detail page",
+      "filePath": "SampleApi/Pages/Products/Index.cshtml.cs",
+      "title": "Replace full product table scan with server-side filtering and pagination",
+      "explanation": "Replace full product table scan with server-side filtering and pagination",
       "scope": "narrow",
       "rootCausePath": "C:\\Projects\\Hone\\sample-api\\results\\metadata\\root-causes\\rca-3.md",
-      "status": "done",
-      "triedByExperiment": 6,
-      "outcome": "improved"
+      "status": "pending",
+      "triedByExperiment": null,
+      "outcome": null
     }
   ]
 }
