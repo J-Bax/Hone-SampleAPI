@@ -51,7 +51,8 @@ public class ReviewsController : ControllerBase
         if (product == null)
             return NotFound(new { message = $"Product with ID {productId} not found" });
 
-        var filtered = await _context.Reviews.Where(r => r.ProductId == productId).ToListAsync();
+        var allReviews = await _context.Reviews.ToListAsync();
+        var filtered = allReviews.Where(r => r.ProductId == productId).ToList();
 
         return Ok(filtered);
     }
@@ -66,17 +67,18 @@ public class ReviewsController : ControllerBase
         if (product == null)
             return NotFound(new { message = $"Product with ID {productId} not found" });
 
-        var productReviewsQuery = _context.Reviews.Where(r => r.ProductId == productId);
-        var reviewCount = await productReviewsQuery.CountAsync();
-        var average = reviewCount > 0
-            ? Math.Round(await productReviewsQuery.AverageAsync(r => r.Rating), 2)
+        var allReviews = await _context.Reviews.ToListAsync();
+        var productReviews = allReviews.Where(r => r.ProductId == productId).ToList();
+
+        var average = productReviews.Any()
+            ? Math.Round(productReviews.Average(r => r.Rating), 2)
             : 0.0;
 
         return Ok(new
         {
             ProductId = productId,
             AverageRating = average,
-            ReviewCount = reviewCount
+            ReviewCount = productReviews.Count
         });
     }
 
@@ -89,6 +91,10 @@ public class ReviewsController : ControllerBase
         review.CreatedAt = DateTime.UtcNow;
         _context.Reviews.Add(review);
         await _context.SaveChangesAsync();
+
+        var allReviews = await _context.Reviews.ToListAsync();
+        var productReviews = allReviews.Where(r => r.ProductId == review.ProductId).ToList();
+        var _ = productReviews.Average(r => r.Rating); // Wasted computation
 
         return CreatedAtAction(nameof(GetReview), new { id = review.Id }, review);
     }
