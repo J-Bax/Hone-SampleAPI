@@ -7,4 +7,4 @@
 
 - [x] **#1** `SampleApi/Controllers/ProductsController.cs` — Eliminate full-table product scans with server-side filtering *(experiment 1 — improved)*
 - [x] **#2** `SampleApi/Controllers/ReviewsController.cs` — Replace full reviews table scan with server-side query filtering *(experiment 2 — improved)*
-- [ ] **#3** `SampleApi/Pages/Checkout/Index.cshtml.cs` — Eliminate N+1 queries and per-item SaveChanges in checkout flow
+- [x] **#3** `SampleApi/Pages/Checkout/Index.cshtml.cs` — Eliminate N+1 queries and per-item SaveChanges in checkout flow *(experiment 3 — improved)*

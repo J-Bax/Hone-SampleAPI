@@ -1,0 +1,1 @@
+{"scope":"narrow","reasoning":"All N+1 queries (per-item FindAsync), per-item SaveChangesAsync calls, and unfiltered ToListAsync fetches are contained within this single PageModel file and can be fixed with server-side .Where/.Include filtering, batched SaveChangesAsync, and RemoveRange without changing any public API contract, dependencies, or other files."}
