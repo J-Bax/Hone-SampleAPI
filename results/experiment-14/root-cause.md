@@ -1,3 +1,14 @@
+# Root Cause Analysis — Experiment 14
+
+> Generated: 2026-03-14 18:48:36 | Classification: narrow — Adding in-memory caching of products in the GetProducts method (lines 23-27) is a single-file implementation change with no API contract, dependency, migration, or test changes required.
+
+| Metric | Current | Baseline |
+|--------|---------|----------|
+| p95 Latency | 473.982485ms | 2054.749925ms |
+| Requests/sec | 1325.1 | 427.3 |
+| Error Rate | 11.11% | 11.11% |
+
+---
 # GetProducts re-queries all 1000 products from the database on every request
 
 > **File:** `SampleApi/Controllers/ProductsController.cs` | **Scope:** narrow
@@ -44,3 +55,4 @@ Since the underlying data never changes during load tests, every one of these qu
 - **RPS**: Modest improvement from freeing ~73.6 DB connections/sec for other endpoints
 - **GC pressure**: Eliminates ~30-40 MB/sec of entity allocations, reducing Gen0 collection frequency and max pause duration
 - The indirect benefit of reduced DB load (fewer connections, less lock contention, less I/O) improves latency for ALL endpoints, amplifying the overall impact beyond the direct 5.56% traffic share
+

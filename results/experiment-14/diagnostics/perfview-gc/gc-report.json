@@ -1,0 +1,33 @@
+{
+  "generationStats": {
+    "gen0": {
+      "count": 131,
+      "avgPauseMs": 10.5,
+      "maxPauseMs": 119.1
+    },
+    "gen1": {
+      "count": 123,
+      "avgPauseMs": 7.3,
+      "maxPauseMs": 79.8
+    },
+    "gen2": {
+      "count": 6,
+      "avgPauseMs": 2.5,
+      "maxPauseMs": 4.0
+    }
+  },
+  "heapStats": {
+    "peakSizeMB": 1607.23,
+    "totalAllocMB": 87653.7,
+    "fragmentationPct": 0.0
+  },
+  "pauseStats": {
+    "totalPauseMs": 2297.3,
+    "maxPauseMs": 119.1,
+    "gcPauseRatio": 1.9
+  },
+  "allocationStats": {
+    "allocRateMBSec": 0.0,
+    "topTypes": []
+  }
+}
