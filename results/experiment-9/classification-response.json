@@ -1,0 +1,1 @@
+{"scope":"narrow","reasoning":"The optimization involves pushing filters into the EF query (server-side Where/search), adding AsNoTracking, and applying server-side Skip/Take — all changes are confined to method bodies within this single PageModel file and do not alter dependencies, API contracts, or require multi-file modifications."}

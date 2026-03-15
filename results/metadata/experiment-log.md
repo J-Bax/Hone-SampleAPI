@@ -12,3 +12,4 @@
 | 6 | 2026-03-15 06:30 | `SampleApi/Pages/Orders/Index.cshtml.cs` | Triple full table scan with N+1 on growing tables in order history | improved |
 | 7 | 2026-03-15 07:07 | `SampleApi/Pages/Index.cshtml.cs` | Full table scans of Products and Reviews on home page | improved |
 | 8 | 2026-03-15 07:32 | `SampleApi/Pages/Cart/Index.cshtml.cs` | Full CartItems table scan with N+1 lookups and per-item SaveChanges | improved |
+| 9 | 2026-03-15 07:57 | `SampleApi/Pages/Products/Index.cshtml.cs` | Full Products table scan with in-memory filtering and no AsNoTracking | improved |

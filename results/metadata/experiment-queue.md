@@ -7,4 +7,4 @@
 
 - [x] **#1** `SampleApi/Pages/Index.cshtml.cs` — Full table scans of Products and Reviews on home page *(experiment 7 — improved)*
 - [x] **#2** `SampleApi/Pages/Cart/Index.cshtml.cs` — Full CartItems table scan with N+1 lookups and per-item SaveChanges *(experiment 8 — improved)*
-- [ ] **#3** `SampleApi/Pages/Products/Index.cshtml.cs` — Full Products table scan with in-memory filtering and no AsNoTracking
+- [x] **#3** `SampleApi/Pages/Products/Index.cshtml.cs` — Full Products table scan with in-memory filtering and no AsNoTracking *(experiment 9 — improved)*
