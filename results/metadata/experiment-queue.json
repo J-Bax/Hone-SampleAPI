@@ -1,0 +1,39 @@
+{
+  "generatedByExperiment": 1,
+  "generatedAt": "2026-03-15T11:36:15.7814959-07:00",
+  "items": [
+    {
+      "id": 1,
+      "filePath": "SampleApi/Controllers/ProductsController.cs",
+      "title": "Eliminate full-table product scans with server-side filtering",
+      "explanation": "Eliminate full-table product scans with server-side filtering",
+      "scope": "narrow",
+      "rootCausePath": "C:\\Projects\\Hone\\sample-api\\results\\metadata\\root-causes\\rca-1.md",
+      "status": "done",
+      "triedByExperiment": 1,
+      "outcome": "improved"
+    },
+    {
+      "id": 2,
+      "filePath": "SampleApi/Controllers/ReviewsController.cs",
+      "title": "Replace full reviews table scan with server-side query filtering",
+      "explanation": "Replace full reviews table scan with server-side query filtering",
+      "scope": "narrow",
+      "rootCausePath": "C:\\Projects\\Hone\\sample-api\\results\\metadata\\root-causes\\rca-2.md",
+      "status": "pending",
+      "triedByExperiment": null,
+      "outcome": null
+    },
+    {
+      "id": 3,
+      "filePath": "SampleApi/Pages/Checkout/Index.cshtml.cs",
+      "title": "Eliminate N+1 queries and per-item SaveChanges in checkout flow",
+      "explanation": "Eliminate N+1 queries and per-item SaveChanges in checkout flow",
+      "scope": "narrow",
+      "rootCausePath": "C:\\Projects\\Hone\\sample-api\\results\\metadata\\root-causes\\rca-3.md",
+      "status": "pending",
+      "triedByExperiment": null,
+      "outcome": null
+    }
+  ]
+}

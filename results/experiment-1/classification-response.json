@@ -1,0 +1,1 @@
+{"scope":"narrow","reasoning":"The optimization replaces client-side ToListAsync() + LINQ filtering with server-side .Where() clauses in GetProductsByCategory and SearchProducts methods, modifying only query logic within method bodies of a single file without changing routes, response shapes, dependencies, or requiring any other file changes."}
