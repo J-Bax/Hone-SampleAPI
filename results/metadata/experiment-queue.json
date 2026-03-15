@@ -1,38 +1,27 @@
 {
-  "generatedByExperiment": 11,
-  "generatedAt": "2026-03-14T16:46:25.3890607-07:00",
+  "generatedByExperiment": 14,
+  "generatedAt": "2026-03-14T18:48:25.3311557-07:00",
   "items": [
     {
       "id": 1,
-      "filePath": "SampleApi/Pages/Products/Index.cshtml.cs",
-      "title": "Products page tracks 1000 entities needlessly on read-only render",
-      "explanation": "Products page tracks 1000 entities needlessly on read-only render",
-      "scope": "narrow",
+      "filePath": "SampleApi/Data/AppDbContext.cs",
+      "title": "Missing database indexes on high-traffic filter columns",
+      "explanation": "Missing database indexes on high-traffic filter columns",
+      "scope": "architecture",
       "rootCausePath": "C:\\Projects\\Hone\\sample-api\\results\\metadata\\root-causes\\rca-1.md",
-      "status": "done",
-      "triedByExperiment": 11,
-      "outcome": "improved"
+      "status": "pending",
+      "triedByExperiment": null,
+      "outcome": null
     },
     {
       "id": 2,
-      "filePath": "SampleApi/Controllers/OrdersController.cs",
-      "title": "OrdersController has N+1 queries and full table scans across multiple endpoints",
-      "explanation": "OrdersController has N+1 queries and full table scans across multiple endpoints",
+      "filePath": "SampleApi/Controllers/ProductsController.cs",
+      "title": "GetProducts re-queries all 1000 products from the database on every request",
+      "explanation": "GetProducts re-queries all 1000 products from the database on every request",
       "scope": "narrow",
       "rootCausePath": "C:\\Projects\\Hone\\sample-api\\results\\metadata\\root-causes\\rca-2.md",
       "status": "done",
-      "triedByExperiment": 12,
-      "outcome": "improved"
-    },
-    {
-      "id": 3,
-      "filePath": "SampleApi/Pages/Products/Detail.cshtml.cs",
-      "title": "Product detail page uses tracked queries for read-only rendering",
-      "explanation": "Product detail page uses tracked queries for read-only rendering",
-      "scope": "narrow",
-      "rootCausePath": "C:\\Projects\\Hone\\sample-api\\results\\metadata\\root-causes\\rca-3.md",
-      "status": "done",
-      "triedByExperiment": 13,
+      "triedByExperiment": 14,
       "outcome": "improved"
     }
   ]

@@ -1,0 +1,6 @@
+```json
+{
+  "scope": "narrow",
+  "reasoning": "Adding in-memory caching of products in the GetProducts method (lines 23-27) is a single-file implementation change with no API contract, dependency, migration, or test changes required."
+}
+```

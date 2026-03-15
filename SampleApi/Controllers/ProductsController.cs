@@ -11,6 +11,11 @@ public class ProductsController : ControllerBase
 {
     private readonly AppDbContext _context;
 
+    private static List<Product>? _cachedProducts;
+    private static DateTime _cacheExpiry = DateTime.MinValue;
+    private static readonly TimeSpan _cacheTtl = TimeSpan.FromSeconds(30);
+    private static readonly SemaphoreSlim _cacheLock = new SemaphoreSlim(1, 1);
+
     public ProductsController(AppDbContext context)
     {
         _context = context;
@@ -22,8 +27,24 @@ public class ProductsController : ControllerBase
     [HttpGet]
     public async Task<ActionResult<IEnumerable<Product>>> GetProducts()
     {
-        var products = await _context.Products.ToListAsync();
-        return Ok(products);
+        if (_cachedProducts != null && DateTime.UtcNow < _cacheExpiry)
+            return Ok(_cachedProducts);
+
+        await _cacheLock.WaitAsync();
+        try
+        {
+            if (_cachedProducts != null && DateTime.UtcNow < _cacheExpiry)
+                return Ok(_cachedProducts);
+
+            var products = await _context.Products.AsNoTracking().ToListAsync();
+            _cachedProducts = products;
+            _cacheExpiry = DateTime.UtcNow.Add(_cacheTtl);
+            return Ok(_cachedProducts);
+        }
+        finally
+        {
+            _cacheLock.Release();
+        }
     }
 
     /// <summary>
