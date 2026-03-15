@@ -1,3 +1,14 @@
+# Root Cause Analysis — Experiment 7
+
+> Generated: 2026-03-15 15:29:44 | Classification: narrow — The LoadCart method loads all CartItems into memory (line 109) then filters in C# (line 110) and does per-item Product lookups in a loop (line 117); replacing this with a server-side .Where() filter and .Include(ci => ci.Product) or a join is a single-file query optimization that does not change any API contract, dependency, or schema.
+
+| Metric | Current | Baseline |
+|--------|---------|----------|
+| p95 Latency | 685.029124999999ms | 7546.103045ms |
+| Requests/sec | 884.3 | 125.5 |
+| Error Rate | 0% | 0% |
+
+---
 # Eliminate full CartItems table scan and N+1 product lookups in Cart page LoadCart
 
 > **File:** `SampleApi/Pages/Cart/Index.cshtml.cs` | **Scope:** narrow
@@ -55,3 +66,4 @@ The CartItems table grows rapidly under load — each of the 500 VUs adds items 
 - SQL Server CPU: Significant reduction in TDS parsing and query execution overhead
 - GC pressure: Reduced heap allocation from materializing only session-specific items with AsNoTracking
 - Overall p95 improvement: ~2-3%, accounting for both direct latency reduction and reduced SQL/GC contention across all endpoints
+
