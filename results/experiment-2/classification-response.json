@@ -1,6 +1,0 @@
-```json
-{
-  "scope": "narrow",
-  "reasoning": "The optimization fixes query filtering in ReviewsController methods by moving .Where() logic to the server-side query (before .ToListAsync()), staying within a single file with no API contract, dependency, or test changes needed."
-}
-```
