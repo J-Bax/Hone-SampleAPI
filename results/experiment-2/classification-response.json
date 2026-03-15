@@ -1,0 +1,1 @@
+{"scope":"narrow","reasoning":"The optimization replaces client-side `.ToListAsync()` + `.Where()` with server-side `.Where().ToListAsync()` in method bodies within a single controller file, changing only query internals without altering routes, response shapes, dependencies, or other files."}

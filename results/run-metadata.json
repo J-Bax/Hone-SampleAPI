@@ -1,4 +1,26 @@
 {
+  "BaselineRun": {
+    "StartedAt": "2026-03-15T16:25:05.1511798Z",
+    "CompletedAt": "2026-03-15T09:37:45.2912097-07:00"
+  },
+  "Experiments": [
+    {
+      "Experiment": 1,
+      "StartedAt": "2026-03-15T11:24:00.6347786-07:00",
+      "CompletedAt": "2026-03-15T12:02:16.1101678-07:00",
+      "Improved": true,
+      "Regression": false,
+      "P95": 2203.8414900000002,
+      "RPS": 341.5,
+      "Outcome": "improved",
+      "BranchName": "hone/experiment-1",
+      "BaseBranch": "master",
+      "PrNumber": 67,
+      "PrUrl": "https://github.com/J-Bax/Hone-SampleAPI/pull/67",
+      "StaleCount": 0,
+      "ConsecutiveFailures": 0
+    }
+  ],
   "Machine": {
     "Cpu": {
       "Name": "AMD Ryzen 7 3700X 8-Core Processor",
@@ -9,7 +31,7 @@
     },
     "Memory": {
       "TotalGB": 63.9,
-      "AvailableGB": 35.7
+      "AvailableGB": 38.3
     },
     "OS": {
       "Description": "Windows 10",
@@ -20,11 +42,7 @@
       "DotnetSdkVersion": "8.0.100-preview.4.23260.5",
       "ClrVersion": ".NET 8.0.21"
     },
-    "CollectedAt": "2026-03-15T16:25:05.1511798Z"
+    "CollectedAt": "2026-03-15T18:24:00.5559510Z"
   },
-  "BaselineRun": {
-    "StartedAt": "2026-03-15T16:25:05.1511798Z",
-    "CompletedAt": "2026-03-15T09:37:45.2912097-07:00"
-  },
-  "Experiments": []
+  "LoopStartedAt": "2026-03-15T11:24:00.5774303-07:00"
 }
