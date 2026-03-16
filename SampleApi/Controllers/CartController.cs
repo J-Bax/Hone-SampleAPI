@@ -23,11 +23,13 @@ public class CartController : ControllerBase
     public async Task<ActionResult<object>> GetCart(string sessionId)
     {
         var sessionItems = await _context.CartItems
+            .AsNoTracking()
             .Where(c => c.SessionId == sessionId)
             .ToListAsync();
 
         var productIds = sessionItems.Select(c => c.ProductId).ToList();
         var products = await _context.Products
+            .AsNoTracking()
             .Where(p => productIds.Contains(p.Id))
             .ToDictionaryAsync(p => p.Id);
 
