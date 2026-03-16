@@ -1,39 +1,39 @@
 {
-  "generatedByExperiment": 30,
-  "generatedAt": "2026-03-16T10:50:16.1812275-07:00",
+  "generatedByExperiment": 33,
+  "generatedAt": "2026-03-16T11:52:28.6589776-07:00",
   "items": [
     {
       "id": 1,
+      "filePath": "SampleApi/Pages/Products/Detail.cshtml.cs",
+      "title": "Add Select projections to Reviews and RelatedProducts queries on Detail page",
+      "explanation": "Add Select projections to Reviews and RelatedProducts queries on Detail page",
+      "scope": "narrow",
+      "rootCausePath": "C:\\Projects\\Hone\\sample-api\\results\\metadata\\root-causes\\rca-1.md",
+      "status": "done",
+      "triedByExperiment": 33,
+      "outcome": "improved"
+    },
+    {
+      "id": 2,
       "filePath": "SampleApi/Pages/Products/Index.cshtml.cs",
       "title": "Add Select projection to paginated product query excluding Description",
       "explanation": "Add Select projection to paginated product query excluding Description",
       "scope": "narrow",
-      "rootCausePath": "C:\\Projects\\Hone\\sample-api\\results\\metadata\\root-causes\\rca-1.md",
-      "status": "done",
-      "triedByExperiment": 30,
-      "outcome": "regressed"
-    },
-    {
-      "id": 2,
-      "filePath": "SampleApi/Controllers/CartController.cs",
-      "title": "Replace materialize-then-remove with raw SQL DELETE in ClearCart",
-      "explanation": "Replace materialize-then-remove with raw SQL DELETE in ClearCart",
-      "scope": "narrow",
       "rootCausePath": "C:\\Projects\\Hone\\sample-api\\results\\metadata\\root-causes\\rca-2.md",
-      "status": "done",
-      "triedByExperiment": 31,
-      "outcome": "improved"
+      "status": "pending",
+      "triedByExperiment": null,
+      "outcome": null
     },
     {
       "id": 3,
-      "filePath": "SampleApi/Pages/Index.cshtml.cs",
-      "title": "Add Select projection to FeaturedProducts and RecentReviews excluding large text fields",
-      "explanation": "Add Select projection to FeaturedProducts and RecentReviews excluding large text fields",
+      "filePath": "SampleApi/Program.cs",
+      "title": "Set minimum log level to Warning to reduce per-request logging overhead",
+      "explanation": "Set minimum log level to Warning to reduce per-request logging overhead",
       "scope": "narrow",
       "rootCausePath": "C:\\Projects\\Hone\\sample-api\\results\\metadata\\root-causes\\rca-3.md",
-      "status": "done",
-      "triedByExperiment": 32,
-      "outcome": "improved"
+      "status": "pending",
+      "triedByExperiment": null,
+      "outcome": null
     }
   ]
 }

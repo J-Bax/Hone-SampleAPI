@@ -1,3 +1,14 @@
+# Root Cause Analysis — Experiment 33
+
+> Generated: 2026-03-16 11:52:28 | Classification: narrow — Classification skipped (SkipClassification = $true)
+
+| Metric | Current | Baseline |
+|--------|---------|----------|
+| p95 Latency | 537.728965ms | 7546.103045ms |
+| Requests/sec | 1124.5 | 125.5 |
+| Error Rate | 0% | 0% |
+
+---
 # Add Select projections to Reviews and RelatedProducts queries on Detail page
 
 > **File:** `SampleApi/Pages/Products/Detail.cshtml.cs` | **Scope:** narrow
@@ -44,3 +55,4 @@ Both queries fetch every column from their respective tables via implicit `SELEC
 - RPS: Minor improvement from reduced per-request CPU time
 - GC pressure: Reduced string allocations (Comment can be 2KB × N reviews per request)
 - Overall p95 improvement: ~3-5%, as this endpoint accounts for ~11% of total traffic (GET + POST both execute OnGetAsync)
+

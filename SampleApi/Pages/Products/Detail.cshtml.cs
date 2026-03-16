@@ -35,6 +35,7 @@ public class DetailModel : PageModel
             .AsNoTracking()
             .Where(r => r.ProductId == id)
             .OrderByDescending(r => r.CreatedAt)
+            .Select(r => new Review { Id = r.Id, ProductId = r.ProductId, CustomerName = r.CustomerName, Rating = r.Rating, CreatedAt = r.CreatedAt })
             .ToListAsync();
 
         AverageRating = Reviews.Any() ? Math.Round(Reviews.Average(r => r.Rating), 1) : 0;
@@ -43,6 +44,7 @@ public class DetailModel : PageModel
             .AsNoTracking()
             .Where(p => p.Category == Product.Category && p.Id != id)
             .Take(4)
+            .Select(p => new Product { Id = p.Id, Name = p.Name, Price = p.Price, Category = p.Category })
             .ToListAsync();
 
         return Page();
