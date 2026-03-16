@@ -31,9 +31,9 @@
       "explanation": "Add AsNoTracking and Select projections to Checkout read queries",
       "scope": "narrow",
       "rootCausePath": "C:\\Projects\\Hone\\sample-api\\results\\metadata\\root-causes\\rca-3.md",
-      "status": "pending",
-      "triedByExperiment": null,
-      "outcome": null
+      "status": "done",
+      "triedByExperiment": 17,
+      "outcome": "improved"
     }
   ]
 }
