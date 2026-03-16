@@ -1,0 +1,1 @@
+{"scope":"narrow","reasoning":"Adding .AsNoTracking() to the read-only queries in GetCart (lines 25-27 and 30-32) is a single-file change to method body internals that does not alter dependencies, API contracts, or require any other file modifications."}
