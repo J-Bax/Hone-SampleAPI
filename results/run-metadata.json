@@ -339,6 +339,22 @@
       "PrUrl": "https://github.com/J-Bax/Hone-SampleAPI/pull/87",
       "StaleCount": 0,
       "ConsecutiveFailures": 0
+    },
+    {
+      "Experiment": 22,
+      "StartedAt": "2026-03-15T23:06:44.6294922-07:00",
+      "CompletedAt": "2026-03-15T23:31:22.0984100-07:00",
+      "Improved": true,
+      "Regression": false,
+      "P95": 535.118615,
+      "RPS": 1091.5,
+      "Outcome": "improved",
+      "BranchName": "hone/experiment-22",
+      "BaseBranch": "hone/experiment-21",
+      "PrNumber": 88,
+      "PrUrl": "https://github.com/J-Bax/Hone-SampleAPI/pull/88",
+      "StaleCount": 0,
+      "ConsecutiveFailures": 0
     }
   ],
   "LoopCompletedAt": "2026-03-15T20:05:03.0107163-07:00",

@@ -7,4 +7,4 @@
 
 - [x] **#1** `SampleApi/Controllers/ProductsController.cs` — Eliminate redundant category existence DB round trip in GetProductsByCategory *(experiment 21 — improved)*
 - [x] **#2** `SampleApi/Pages/Cart/Index.cshtml.cs` — Add Select projection to product lookup in Cart page LoadCart *(experiment 22 — improved)*
-- [ ] **#3** `SampleApi/Pages/Orders/Index.cshtml.cs` — Add Select projection to product name lookup in Orders page
+- [x] **#3** `SampleApi/Pages/Orders/Index.cshtml.cs` — Add Select projection to product name lookup in Orders page *(experiment 23 — improved)*
