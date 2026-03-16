@@ -1,55 +1,61 @@
-# Replace full table scans and N+1 queries in order read endpoints
+# Add AsNoTracking and Select projections to Checkout read queries
 
-> **File:** `SampleApi/Controllers/OrdersController.cs` | **Scope:** narrow
+> **File:** `SampleApi/Pages/Checkout/Index.cshtml.cs` | **Scope:** narrow
 
 ## Evidence
 
-At `OrdersController.cs:34-37`, `GetOrdersByCustomer` loads the **entire Orders table** into memory and filters client-side:
+In `LoadCartSummary()` (called by `OnGetAsync`), both queries lack `AsNoTracking()` and load full entities:
 
 ```csharp
-var allOrders = await _context.Orders.ToListAsync();         // Full table scan
-var filtered = allOrders.Where(o =>
-    o.CustomerName.Equals(customerName, StringComparison.OrdinalIgnoreCase)).ToList();
+var sessionItems = await _context.CartItems
+    .Where(c => c.SessionId == sessionId)
+    .ToListAsync();  // line 122-124 — tracked, full entity
 ```
-
-At `OrdersController.cs:52-58`, `GetOrder` loads **all OrderItems** and then does N+1 product lookups:
 
 ```csharp
-var allItems = await _context.OrderItems.ToListAsync();      // Full table scan
-var items = allItems.Where(i => i.OrderId == id).ToList();   // Client-side filter
-
-foreach (var item in items)
-{
-    var product = await _context.Products.FindAsync(item.ProductId);  // N+1
+var products = await _context.Products
+    .Where(p => productIds.Contains(p.Id))
+    .ToDictionaryAsync(p => p.Id);  // line 130-132 — tracked, full entity including Description
 ```
 
-The Orders table starts with 100 seed rows but **grows continuously** — every k6 VU iteration creates 2 orders (POST /api/orders + POST /Checkout). At 1006 RPS over a 2-minute test, thousands of orders accumulate. The OrderItems table grows even faster (2-3 items per order).
+The Products query loads all columns including `Description` (nvarchar(max)) but only uses `Id`, `Name`, and `Price` (lines 136-138):
+
+```csharp
+ProductName = product?.Name ?? "Unknown",
+ProductPrice = product?.Price ?? 0m,
+```
+
+Similarly, in `OnPostAsync` at lines 83-86, the Products dictionary is loaded with full entities but only `Id` and `Price` are used:
+
+```csharp
+var products = await _context.Products
+    .Where(p => productIds.Contains(p.Id))
+    .ToDictionaryAsync(p => p.Id);  // line 84-86 — full entity, only Price used
+```
+
+The CPU profile identifies **TryReadPlpUnicodeCharsChunk** in the TDS parsing hotspot, indicating large nvarchar columns (like `Description`) being decoded character-by-character. With 1000 products each having ~90-character descriptions, loading unnecessary Description data wastes TDS parsing CPU.
+
+The Checkout page is hit **twice per k6 iteration** (GET + POST) = ~11% of traffic.
 
 ## Theory
 
-`GetOrdersByCustomer` performs a full table scan followed by case-insensitive client-side filtering — the exact anti-pattern fixed in other controllers (experiments 1-5). As the Orders table grows across experiments, this query's cost scales linearly. `GetOrder` compounds the problem: a full OrderItems table scan plus N+1 per-item product lookups means O(items_in_DB) + O(items_in_order) queries per call. While these endpoints are not in the current k6 scenario, they represent the most severe unoptimized code paths remaining — identical patterns to the issues that yielded the largest improvements in experiments 1-5.
+The Checkout page loads full Product entities (all 6 columns) when only 2-3 columns are needed. The `Description` field (nvarchar(max)) is the most expensive to transfer and decode — SQL Server sends the full column data over TDS, which is parsed character-by-character as shown in the CPU profile. Additionally, without `AsNoTracking()`, EF Core creates change-tracking snapshots for both CartItems and Products, contributing to the 86% Gen0→Gen1 escalation rate.
+
+In `LoadCartSummary`, the tracked CartItems are never modified (read-only display). In `OnPostAsync`, the Products are never modified (only read for prices). Both are pure tracking overhead.
 
 ## Proposed Fixes
 
-1. **GetOrdersByCustomer (line 34-37):** Replace with server-side filter:
+1. **Add `AsNoTracking()` to both queries in `LoadCartSummary()`** (lines 122 and 130).
+
+2. **Use `.Select()` projection for Products in `LoadCartSummary()`** to load only `Id`, `Name`, `Price`:
    ```csharp
-   var filtered = await _context.Orders.AsNoTracking()
-       .Where(o => o.CustomerName == customerName)
-       .ToListAsync();
+   .Select(p => new { p.Id, p.Name, p.Price })
    ```
 
-2. **GetOrder (lines 52-68):** Replace full OrderItems scan with server-side filter, and batch product lookups:
-   ```csharp
-   var items = await _context.OrderItems.AsNoTracking()
-       .Where(i => i.OrderId == id).ToListAsync();
-   var productIds = items.Select(i => i.ProductId).Distinct().ToList();
-   var products = await _context.Products.AsNoTracking()
-       .Where(p => productIds.Contains(p.Id)).ToDictionaryAsync(p => p.Id);
-   ```
+3. **Add `AsNoTracking()` and `.Select(p => new { p.Id, p.Price })` for Products in `OnPostAsync()`** at line 84 — only `Price` is needed for order total calculation.
 
 ## Expected Impact
 
-- These endpoints are **not in the current k6 scenario**, so measured p95/RPS impact is ~0%
-- However, the Orders/OrderItems tables grow every test run — these endpoints will degrade severely if exercised
-- Fixes identical anti-patterns to experiments 1-5 which yielded the largest gains (7546ms → 793ms)
-- Prevents future regression if k6 scenarios are expanded to include order lookup flows
+- **TDS parsing**: eliminates transfer of `Description`, `Category`, `CreatedAt`, `UpdatedAt` columns for product lookups — reduces TDS bytes parsed per request.
+- **Memory**: eliminates tracking snapshots for CartItems (read path) and Products (both paths) — reduces Gen1 promotions.
+- **p95 latency**: ~5-8ms improvement from combined TDS and GC savings.

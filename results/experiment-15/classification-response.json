@@ -1,0 +1,1 @@
+{"scope":"narrow","reasoning":"Adding .AsNoTracking() to the read-only queries (Reviews and RelatedProducts) in OnGetAsync is a single-file change to method internals that does not alter any API contract, dependency, or schema."}

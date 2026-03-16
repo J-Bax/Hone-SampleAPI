@@ -27,11 +27,12 @@ public class DetailModel : PageModel
     public async Task<IActionResult> OnGetAsync(int id)
     {
         // Query 1: Load the product
-        Product = await _context.Products.FindAsync(id);
+        Product = await _context.Products.AsNoTracking().FirstOrDefaultAsync(p => p.Id == id);
         if (Product == null)
             return Page();
 
         Reviews = await _context.Reviews
+            .AsNoTracking()
             .Where(r => r.ProductId == id)
             .OrderByDescending(r => r.CreatedAt)
             .ToListAsync();
@@ -39,6 +40,7 @@ public class DetailModel : PageModel
         AverageRating = Reviews.Any() ? Math.Round(Reviews.Average(r => r.Rating), 1) : 0;
 
         RelatedProducts = await _context.Products
+            .AsNoTracking()
             .Where(p => p.Category == Product.Category && p.Id != id)
             .Take(4)
             .ToListAsync();
