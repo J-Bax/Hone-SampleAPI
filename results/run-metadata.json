@@ -262,7 +262,7 @@
     },
     {
       "Experiment": 17,
-      "StartedAt": "2026-03-15T20:53:02.8702710-07:00",
+      "StartedAt": "2026-03-15T20:53:02.870271-07:00",
       "CompletedAt": "2026-03-15T21:17:44.9306736-07:00",
       "Improved": true,
       "Regression": false,
@@ -310,7 +310,7 @@
     },
     {
       "Experiment": 20,
-      "StartedAt": "2026-03-15T22:05:37.3384660-07:00",
+      "StartedAt": "2026-03-15T22:05:37.338466-07:00",
       "CompletedAt": "2026-03-15T22:30:15.2104121-07:00",
       "Improved": true,
       "Regression": false,
@@ -343,7 +343,7 @@
     {
       "Experiment": 22,
       "StartedAt": "2026-03-15T23:06:44.6294922-07:00",
-      "CompletedAt": "2026-03-15T23:31:22.0984100-07:00",
+      "CompletedAt": "2026-03-15T23:31:22.09841-07:00",
       "Improved": true,
       "Regression": false,
       "P95": 535.118615,
@@ -359,7 +359,7 @@
     {
       "Experiment": 23,
       "StartedAt": "2026-03-15T23:31:22.0992414-07:00",
-      "CompletedAt": "2026-03-15T23:56:01.6496800-07:00",
+      "CompletedAt": "2026-03-15T23:56:01.64968-07:00",
       "Improved": true,
       "Regression": false,
       "P95": 546.113655,
@@ -375,7 +375,7 @@
     {
       "Experiment": 24,
       "StartedAt": "2026-03-15T23:56:01.6506517-07:00",
-      "CompletedAt": "2026-03-16T00:09:15.5666030-07:00",
+      "CompletedAt": "2026-03-16T00:09:15.566603-07:00",
       "Improved": false,
       "Regression": false,
       "P95": null,
@@ -403,32 +403,24 @@
       "PrUrl": "https://github.com/J-Bax/Hone-SampleAPI/pull/91",
       "StaleCount": 2,
       "ConsecutiveFailures": 2
+    },
+    {
+      "Experiment": 26,
+      "StartedAt": "2026-03-16T08:33:11.9929433-07:00",
+      "CompletedAt": "2026-03-16T09:00:03.9483507-07:00",
+      "Improved": true,
+      "Regression": false,
+      "P95": 544.6868649999998,
+      "RPS": 1087.3,
+      "Outcome": "improved",
+      "BranchName": "hone/experiment-26",
+      "BaseBranch": "hone/experiment-25",
+      "PrNumber": 92,
+      "PrUrl": "https://github.com/J-Bax/Hone-SampleAPI/pull/92",
+      "StaleCount": 0,
+      "ConsecutiveFailures": 0
     }
   ],
-  "Machine": {
-    "Cpu": {
-      "Name": "AMD Ryzen 7 3700X 8-Core Processor",
-      "PhysicalCores": 8,
-      "LogicalProcessors": 16,
-      "MaxClockSpeedMHz": 3593,
-      "Architecture": "X64"
-    },
-    "Memory": {
-      "TotalGB": 63.9,
-      "AvailableGB": 29.8
-    },
-    "OS": {
-      "Description": "Windows 10",
-      "Platform": "Windows"
-    },
-    "Runtime": {
-      "PowerShellVersion": "7.4.13",
-      "DotnetSdkVersion": "8.0.100-preview.4.23260.5",
-      "ClrVersion": ".NET 8.0.21"
-    },
-    "CollectedAt": "2026-03-16T03:25:20.3695647Z"
-  },
-  "LoopStartedAt": "2026-03-15T20:25:20.3895837-07:00",
   "LoopCompletedAt": "2026-03-16T00:33:47.2244809-07:00",
   "PrChain": [
     67,
@@ -484,5 +476,29 @@
     "hone/experiment-23",
     "hone/experiment-24",
     "hone/experiment-25"
-  ]
+  ],
+  "Machine": {
+    "Cpu": {
+      "Name": "AMD Ryzen 7 3700X 8-Core Processor",
+      "PhysicalCores": 8,
+      "LogicalProcessors": 16,
+      "MaxClockSpeedMHz": 3593,
+      "Architecture": "X64"
+    },
+    "Memory": {
+      "TotalGB": 63.9,
+      "AvailableGB": 22.3
+    },
+    "OS": {
+      "Description": "Windows 10",
+      "Platform": "Windows"
+    },
+    "Runtime": {
+      "PowerShellVersion": "7.4.13",
+      "DotnetSdkVersion": "8.0.100-preview.4.23260.5",
+      "ClrVersion": ".NET 8.0.21"
+    },
+    "CollectedAt": "2026-03-16T15:33:11.8377594Z"
+  },
+  "LoopStartedAt": "2026-03-16T08:33:11.8611998-07:00"
 }
