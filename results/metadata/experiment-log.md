@@ -38,3 +38,4 @@
 | 32 | 2026-03-16 11:39 | `SampleApi/Pages/Index.cshtml.cs` | Add Select projection to FeaturedProducts and RecentReviews excluding large text fields | improved |
 | 33 | 2026-03-16 12:17 | `SampleApi/Pages/Products/Detail.cshtml.cs` | Add Select projections to Reviews and RelatedProducts queries on Detail page | improved |
 | 34 | 2026-03-16 12:41 | `SampleApi/Pages/Products/Index.cshtml.cs` | Add Select projection to paginated product query excluding Description | improved |
+| 35 | 2026-03-16 13:06 | `SampleApi/Program.cs` | Set minimum log level to Warning to reduce per-request logging overhead | improved |
