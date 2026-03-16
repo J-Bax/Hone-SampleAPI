@@ -33,3 +33,5 @@
 | 27 | 2026-03-16 09:45 | `SampleApi/Controllers/ProductsController.cs` | Add Select projection excluding Description on product list endpoints and AsNoTracking on GetProduct | improved |
 | 28 | 2026-03-16 10:09 | `SampleApi/Controllers/CartController.cs` | Replace FindAsync with AnyAsync for product existence check in AddToCart | stale |
 | 29 | 2026-03-16 10:34 | `SampleApi/Controllers/OrdersController.cs` | Add Select projection to product lookup in CreateOrder | improved |
+| 30 | 2026-03-16 10:50 | `SampleApi/Pages/Products/Index.cshtml.cs` | Build failure: Add Select projection to paginated product query excluding Description | regressed |
+| 31 | 2026-03-16 11:15 | `SampleApi/Controllers/CartController.cs` | Replace materialize-then-remove with raw SQL DELETE in ClearCart | improved |

@@ -5,6 +5,6 @@
 
 **Generated:** experiment 30 at 03/16/2026 10:50:16
 
-- [ ] **#1** `SampleApi/Pages/Products/Index.cshtml.cs` — Add Select projection to paginated product query excluding Description *(in progress)*
-- [ ] **#2** `SampleApi/Controllers/CartController.cs` — Replace materialize-then-remove with raw SQL DELETE in ClearCart
+- [x] **#1** `SampleApi/Pages/Products/Index.cshtml.cs` — Add Select projection to paginated product query excluding Description *(experiment 30 — regressed)*
+- [x] **#2** `SampleApi/Controllers/CartController.cs` — Replace materialize-then-remove with raw SQL DELETE in ClearCart *(experiment 31 — improved)*
 - [ ] **#3** `SampleApi/Pages/Index.cshtml.cs` — Add Select projection to FeaturedProducts and RecentReviews excluding large text fields

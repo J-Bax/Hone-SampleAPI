@@ -9,9 +9,9 @@
       "explanation": "Add Select projection to paginated product query excluding Description",
       "scope": "narrow",
       "rootCausePath": "C:\\Projects\\Hone\\sample-api\\results\\metadata\\root-causes\\rca-1.md",
-      "status": "in_progress",
-      "triedByExperiment": null,
-      "outcome": null
+      "status": "done",
+      "triedByExperiment": 30,
+      "outcome": "regressed"
     },
     {
       "id": 2,
@@ -20,9 +20,9 @@
       "explanation": "Replace materialize-then-remove with raw SQL DELETE in ClearCart",
       "scope": "narrow",
       "rootCausePath": "C:\\Projects\\Hone\\sample-api\\results\\metadata\\root-causes\\rca-2.md",
-      "status": "pending",
-      "triedByExperiment": null,
-      "outcome": null
+      "status": "done",
+      "triedByExperiment": 31,
+      "outcome": "improved"
     },
     {
       "id": 3,
