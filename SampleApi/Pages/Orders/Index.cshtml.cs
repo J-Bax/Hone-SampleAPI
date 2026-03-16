@@ -58,7 +58,8 @@ public class IndexModel : PageModel
         var productMap = await _context.Products
             .AsNoTracking()
             .Where(p => productIds.Contains(p.Id))
-            .ToDictionaryAsync(p => p.Id);
+            .Select(p => new { p.Id, p.Name })
+            .ToDictionaryAsync(p => p.Id, p => p.Name);
 
         foreach (var order in Orders)
         {
@@ -66,11 +67,11 @@ public class IndexModel : PageModel
                 .Where(i => i.OrderId == order.Id)
                 .Select(i =>
                 {
-                    productMap.TryGetValue(i.ProductId, out var product);
+                    productMap.TryGetValue(i.ProductId, out var productName);
                     return new OrderItemView
                     {
                         ProductId = i.ProductId,
-                        ProductName = product?.Name ?? "Unknown",
+                        ProductName = productName ?? "Unknown",
                         Quantity = i.Quantity,
                         UnitPrice = i.UnitPrice,
                         Subtotal = i.UnitPrice * i.Quantity
