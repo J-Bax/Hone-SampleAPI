@@ -1,0 +1,1 @@
+{"scope":"narrow","reasoning":"Batching product lookups (replacing the N+1 FindAsync loop with a single query using a collected list of ProductIds) and adding AsNoTracking are purely internal implementation changes within the single CreateOrder method body, requiring no new dependencies, no schema changes, and no API contract modifications."}

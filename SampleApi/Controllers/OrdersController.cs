@@ -100,10 +100,15 @@ public class OrdersController : ControllerBase
 
         decimal total = 0m;
 
+        var productIds = request.Items.Select(i => i.ProductId).ToList();
+        var products = await _context.Products
+            .AsNoTracking()
+            .Where(p => productIds.Contains(p.Id))
+            .ToDictionaryAsync(p => p.Id);
+
         foreach (var itemReq in request.Items)
         {
-            var product = await _context.Products.FindAsync(itemReq.ProductId);
-            if (product == null)
+            if (!products.TryGetValue(itemReq.ProductId, out var product))
                 continue; // Skip unknown products silently
 
             var orderItem = new OrderItem

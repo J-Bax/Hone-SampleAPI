@@ -1,3 +1,14 @@
+# Root Cause Analysis — Experiment 10
+
+> Generated: 2026-03-15 17:01:20 | Classification: narrow — Batching product lookups (replacing the N+1 FindAsync loop with a single query using a collected list of ProductIds) and adding AsNoTracking are purely internal implementation changes within the single CreateOrder method body, requiring no new dependencies, no schema changes, and no API contract modifications.
+
+| Metric | Current | Baseline |
+|--------|---------|----------|
+| p95 Latency | 591.942145ms | 7546.103045ms |
+| Requests/sec | 980.9 | 125.5 |
+| Error Rate | 0% | 0% |
+
+---
 # Batch product lookups and add AsNoTracking in CreateOrder
 
 > **File:** `SampleApi/Controllers/OrdersController.cs` | **Scope:** narrow
@@ -65,3 +76,4 @@ The `GetOrdersByCustomer` and `GetOrder` methods have worse patterns (full table
 - **Overall p95**: Modest direct improvement (~0.14%) given 5.6% traffic share, but the connection pool pressure reduction has cascading benefits for other endpoints.
 - **Allocation**: Reduced per-request allocations from removing change tracking on read-only product entities.
 - Fixing `GetOrdersByCustomer` and `GetOrder` addresses latent performance debt for future traffic pattern changes.
+
