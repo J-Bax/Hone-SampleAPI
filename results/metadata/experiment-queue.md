@@ -7,4 +7,4 @@
 
 - [x] **#1** `SampleApi/Pages/Products/Detail.cshtml.cs` — Add Select projections to Reviews and RelatedProducts queries on Detail page *(experiment 33 — improved)*
 - [x] **#2** `SampleApi/Pages/Products/Index.cshtml.cs` — Add Select projection to paginated product query excluding Description *(experiment 34 — improved)*
-- [ ] **#3** `SampleApi/Program.cs` — Set minimum log level to Warning to reduce per-request logging overhead
+- [x] **#3** `SampleApi/Program.cs` — Set minimum log level to Warning to reduce per-request logging overhead *(experiment 35 — improved)*

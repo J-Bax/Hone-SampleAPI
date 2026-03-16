@@ -1,7 +1,10 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using SampleApi.Data;
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Logging.SetMinimumLevel(LogLevel.Warning);
 
 // ── Services ───────────────────────────────────────────────────────────────
 builder.Services.AddControllers();
