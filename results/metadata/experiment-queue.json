@@ -7,11 +7,11 @@
       "filePath": "SampleApi/Data/AppDbContext.cs",
       "title": "Add database indexes on high-traffic filter columns",
       "explanation": "Add database indexes on high-traffic filter columns",
-      "scope": "architecture",
+      "scope": "narrow",
       "rootCausePath": "C:\\Projects\\Hone\\sample-api\\results\\metadata\\root-causes\\rca-1.md",
-      "status": "pending",
-      "triedByExperiment": null,
-      "outcome": null
+      "status": "done",
+      "triedByExperiment": 16,
+      "outcome": "improved"
     },
     {
       "id": 2,

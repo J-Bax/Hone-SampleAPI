@@ -1,0 +1,182 @@
+{
+    "root_group": {
+        "name": "",
+        "path": "",
+        "id": "d41d8cd98f00b204e9800998ecf8427e",
+        "groups": {},
+        "checks": {
+                "add item 1: status 200 or 201": {
+                    "name": "add item 1: status 200 or 201",
+                    "path": "::add item 1: status 200 or 201",
+                    "id": "34ffb3452c09ac7174d9f647c20645f8",
+                    "passes": 7675,
+                    "fails": 0
+                },
+                "add item 2: status 200 or 201": {
+                    "name": "add item 2: status 200 or 201",
+                    "path": "::add item 2: status 200 or 201",
+                    "id": "859dd62118f40bea70a4a5fe4a82c36c",
+                    "passes": 7675,
+                    "fails": 0
+                },
+                "add item 3: status 200 or 201": {
+                    "name": "add item 3: status 200 or 201",
+                    "path": "::add item 3: status 200 or 201",
+                    "id": "6dfec2b2a8ef0686ff9003fbb64073ff",
+                    "passes": 7675,
+                    "fails": 0
+                },
+                "get cart: status 200": {
+                    "id": "28c7dad2666418e7df7959192396d5c0",
+                    "passes": 7675,
+                    "fails": 0,
+                    "name": "get cart: status 200",
+                    "path": "::get cart: status 200"
+                },
+                "get cart: has items": {
+                    "path": "::get cart: has items",
+                    "id": "ce5cb3c9d4d19a73e0257c50eea61a4c",
+                    "passes": 0,
+                    "fails": 7675,
+                    "name": "get cart: has items"
+                },
+                "update quantity: status 200 or 204": {
+                    "name": "update quantity: status 200 or 204",
+                    "path": "::update quantity: status 200 or 204",
+                    "id": "6cfa842eec59d2c26f64d983e1b9ad16",
+                    "passes": 7675,
+                    "fails": 0
+                },
+                "delete item: status 200 or 204": {
+                    "name": "delete item: status 200 or 204",
+                    "path": "::delete item: status 200 or 204",
+                    "id": "f05e6698ea497656bf987aa1783be142",
+                    "passes": 7675,
+                    "fails": 0
+                },
+                "clear cart session: status 200 or 204": {
+                    "fails": 0,
+                    "name": "clear cart session: status 200 or 204",
+                    "path": "::clear cart session: status 200 or 204",
+                    "id": "8f83318937121769e691a83b1b01cd11",
+                    "passes": 7675
+                }
+            }
+    },
+    "metrics": {
+        "http_req_waiting": {
+            "med": 1.0856,
+            "max": 36.4451,
+            "p(90)": 1.7695,
+            "p(95)": 2.1307,
+            "avg": 1.2127895532206359,
+            "min": 0
+        },
+        "iteration_duration": {
+            "med": 1212.2498,
+            "max": 1258.6275,
+            "p(90)": 1214.94088,
+            "p(95)": 1217.0301,
+            "avg": 1212.8858890944593,
+            "min": 1207.8425
+        },
+        "http_req_tls_handshaking": {
+            "avg": 0,
+            "min": 0,
+            "med": 0,
+            "max": 0,
+            "p(90)": 0,
+            "p(95)": 0
+        },
+        "vus": {
+            "max": 199,
+            "value": 0,
+            "min": 0
+        },
+        "data_sent": {
+            "count": 7970238,
+            "rate": 65569.99708938785
+        },
+        "checks": {
+            "passes": 53725,
+            "fails": 7675,
+            "value": 0.875
+        },
+        "http_req_duration": {
+            "min": 0,
+            "med": 1.3914,
+            "max": 36.6528,
+            "p(90)": 1.9606,
+            "p(95)": 2.191619999999998,
+            "avg": 1.432097354042954,
+            "thresholds": {
+                "p(95)<1000": false
+            }
+        },
+        "http_reqs": {
+            "count": 54725,
+            "rate": 450.2146724748684
+        },
+        "vus_max": {
+            "value": 200,
+            "min": 200,
+            "max": 200
+        },
+        "iterations": {
+            "count": 7675,
+            "rate": 63.14111669702357
+        },
+        "http_req_blocked": {
+            "p(90)": 0,
+            "p(95)": 0,
+            "avg": 0.0016340374600274103,
+            "min": 0,
+            "med": 0,
+            "max": 6.3209
+        },
+        "http_req_failed": {
+            "fails": 54725,
+            "passes": 0,
+            "thresholds": {
+                "rate<0.02": false
+            },
+            "value": 0
+        },
+        "http_req_sending": {
+            "avg": 0.0029470497944266805,
+            "min": 0,
+            "med": 0,
+            "max": 13.3882,
+            "p(90)": 0,
+            "p(95)": 0
+        },
+        "http_req_receiving": {
+            "p(95)": 1.0615,
+            "avg": 0.21636075102786614,
+            "min": 0,
+            "med": 0,
+            "max": 6.7353,
+            "p(90)": 0.8291
+        },
+        "data_received": {
+            "count": 15388949,
+            "rate": 126602.6611926442
+        },
+        "http_req_duration{expected_response:true}": {
+            "avg": 1.432097354042954,
+            "min": 0,
+            "med": 1.3914,
+            "max": 36.6528,
+            "p(90)": 1.9606,
+            "p(95)": 2.191619999999998
+        },
+        "http_req_connecting": {
+            "min": 0,
+            "med": 0,
+            "max": 0.54,
+            "p(90)": 0,
+            "p(95)": 0,
+            "avg": 0.0004739643672910006
+        }
+    }
+}

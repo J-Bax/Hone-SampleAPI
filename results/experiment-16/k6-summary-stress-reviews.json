@@ -1,0 +1,175 @@
+{
+    "root_group": {
+        "name": "",
+        "path": "",
+        "id": "d41d8cd98f00b204e9800998ecf8427e",
+        "groups": {},
+        "checks": {
+                "create review: status 201": {
+                    "name": "create review: status 201",
+                    "path": "::create review: status 201",
+                    "id": "c932329e2b3295bcd8e6c629e7ac0d13",
+                    "passes": 6980,
+                    "fails": 0
+                },
+                "list all reviews: status 200": {
+                    "name": "list all reviews: status 200",
+                    "path": "::list all reviews: status 200",
+                    "id": "f4e88e6d43443e544640686b0ffab8b2",
+                    "passes": 6980,
+                    "fails": 0
+                },
+                "get review by id: status 200": {
+                    "passes": 6980,
+                    "fails": 0,
+                    "name": "get review by id: status 200",
+                    "path": "::get review by id: status 200",
+                    "id": "1f3a78c739c7c8c3e5a40d8e733fd292"
+                },
+                "get review by id: rating matches": {
+                    "name": "get review by id: rating matches",
+                    "path": "::get review by id: rating matches",
+                    "id": "a1950b9cde3cedc5615a7e443c239f01",
+                    "passes": 6980,
+                    "fails": 0
+                },
+                "reviews by product: status 200": {
+                    "fails": 0,
+                    "name": "reviews by product: status 200",
+                    "path": "::reviews by product: status 200",
+                    "id": "ff38d5a6484e85363435e2bde0050fd7",
+                    "passes": 6980
+                },
+                "average rating: status 200": {
+                    "passes": 6980,
+                    "fails": 0,
+                    "name": "average rating: status 200",
+                    "path": "::average rating: status 200",
+                    "id": "410881361114124b5478d42656b0fe57"
+                },
+                "delete review: status 200 or 204": {
+                    "passes": 6980,
+                    "fails": 0,
+                    "name": "delete review: status 200 or 204",
+                    "path": "::delete review: status 200 or 204",
+                    "id": "57b5378af40d81f36ee360a25b812e46"
+                }
+            }
+    },
+    "metrics": {
+        "http_req_blocked": {
+            "avg": 0.0031438599842410677,
+            "min": 0,
+            "med": 0,
+            "max": 13.3686,
+            "p(90)": 0,
+            "p(95)": 0
+        },
+        "vus": {
+            "max": 199,
+            "value": 9,
+            "min": 1
+        },
+        "http_req_waiting": {
+            "p(90)": 12.8111,
+            "p(95)": 18.2016,
+            "avg": 4.754092839235029,
+            "min": 0,
+            "med": 1.0665,
+            "max": 215.3532
+        },
+        "checks": {
+            "passes": 48860,
+            "fails": 0,
+            "value": 1
+        },
+        "http_req_connecting": {
+            "med": 0,
+            "max": 8.0175,
+            "p(90)": 0,
+            "p(95)": 0,
+            "avg": 0.00110277930326401,
+            "min": 0
+        },
+        "data_sent": {
+            "count": 4938032,
+            "rate": 40833.75031643264
+        },
+        "http_req_failed": {
+            "passes": 0,
+            "fails": 41881,
+            "thresholds": {
+                "rate<0.03": false
+            },
+            "value": 0
+        },
+        "vus_max": {
+            "min": 200,
+            "max": 200,
+            "value": 200
+        },
+        "http_reqs": {
+            "count": 41881,
+            "rate": 346.3238587766372
+        },
+        "iterations": {
+            "count": 6980,
+            "rate": 57.7192649234958
+        },
+        "http_req_duration": {
+            "p(90)": 15.0148,
+            "p(95)": 20.2695,
+            "avg": 5.404126771089515,
+            "min": 0,
+            "med": 1.1889,
+            "max": 217.2345,
+            "thresholds": {
+                "p(95)<1500": false
+            }
+        },
+        "http_req_receiving": {
+            "p(95)": 2.7295,
+            "avg": 0.6446985697571658,
+            "min": 0,
+            "med": 0,
+            "max": 130.2802,
+            "p(90)": 2.1314
+        },
+        "iteration_duration": {
+            "avg": 1336.0609860601737,
+            "min": 1312.6023,
+            "med": 1324.2355,
+            "max": 1531.9621,
+            "p(90)": 1375.74945,
+            "p(95)": 1395.32648
+        },
+        "http_req_sending": {
+            "avg": 0.005335362097371129,
+            "min": 0,
+            "med": 0,
+            "max": 14.1343,
+            "p(90)": 0,
+            "p(95)": 0
+        },
+        "http_req_tls_handshaking": {
+            "avg": 0,
+            "min": 0,
+            "med": 0,
+            "max": 0,
+            "p(90)": 0,
+            "p(95)": 0
+        },
+        "http_req_duration{expected_response:true}": {
+            "p(90)": 15.0148,
+            "p(95)": 20.2695,
+            "avg": 5.404126771089515,
+            "min": 0,
+            "med": 1.1889,
+            "max": 217.2345
+        },
+        "data_received": {
+            "count": 2914776426,
+            "rate": 24102973.16977855
+        }
+    }
+}
