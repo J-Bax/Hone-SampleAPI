@@ -7,4 +7,4 @@
 
 - [x] **#1** `SampleApi/Controllers/ReviewsController.cs` — Consolidate redundant DB round trips in review endpoints *(experiment 12 — improved)*
 - [x] **#2** `SampleApi/Controllers/CartController.cs` — Add AsNoTracking to read-only cart and product queries *(experiment 13 — improved)*
-- [ ] **#3** `SampleApi/Controllers/OrdersController.cs` — Replace full table scans and N+1 queries in order read endpoints
+- [ ] **#3** `SampleApi/Controllers/OrdersController.cs` — Replace full table scans and N+1 queries in order read endpoints *(in progress)*

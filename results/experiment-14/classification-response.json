@@ -1,0 +1,1 @@
+{"scope":"narrow","reasoning":"All inefficiencies (full table scan in GetOrders/GetOrdersByCustomer, N+1 loop in GetOrder) can be fixed with server-side .Where(), .Include(), .AsNoTracking(), and joined queries entirely within this single controller file, with no dependency, schema, or API contract changes."}
