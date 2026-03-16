@@ -118,6 +118,7 @@ public class IndexModel : PageModel
             var products = await _context.Products
                 .AsNoTracking()
                 .Where(p => productIds.Contains(p.Id))
+                .Select(p => new { p.Id, p.Name, p.Price })
                 .ToDictionaryAsync(p => p.Id);
 
             foreach (var item in sessionItems)
