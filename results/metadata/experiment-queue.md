@@ -7,4 +7,4 @@
 
 - [x] **#1** `SampleApi/Controllers/ProductsController.cs` — Add pagination and DTO projection to product list endpoints *(experiment 18 — regressed)*
 - [x] **#2** `SampleApi/Controllers/ReviewsController.cs` — Eliminate redundant product existence DB round trips in review endpoints *(experiment 19 — improved)*
-- [ ] **#3** `SampleApi/Controllers/OrdersController.cs` — Add AsNoTracking and server-side filtering to GetOrder with batched product lookup
+- [x] **#3** `SampleApi/Controllers/OrdersController.cs` — Add AsNoTracking and server-side filtering to GetOrder with batched product lookup *(experiment 20 — improved)*
