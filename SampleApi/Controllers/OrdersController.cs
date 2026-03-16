@@ -32,9 +32,9 @@ public class OrdersController : ControllerBase
     [HttpGet("by-customer/{customerName}")]
     public async Task<ActionResult<IEnumerable<Order>>> GetOrdersByCustomer(string customerName)
     {
-        var filtered = await _context.Orders.AsNoTracking()
-            .Where(o => o.CustomerName == customerName)
-            .ToListAsync();
+        var allOrders = await _context.Orders.ToListAsync();
+        var filtered = allOrders.Where(o =>
+            o.CustomerName.Equals(customerName, StringComparison.OrdinalIgnoreCase)).ToList();
 
         return Ok(filtered);
     }
@@ -49,17 +49,13 @@ public class OrdersController : ControllerBase
         if (order == null)
             return NotFound();
 
-        var items = await _context.OrderItems.AsNoTracking()
-            .Where(i => i.OrderId == id).ToListAsync();
-
-        var productIds = items.Select(i => i.ProductId).Distinct().ToList();
-        var products = await _context.Products.AsNoTracking()
-            .Where(p => productIds.Contains(p.Id)).ToDictionaryAsync(p => p.Id);
+        var allItems = await _context.OrderItems.ToListAsync();
+        var items = allItems.Where(i => i.OrderId == id).ToList();
 
         var itemDetails = new List<object>();
         foreach (var item in items)
         {
-            products.TryGetValue(item.ProductId, out var product);
+            var product = await _context.Products.FindAsync(item.ProductId);
             itemDetails.Add(new
             {
                 item.Id,
