@@ -1,3 +1,14 @@
+# Root Cause Analysis — Experiment 18
+
+> Generated: 2026-03-15 21:40:10 | Classification: narrow — Classification skipped (SkipClassification = $true)
+
+| Metric | Current | Baseline |
+|--------|---------|----------|
+| p95 Latency | 535.98694ms | 7546.103045ms |
+| Requests/sec | 1052.1 | 125.5 |
+| Error Rate | 0% | 0% |
+
+---
 # Add pagination and DTO projection to product list endpoints
 
 > **File:** `SampleApi/Controllers/ProductsController.cs` | **Scope:** narrow
@@ -58,3 +69,4 @@ Under 500 VUs, approximately 58 concurrent requests per second hit these two end
 - **p95 latency**: Estimated ~15–30ms reduction per request for GetProducts and SearchProducts (from ~50ms to ~5ms per-request SQL+serialization cost). GetProductsByCategory would see ~3–5ms from projection alone.
 - **Allocations**: ~90% reduction in Product object allocations from these endpoints, reducing Gen1 GC collections and associated pause spikes (currently up to 67.9ms)
 - **Overall p95**: ~1.5–3% improvement accounting for both direct latency reduction and indirect GC pressure relief. At 536ms current p95, this translates to ~8–16ms overall reduction.
+
