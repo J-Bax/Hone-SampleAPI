@@ -1,64 +1,37 @@
-# Add AsNoTracking and server-side filtering to GetOrder with batched product lookup
+# Add Select projection to product name lookup in Orders page
 
-> **File:** `SampleApi/Controllers/OrdersController.cs` | **Scope:** narrow
+> **File:** `SampleApi/Pages/Orders/Index.cshtml.cs` | **Scope:** narrow
 
 ## Evidence
 
-At `OrdersController.cs:52-53`, `GetOrder` loads the **entire** OrderItems table into memory, then filters client-side:
+At `Orders/Index.cshtml.cs:58-61`, the Orders page fetches full `Product` entities but only uses the `Name` property:
 
 ```csharp
-var allItems = await _context.OrderItems.ToListAsync();  // Full table scan, tracked
-var items = allItems.Where(i => i.OrderId == id).ToList();
+var productMap = await _context.Products
+    .AsNoTracking()
+    .Where(p => productIds.Contains(p.Id))
+    .ToDictionaryAsync(p => p.Id);   // Full Product entities
 ```
 
-At `OrdersController.cs:56-58`, it then performs N+1 product lookups with tracked `FindAsync`:
-
+The only property accessed is `Name` (line 69):
 ```csharp
-foreach (var item in items)
-{
-    var product = await _context.Products.FindAsync(item.ProductId);
+ProductName = product?.Name ?? "Unknown",
 ```
 
-At `OrdersController.cs:35-37`, `GetOrdersByCustomer` loads ALL orders and filters client-side despite an existing `CustomerName` index (`AppDbContext.cs:52`):
+All other columns — `Description`, `Price`, `Category`, `CreatedAt`, `UpdatedAt` — are fetched from SQL Server, materialized into .NET objects, and immediately discarded. This is the same anti-pattern already fixed in `Checkout/Index.cshtml.cs:136-137` with a Select projection.
 
-```csharp
-var allOrders = await _context.Orders.ToListAsync();  // Full table scan, tracked
-var filtered = allOrders.Where(o =>
-    o.CustomerName.Equals(customerName, StringComparison.OrdinalIgnoreCase)).ToList();
-```
-
-At `OrdersController.cs:25`, `GetOrders` lacks `AsNoTracking`:
-
-```csharp
-var orders = await _context.Orders.ToListAsync();  // Tracked unnecessarily
-```
-
-The OrderItems table grows continuously during the load test (~232 inserts/sec from order creation). By test end, it may contain 15,000+ rows. Each `GetOrder` call materializes all of them.
+The CPU profiler's top hotspot is `TdsParserStateObject.TryReadChar` at 1.1% exclusive — reading unnecessary Unicode string data. The `StringConverter.Write` at 0.56% and aggregate JSON serialization at 1.4% don't apply here (Razor page, not JSON), but the SQL read overhead does.
 
 ## Theory
 
-While these read endpoints are not directly called in the k6 scenario, `CreateOrder` (line 129) returns `CreatedAtAction(nameof(GetOrder), ...)`. Though k6 doesn't follow the Location header, any production consumer or API explorer exercising the full CRUD surface would hit `GetOrder`. More critically:
-
-1. **Tracked entities accumulate**: `GetOrders` and `GetOrdersByCustomer` load tracked entities into the DbContext's identity map. Since DbContext is request-scoped, this doesn't leak across requests, but the per-request overhead includes snapshot creation and change tracker bookkeeping for entities that are only read.
-
-2. **Growing table amplifies cost**: The OrderItems table grows throughout the test. The full-scan in `GetOrder` (line 52) becomes progressively more expensive. Even if not in the k6 hot path now, this is a ticking time bomb for any future scenario that includes order detail viewing.
-
-3. **The N+1 in GetOrder** (lines 56-58) issues a separate `FindAsync` per order item, each tracked. With 1–5 items per order, that's 1–5 extra round trips.
-
-Note: Experiment 14 attempted a similar optimization and was measured as "stale." That may have been because the measurement scenario didn't exercise these endpoints. The code improvements are still objectively correct and prevent worst-case degradation as data grows.
+The Orders page is the last request in every VU iteration, occurring at peak load (up to 500 VUs). Each request loads 1-N orders, their items, and then full Product entities for all referenced products. The Product `Description` field (nvarchar potentially up to 2000+ chars) dominates the unnecessary data transfer. Under the k6 scenario, each VU creates orders with 2 items per iteration, and the orders page loads ALL orders for that customer across all iterations. As the test progresses, the number of orders per customer grows, amplifying the unnecessary product data fetched. This contributes to the 422 MB/sec allocation rate and Gen0→Gen1 promotion crisis identified by the GC profiler.
 
 ## Proposed Fixes
 
-1. **GetOrdersByCustomer (lines 35-37)**: Replace client-side filter with server-side `Where` using the existing `CustomerName` index, and add `AsNoTracking`:
-   - Use `.AsNoTracking().Where(o => o.CustomerName == customerName)` (case-insensitive comparison can rely on SQL Server's default collation).
-
-2. **GetOrder (lines 52-68)**: Replace full OrderItems scan with `.AsNoTracking().Where(i => i.OrderId == id)` using the `OrderId` index. Replace the N+1 product loop with a batch lookup: collect productIds, use `.AsNoTracking().Where(p => ids.Contains(p.Id)).ToDictionaryAsync(p => p.Id)`.
-
-3. **GetOrders (line 25)**: Add `.AsNoTracking()` to eliminate change tracking overhead.
+1. **Add Select projection for Name only:** Replace the full entity query with `.Select(p => new { p.Id, p.Name }).ToDictionaryAsync(p => p.Id)`. Update the `TryGetValue` on line 69 to use the anonymous type's `Name` property. This eliminates 5 unused columns from the SQL query.
 
 ## Expected Impact
 
-- **p95 latency**: Minimal immediate impact on current k6 scenario since these endpoints aren't in the hot path
-- **Allocation reduction**: Eliminates tracked entity overhead for read-only order queries, reducing per-request GC pressure for any caller
-- **Resilience**: Prevents progressive degradation as OrderItems table grows during extended load tests
-- **Overall p95**: ~0.1–0.3% improvement from reduced DbContext overhead and background allocation pressure
+- p95 latency: ~2-3ms reduction per orders page request
+- GC pressure: meaningful reduction in mid-life string allocations
+- This endpoint is ~5.5% of traffic. Overall p95 improvement: ~0.2%.

@@ -46,17 +46,20 @@ public class ProductsController : ControllerBase
     [HttpGet("by-category/{categoryName}")]
     public async Task<ActionResult<IEnumerable<Product>>> GetProductsByCategory(string categoryName)
     {
-        var categoryExists = await _context.Categories
-            .AsNoTracking()
-            .AnyAsync(c => c.Name == categoryName);
-
-        if (!categoryExists)
-            return NotFound(new { message = $"Category '{categoryName}' not found" });
-
         var filtered = await _context.Products
             .AsNoTracking()
             .Where(p => p.Category == categoryName)
             .ToListAsync();
+
+        if (filtered.Count == 0)
+        {
+            var categoryExists = await _context.Categories
+                .AsNoTracking()
+                .AnyAsync(c => c.Name == categoryName);
+
+            if (!categoryExists)
+                return NotFound(new { message = $"Category '{categoryName}' not found" });
+        }
 
         return Ok(filtered);
     }

@@ -1,62 +1,42 @@
-# Eliminate redundant product existence DB round trips in review endpoints
+# Add Select projection to product lookup in Cart page LoadCart
 
-> **File:** `SampleApi/Controllers/ReviewsController.cs` | **Scope:** narrow
+> **File:** `SampleApi/Pages/Cart/Index.cshtml.cs` | **Scope:** narrow
 
 ## Evidence
 
-At `ReviewsController.cs:49-56`, `GetReviewsByProduct` executes two sequential database queries:
+At `Cart/Index.cshtml.cs:117-121`, `LoadCart` fetches full `Product` entities when only `Id`, `Name`, and `Price` are used:
 
 ```csharp
-var productExists = await _context.Products.AsNoTracking().AnyAsync(p => p.Id == productId); // Query 1
-if (!productExists)
-    return NotFound(...);
-
-var filtered = await _context.Reviews.AsNoTracking()  // Query 2
-    .Where(r => r.ProductId == productId)
-    .ToListAsync();
+var products = await _context.Products
+    .AsNoTracking()
+    .Where(p => productIds.Contains(p.Id))
+    .ToDictionaryAsync(p => p.Id);   // Full Product entities
 ```
 
-At `ReviewsController.cs:67-76`, `GetAverageRating` has the same pattern:
-
+Only `Name` and `Price` are accessed (lines 131-132):
 ```csharp
-var productExists = await _context.Products.AsNoTracking().AnyAsync(p => p.Id == productId); // Query 1
-if (!productExists)
-    return NotFound(...);
-
-var stats = await _context.Reviews  // Query 2
-    .Where(r => r.ProductId == productId)
-    .GroupBy(r => r.ProductId)
-    .Select(g => new { Count = g.Count(), Average = g.Average(r => (double)r.Rating) })
-    .FirstOrDefaultAsync();
+ProductName = product?.Name ?? "Unknown",
+ProductPrice = product?.Price ?? 0m,
 ```
 
-In both cases, the product existence check (Query 1) is a separate DB round trip that is redundant when reviews exist — if reviews reference the productId, the product necessarily exists.
+By contrast, the Checkout page (`Checkout/Index.cshtml.cs:133-137`) already uses the optimized pattern:
+```csharp
+.Select(p => new { p.Id, p.Name, p.Price })
+.ToDictionaryAsync(p => p.Id);
+```
 
-The CPU profiler shows DI/service resolution at 0.73% and connection-related overhead in the hot path. Each unnecessary round trip consumes a SQL connection from the pool, and under 500 VUs this creates contention.
+The CPU profiler identifies `TdsParserStateObject.TryReadChar` at 1.1% exclusive and `TryReadPlpUnicodeCharsChunk` at 0.22% — both indicate excessive Unicode string data (Description, Category) being read from SQL Server but never used. The memory profiler reports ~422 MB/sec allocation rate; full entity materialization contributes unnecessary `string` allocations for unused properties.
 
 ## Theory
 
-These two endpoints together represent ~11.1% of total k6 traffic (each called once per iteration). Each call makes 2 DB round trips when 1 would suffice in the common case. The k6 scenario uses `seededId(500, 2)` for review product IDs, targeting products 1–500 which all have seeded reviews (1–7 each per `SeedData.cs:86-88`).
-
-In the common case (product exists AND has reviews), the existence check is pure overhead — the reviews query result implicitly proves the product exists. Only when no reviews are found do we need to distinguish between "product exists but has no reviews" (return empty list/zero average) vs "product doesn't exist" (return 404).
-
-With ~2,420 DB operations per second under peak load, eliminating 2 redundant round trips per iteration (~116 ops/sec) reduces total DB operation count by ~4.8%, easing SQL connection pool pressure and reducing queuing delays that contribute to p95.
+Loading full `Product` entities transfers all columns including `Description` (potentially large nvarchar), `Category`, `CreatedAt`, and `UpdatedAt` from SQL Server through the TDS wire protocol. Each unused column adds: (1) SQL Server I/O to read the column, (2) TDS protocol bytes on the wire, (3) .NET string allocations for materialization, (4) GC pressure from short-lived string objects. The GC profiler shows 86.7% Gen0→Gen1 promotion — mid-life objects from entity materialization that survive Gen0 but die in Gen1, causing 160ms max Gen1 pauses. Projecting only needed columns reduces all four costs.
 
 ## Proposed Fixes
 
-1. **Reorder queries to make existence check conditional**: In `GetReviewsByProduct`, execute the reviews query first. If results are non-empty, return them directly (no existence check needed). Only if the result is empty, perform the `AnyAsync` product existence check to determine whether to return 404 or empty list:
-
-   ```
-   Reviews query first → if has results → return Ok(results)
-                        → if empty → check product exists → 404 or empty Ok([])
-   ```
-
-   Apply the same pattern to `GetAverageRating`: run the aggregate first, check product existence only when the aggregate returns null.
-
-2. **Preserve 404 behavior**: The fix must still return 404 for non-existent products. The conditional check ensures this contract is maintained while eliminating the round trip for the ~95%+ of calls where reviews exist.
+1. **Add Select projection:** Replace the full entity query with `.Select(p => new { p.Id, p.Name, p.Price }).ToDictionaryAsync(p => p.Id)` — identical to the pattern already used in `Checkout/Index.cshtml.cs:136-137`. Update the `TryGetValue` and property access on lines 125-132 to use the anonymous type.
 
 ## Expected Impact
 
-- **p95 latency**: ~1–2ms reduction per request (one saved round trip to LocalDB)
-- **Connection pool**: ~4.8% fewer DB operations under peak load, reducing pool exhaustion risk
-- **Overall p95**: ~0.3–0.5% improvement from combined direct savings and connection pool relief
+- p95 latency: ~2-3ms reduction per cart page request (less SQL data, fewer allocations)
+- GC pressure: reduced mid-life allocations contributing to Gen1 pause spikes
+- This endpoint is ~5.5% of traffic. Overall p95 improvement: ~0.3%.
