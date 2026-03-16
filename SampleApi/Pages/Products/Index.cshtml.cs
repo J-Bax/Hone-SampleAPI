@@ -57,6 +57,7 @@ public class IndexModel : PageModel
             .Skip((CurrentPage - 1) * PageSize)
             .Take(PageSize)
             .AsNoTracking()
+            .Select(p => new Product { Id = p.Id, Name = p.Name, Price = p.Price, Category = p.Category, CreatedAt = p.CreatedAt, UpdatedAt = p.UpdatedAt })
             .ToListAsync();
 
         // Separate query for categories sidebar
