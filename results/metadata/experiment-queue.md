@@ -5,6 +5,6 @@
 
 **Generated:** experiment 15 at 03/15/2026 19:40:04
 
-- [ ] **#1** [ARCHITECTURE] `SampleApi/Data/AppDbContext.cs` — Add database indexes on high-traffic filter columns
+- [x] **#1** `SampleApi/Data/AppDbContext.cs` — Add database indexes on high-traffic filter columns *(experiment 16 — improved)*
 - [x] **#2** `SampleApi/Pages/Products/Detail.cshtml.cs` — Add AsNoTracking to all read-only queries on Detail page *(experiment 15 — improved)*
 - [ ] **#3** `SampleApi/Pages/Checkout/Index.cshtml.cs` — Add AsNoTracking and Select projections to Checkout read queries
