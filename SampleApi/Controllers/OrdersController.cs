@@ -59,6 +59,7 @@ public class OrdersController : ControllerBase
         var products = await _context.Products
             .AsNoTracking()
             .Where(p => productIds.Contains(p.Id))
+            .Select(p => new { p.Id, p.Name })
             .ToDictionaryAsync(p => p.Id);
 
         var itemDetails = new List<object>();
@@ -113,6 +114,7 @@ public class OrdersController : ControllerBase
         var products = await _context.Products
             .AsNoTracking()
             .Where(p => productIds.Contains(p.Id))
+            .Select(p => new { p.Id, p.Price })
             .ToDictionaryAsync(p => p.Id);
 
         foreach (var itemReq in request.Items)
