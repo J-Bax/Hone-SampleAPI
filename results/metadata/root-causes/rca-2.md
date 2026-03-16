@@ -1,34 +1,35 @@
-# Replace materialize-then-remove with raw SQL DELETE in ClearCart
+# Add Select projection to paginated product query excluding Description
 
-> **File:** `SampleApi/Controllers/CartController.cs` | **Scope:** narrow
+> **File:** `SampleApi/Pages/Products/Index.cshtml.cs` | **Scope:** narrow
 
 ## Evidence
 
-At `Controllers/CartController.cs:148-153`, the `ClearCart` endpoint materializes all cart items into memory before deleting them:
+At `Pages/Products/Index.cshtml.cs:56-60`, the paginated product query loads full `Product` entities including the `Description` text field:
 
 ```csharp
-var sessionItems = await _context.CartItems
-    .Where(c => c.SessionId == sessionId)
-    .ToListAsync();                        // Round trip 1: SELECT
-
-_context.CartItems.RemoveRange(sessionItems);
-await _context.SaveChangesAsync();          // Round trip 2: DELETE per item
+Products = await query
+    .Skip((CurrentPage - 1) * PageSize)
+    .Take(PageSize)
+    .AsNoTracking()
+    .ToListAsync();
 ```
 
-This performs two database round trips: a SELECT to load entities, then N individual DELETE statements (one per cart item) batched in SaveChanges. The CPU profile shows `SemaphoreSlim.Wait` (293 samples) indicating connection pool contention under load — every unnecessary round trip holds a connection longer and increases contention.
+With `PageSize = 24` (line 15), this loads up to 24 full Product entities per request. The `Description` field is a nullable string with no length constraint in the model (`Product.cs:10`), potentially containing substantial text per product.
 
-The k6 scenario calls `http.del(${BASE_URL}/api/cart/session/${sessionId})` every iteration, and each iteration has ~2 cart items (one from API POST at line 7 of the scenario, one from the page POST).
+For comparison, the API's `ProductsController.GetProducts()` (lines 25-36) already uses a Select projection that excludes Description — this was added in experiment 27. The Razor Products page was attempted in experiment 30 but had a build failure, so this optimization has never successfully been applied.
+
+The CPU profiler shows `ToListAsync` at 5.5% inclusive CPU with heavy `TryReadColumnInternal` and `UnicodeEncoding.GetChars` beneath it, confirming over-fetching of string columns.
 
 ## Theory
 
-Under 500 concurrent VUs, the ClearCart endpoint executes ~61 times/sec. Each call holds a database connection for two sequential operations: SELECT (fetch items) → DELETE (remove items). The SELECT is entirely wasteful since we don't need the entity data — we only need to delete rows matching the SessionId. Replacing with a single `DELETE FROM CartItems WHERE SessionId = @p` eliminates the SELECT round trip, halves connection hold time, reduces EF change tracker overhead (no entities tracked), and reduces GC pressure (no CartItem objects allocated). This directly addresses the SemaphoreSlim.Wait contention shown in the CPU profile.
+The Products page renders a grid of product cards showing Name, Price, and Category — Description is not displayed on the listing page. Loading 24 Description strings per request wastes SQL Server I/O bandwidth, TDS parsing CPU, and .NET heap allocations. Under 500 concurrent VUs, this amplifies into measurable throughput loss. The build failure in experiment 30 likely resulted from a type mismatch in the Select projection; the fix needs to project into `Product` objects (matching the `Products` property type) rather than anonymous types.
 
 ## Proposed Fixes
 
-1. **Use raw SQL DELETE:** Replace lines 148-153 with `await _context.Database.ExecuteSqlInterpolatedAsync($"DELETE FROM CartItems WHERE SessionId = {sessionId}")`. This executes a single SQL statement without materializing any entities. Return `NoContent()` as before.
+1. **Add Select projection before ToListAsync** (line 56-60): Insert `.Select(p => new Product { Id = p.Id, Name = p.Name, Price = p.Price, Category = p.Category, CreatedAt = p.CreatedAt, UpdatedAt = p.UpdatedAt })` between `.AsNoTracking()` and `.ToListAsync()`. This matches the pattern already used in `ProductsController.GetProducts()` and ensures the `List<Product>` property type is preserved.
 
 ## Expected Impact
 
-- p95 latency: ~8-15ms reduction on ClearCart requests (one fewer DB round trip, no entity materialization)
-- Connection pool: reduced contention under high concurrency (halved connection hold time for this endpoint)
-- The ClearCart endpoint is ~5.6% of total k6 traffic. With ~10ms latency savings, overall p95 improvement is approximately 0.1%.
+- p95 latency: ~10-15ms reduction per request from avoiding 24 Description column reads
+- Allocation reduction: Eliminates 24 string allocations per request for Description
+- Overall p95 improvement: ~1.5-2%, as this endpoint accounts for ~5.5% of traffic

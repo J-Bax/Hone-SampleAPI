@@ -36,3 +36,4 @@
 | 30 | 2026-03-16 10:50 | `SampleApi/Pages/Products/Index.cshtml.cs` | Build failure: Add Select projection to paginated product query excluding Description | regressed |
 | 31 | 2026-03-16 11:15 | `SampleApi/Controllers/CartController.cs` | Replace materialize-then-remove with raw SQL DELETE in ClearCart | improved |
 | 32 | 2026-03-16 11:39 | `SampleApi/Pages/Index.cshtml.cs` | Add Select projection to FeaturedProducts and RecentReviews excluding large text fields | improved |
+| 33 | 2026-03-16 12:17 | `SampleApi/Pages/Products/Detail.cshtml.cs` | Add Select projections to Reviews and RelatedProducts queries on Detail page | improved |
