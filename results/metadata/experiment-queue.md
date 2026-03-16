@@ -6,5 +6,5 @@
 **Generated:** experiment 27 at 03/16/2026 09:19:33
 
 - [x] **#1** `SampleApi/Controllers/ProductsController.cs` — Add Select projection excluding Description on product list endpoints and AsNoTracking on GetProduct *(experiment 27 — improved)*
-- [ ] **#2** `SampleApi/Controllers/CartController.cs` — Replace FindAsync with AnyAsync for product existence check in AddToCart
+- [ ] **#2** `SampleApi/Controllers/CartController.cs` — Replace FindAsync with AnyAsync for product existence check in AddToCart *(in progress)*
 - [ ] **#3** `SampleApi/Controllers/OrdersController.cs` — Add Select projection to product lookup in CreateOrder

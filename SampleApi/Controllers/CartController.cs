@@ -71,8 +71,8 @@ public class CartController : ControllerBase
     public async Task<ActionResult<CartItem>> AddToCart(AddToCartRequest request)
     {
         // Check if product exists
-        var product = await _context.Products.FindAsync(request.ProductId);
-        if (product == null)
+        var productExists = await _context.Products.AnyAsync(p => p.Id == request.ProductId);
+        if (!productExists)
             return NotFound(new { message = $"Product with ID {request.ProductId} not found" });
 
         var existing = await _context.CartItems.FirstOrDefaultAsync(c =>
