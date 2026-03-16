@@ -22,7 +22,18 @@ public class ProductsController : ControllerBase
     [HttpGet]
     public async Task<ActionResult<IEnumerable<Product>>> GetProducts()
     {
-        var products = await _context.Products.AsNoTracking().ToListAsync();
+        var products = await _context.Products
+            .AsNoTracking()
+            .Select(p => new Product
+            {
+                Id = p.Id,
+                Name = p.Name,
+                Price = p.Price,
+                Category = p.Category,
+                CreatedAt = p.CreatedAt,
+                UpdatedAt = p.UpdatedAt
+            })
+            .ToListAsync();
         return Ok(products);
     }
 
@@ -32,7 +43,9 @@ public class ProductsController : ControllerBase
     [HttpGet("{id}")]
     public async Task<ActionResult<Product>> GetProduct(int id)
     {
-        var product = await _context.Products.FindAsync(id);
+        var product = await _context.Products
+            .AsNoTracking()
+            .FirstOrDefaultAsync(p => p.Id == id);
 
         if (product == null)
             return NotFound();
@@ -49,6 +62,15 @@ public class ProductsController : ControllerBase
         var filtered = await _context.Products
             .AsNoTracking()
             .Where(p => p.Category == categoryName)
+            .Select(p => new Product
+            {
+                Id = p.Id,
+                Name = p.Name,
+                Price = p.Price,
+                Category = p.Category,
+                CreatedAt = p.CreatedAt,
+                UpdatedAt = p.UpdatedAt
+            })
             .ToListAsync();
 
         if (filtered.Count == 0)
@@ -76,11 +98,31 @@ public class ProductsController : ControllerBase
                 .AsNoTracking()
                 .Where(p => EF.Functions.Like(p.Name, $"%{q}%") ||
                             EF.Functions.Like(p.Description, $"%{q}%"))
+                .Select(p => new Product
+                {
+                    Id = p.Id,
+                    Name = p.Name,
+                    Price = p.Price,
+                    Category = p.Category,
+                    CreatedAt = p.CreatedAt,
+                    UpdatedAt = p.UpdatedAt
+                })
                 .ToListAsync();
             return Ok(results);
         }
 
-        var allProducts = await _context.Products.AsNoTracking().ToListAsync();
+        var allProducts = await _context.Products
+            .AsNoTracking()
+            .Select(p => new Product
+            {
+                Id = p.Id,
+                Name = p.Name,
+                Price = p.Price,
+                Category = p.Category,
+                CreatedAt = p.CreatedAt,
+                UpdatedAt = p.UpdatedAt
+            })
+            .ToListAsync();
         return Ok(allProducts);
     }
 

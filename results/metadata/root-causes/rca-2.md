@@ -1,49 +1,46 @@
-# Replace NEWID() random ordering with efficient deterministic query for featured products
+# Replace FindAsync with AnyAsync for product existence check in AddToCart
 
-> **File:** `SampleApi/Pages/Index.cshtml.cs` | **Scope:** narrow
+> **File:** `SampleApi/Controllers/CartController.cs` | **Scope:** narrow
 
 ## Evidence
 
-At `Pages/Index.cshtml.cs:29`, the home page fetches featured products using:
+At `CartController.cs:74`, `AddToCart` uses `FindAsync` to check if a product exists:
 
 ```csharp
-FeaturedProducts = await _context.Products.AsNoTracking()
-    .OrderBy(_ => EF.Functions.Random())
-    .Take(12)
-    .ToListAsync();
+var product = await _context.Products.FindAsync(request.ProductId);
+if (product == null)
+    return NotFound(new { message = $"Product with ID {request.ProductId} not found" });
 ```
 
-This translates to SQL: `SELECT TOP 12 * FROM Products ORDER BY NEWID()`. The `NEWID()` function generates a GUID for **every row** in the table (1,000 products), then SQL Server must sort all 1,000 rows to select the top 12. This is a guaranteed full table scan plus an expensive sort operation.
+The loaded `Product` entity (including the ~95 char Description field) is never used after the null check — it exists solely for existence validation. `FindAsync` also attaches the entity to the change tracker (`EntityState.Unchanged`), adding memory overhead.
 
-The CPU profile shows SQL Server engine modules consuming **17% of total samples** (91,700 samples in sqlmin/sqllang/sqldk). The home page query is one of the contributors because `ORDER BY NEWID()` cannot use any index and forces a full scan + sort on every request.
-
-Additionally, at line 32, a separate `CountAsync()` query runs:
+At `CartController.cs:78-79`, the subsequent `FirstOrDefaultAsync` for cart item deduplication does not use `AsNoTracking`:
 
 ```csharp
-TotalProducts = await _context.Products.CountAsync();
+var existing = await _context.CartItems.FirstOrDefaultAsync(c =>
+    c.SessionId == request.SessionId && c.ProductId == request.ProductId);
 ```
 
-This is a second round trip that also touches the Products table.
+This is correct since the `existing` entity may be modified at line 84 (`existing.Quantity += request.Quantity`). However, the Product loaded at line 74 remains tracked unnecessarily, consuming change tracker memory for the remainder of the request.
+
+The CPU profiler shows `DI.ResolveService` at 0.17% and `SqlDataReader (aggregate)` at 3.8% — both scale with per-request entity count. The memory profiler's 88% Gen0→Gen1 promotion ratio suggests per-request objects (like unnecessary Product entities) surviving async awaits.
 
 ## Theory
 
-Under high concurrency (up to 500 VUs), every VU iteration hits the home page, triggering the `ORDER BY NEWID()` query. With 1,000 rows, SQL Server must:
-1. Scan the entire clustered index
-2. Compute NEWID() per row (GUID generation)
-3. Sort all 1,000 rows by the generated GUIDs
-4. Return only the top 12
+`POST /api/cart` accounts for ~5.6% of traffic. Each call materializes a full Product entity (with Description, category, timestamps) solely to check `!= null`. This generates:
 
-This creates significant SQL Server CPU pressure and lock contention under load. The sort operation also allocates tempdb workspace. Replacing with a deterministic ordering on an indexed column (e.g., `Id` descending) allows SQL Server to use the clustered index directly and return the first 12 rows without scanning or sorting the entire table.
+1. A `SELECT TOP 1 *` query reading all columns from the Products table
+2. Entity materialization allocating a Product object + Description string (~95 bytes)
+3. Change tracker entry creation (state object, original values snapshot)
+
+`AnyAsync` translates to `SELECT CASE WHEN EXISTS (SELECT 1 FROM Products WHERE Id = @p) THEN 1 ELSE 0 END` — a single bit result with no entity materialization, no column reads, and no change tracker overhead.
 
 ## Proposed Fixes
 
-1. **Replace Random() with deterministic indexed ordering:** At line 29, change `OrderBy(_ => EF.Functions.Random())` to `OrderByDescending(p => p.Id)` (or `OrderByDescending(p => p.CreatedAt)` for "newest" semantics). The `Id` column is the clustered index primary key, so `ORDER BY Id DESC` is a simple backward index scan returning exactly 12 rows with zero sort overhead.
-
-2. **Optionally combine with Count:** The `CountAsync()` at line 32 could be replaced with a known-count approach or combined into the same query, but this is a minor secondary optimization.
+1. **Replace `FindAsync` with `AnyAsync` at line 74**: Change to `var productExists = await _context.Products.AnyAsync(p => p.Id == request.ProductId);` and check `if (!productExists)`. This eliminates the full Product entity read entirely.
 
 ## Expected Impact
 
-- Eliminates per-request full table scan + sort for the home page query
-- Reduces SQL Server CPU time for this endpoint by ~80-90%
-- Expected per-request latency reduction of ~25-40 ms for the home page
-- Overall p95 improvement: ~0.3-0.4% (home page is ~5.5% of traffic)
+- Per-request latency: ~3-5ms reduction (eliminates one full entity read + change tracker overhead)
+- Allocation: eliminates one Product + Description materialization per AddToCart call
+- Overall p95 improvement: ~0.3-0.5% (~2ms off 544ms)

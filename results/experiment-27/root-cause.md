@@ -1,3 +1,14 @@
+# Root Cause Analysis — Experiment 27
+
+> Generated: 2026-03-16 09:19:33 | Classification: narrow — Classification skipped (SkipClassification = $true)
+
+| Metric | Current | Baseline |
+|--------|---------|----------|
+| p95 Latency | 544.686865ms | 7546.103045ms |
+| Requests/sec | 1087.3 | 125.5 |
+| Error Rate | 0% | 0% |
+
+---
 # Add Select projection excluding Description on product list endpoints and AsNoTracking on GetProduct
 
 > **File:** `SampleApi/Controllers/ProductsController.cs` | **Scope:** narrow
@@ -67,3 +78,4 @@ These four endpoints collectively handle ~22% of request traffic (4 of 18 reques
 - Allocation rate: ~5-10% reduction from eliminating ~120,000 Description string materializations/sec
 - GC pressure: fewer Gen0→Gen1 promotions, potentially reducing max GC pause from 91.7ms
 - Overall p95 improvement: ~2-3% (~10-15ms off 544ms)
+
