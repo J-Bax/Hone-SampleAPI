@@ -145,12 +145,7 @@ public class CartController : ControllerBase
     [HttpDelete("session/{sessionId}")]
     public async Task<IActionResult> ClearCart(string sessionId)
     {
-        var sessionItems = await _context.CartItems
-            .Where(c => c.SessionId == sessionId)
-            .ToListAsync();
-
-        _context.CartItems.RemoveRange(sessionItems);
-        await _context.SaveChangesAsync();
+        await _context.Database.ExecuteSqlInterpolatedAsync($"DELETE FROM CartItems WHERE SessionId = {sessionId}");
 
         return NoContent();
     }
