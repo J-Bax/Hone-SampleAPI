@@ -20,25 +20,9 @@ public class ProductsController : ControllerBase
     /// Get all products.
     /// </summary>
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<object>>> GetProducts(
-        [FromQuery] int page = 1,
-        [FromQuery] int pageSize = 50)
+    public async Task<ActionResult<IEnumerable<Product>>> GetProducts()
     {
-        var products = await _context.Products
-            .AsNoTracking()
-            .OrderBy(p => p.Id)
-            .Skip((page - 1) * pageSize)
-            .Take(pageSize)
-            .Select(p => new
-            {
-                p.Id,
-                p.Name,
-                p.Price,
-                p.Category,
-                p.CreatedAt,
-                p.UpdatedAt
-            })
-            .ToListAsync();
+        var products = await _context.Products.AsNoTracking().ToListAsync();
         return Ok(products);
     }
 
@@ -60,7 +44,7 @@ public class ProductsController : ControllerBase
     /// Get products by category.
     /// </summary>
     [HttpGet("by-category/{categoryName}")]
-    public async Task<ActionResult<IEnumerable<object>>> GetProductsByCategory(string categoryName)
+    public async Task<ActionResult<IEnumerable<Product>>> GetProductsByCategory(string categoryName)
     {
         var categoryExists = await _context.Categories
             .AsNoTracking()
@@ -72,15 +56,6 @@ public class ProductsController : ControllerBase
         var filtered = await _context.Products
             .AsNoTracking()
             .Where(p => p.Category == categoryName)
-            .Select(p => new
-            {
-                p.Id,
-                p.Name,
-                p.Price,
-                p.Category,
-                p.CreatedAt,
-                p.UpdatedAt
-            })
             .ToListAsync();
 
         return Ok(filtered);
@@ -90,10 +65,7 @@ public class ProductsController : ControllerBase
     /// Search products by name.
     /// </summary>
     [HttpGet("search")]
-    public async Task<ActionResult<IEnumerable<object>>> SearchProducts(
-        [FromQuery] string? q,
-        [FromQuery] int page = 1,
-        [FromQuery] int pageSize = 50)
+    public async Task<ActionResult<IEnumerable<Product>>> SearchProducts([FromQuery] string? q)
     {
         if (!string.IsNullOrWhiteSpace(q))
         {
@@ -101,37 +73,11 @@ public class ProductsController : ControllerBase
                 .AsNoTracking()
                 .Where(p => EF.Functions.Like(p.Name, $"%{q}%") ||
                             EF.Functions.Like(p.Description, $"%{q}%"))
-                .OrderBy(p => p.Id)
-                .Skip((page - 1) * pageSize)
-                .Take(pageSize)
-                .Select(p => new
-                {
-                    p.Id,
-                    p.Name,
-                    p.Price,
-                    p.Category,
-                    p.CreatedAt,
-                    p.UpdatedAt
-                })
                 .ToListAsync();
             return Ok(results);
         }
 
-        var allProducts = await _context.Products
-            .AsNoTracking()
-            .OrderBy(p => p.Id)
-            .Skip((page - 1) * pageSize)
-            .Take(pageSize)
-            .Select(p => new
-            {
-                p.Id,
-                p.Name,
-                p.Price,
-                p.Category,
-                p.CreatedAt,
-                p.UpdatedAt
-            })
-            .ToListAsync();
+        var allProducts = await _context.Products.AsNoTracking().ToListAsync();
         return Ok(allProducts);
     }
 
