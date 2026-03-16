@@ -1,0 +1,1 @@
+{"scope":"narrow","reasoning":"The optimization consolidates multiple SaveChangesAsync calls within a single method body (OnPostAsync) in one file, which is a pure implementation-internal change with no impact on API contracts, dependencies, or other files."}

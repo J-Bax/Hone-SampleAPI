@@ -31,9 +31,9 @@
       "explanation": "Consolidate redundant SaveChangesAsync round trips in checkout post",
       "scope": "narrow",
       "rootCausePath": "C:\\Projects\\Hone\\sample-api\\results\\metadata\\root-causes\\rca-3.md",
-      "status": "pending",
-      "triedByExperiment": null,
-      "outcome": null
+      "status": "done",
+      "triedByExperiment": 11,
+      "outcome": "improved"
     }
   ]
 }
