@@ -9,9 +9,9 @@
       "explanation": "Add pagination and DTO projection to product list endpoints",
       "scope": "narrow",
       "rootCausePath": "C:\\Projects\\Hone\\sample-api\\results\\metadata\\root-causes\\rca-1.md",
-      "status": "in_progress",
-      "triedByExperiment": null,
-      "outcome": null
+      "status": "done",
+      "triedByExperiment": 18,
+      "outcome": "regressed"
     },
     {
       "id": 2,
@@ -20,9 +20,9 @@
       "explanation": "Eliminate redundant product existence DB round trips in review endpoints",
       "scope": "narrow",
       "rootCausePath": "C:\\Projects\\Hone\\sample-api\\results\\metadata\\root-causes\\rca-2.md",
-      "status": "pending",
-      "triedByExperiment": null,
-      "outcome": null
+      "status": "done",
+      "triedByExperiment": 19,
+      "outcome": "improved"
     },
     {
       "id": 3,

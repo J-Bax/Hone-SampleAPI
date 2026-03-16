@@ -46,14 +46,18 @@ public class ReviewsController : ControllerBase
     [HttpGet("by-product/{productId}")]
     public async Task<ActionResult<IEnumerable<Review>>> GetReviewsByProduct(int productId)
     {
-        // Check existence without materializing the full entity or tracking it
-        var productExists = await _context.Products.AsNoTracking().AnyAsync(p => p.Id == productId);
-        if (!productExists)
-            return NotFound(new { message = $"Product with ID {productId} not found" });
-
         var filtered = await _context.Reviews.AsNoTracking()
             .Where(r => r.ProductId == productId)
             .ToListAsync();
+
+        // Common case: reviews found — product existence is implicitly proven
+        if (filtered.Count > 0)
+            return Ok(filtered);
+
+        // Uncommon case: no reviews — distinguish 404 from empty list
+        var productExists = await _context.Products.AsNoTracking().AnyAsync(p => p.Id == productId);
+        if (!productExists)
+            return NotFound(new { message = $"Product with ID {productId} not found" });
 
         return Ok(filtered);
     }
@@ -64,10 +68,6 @@ public class ReviewsController : ControllerBase
     [HttpGet("average/{productId}")]
     public async Task<ActionResult<object>> GetAverageRating(int productId)
     {
-        var productExists = await _context.Products.AsNoTracking().AnyAsync(p => p.Id == productId);
-        if (!productExists)
-            return NotFound(new { message = $"Product with ID {productId} not found" });
-
         // Single aggregate query replaces three separate round trips
         var stats = await _context.Reviews
             .Where(r => r.ProductId == productId)
@@ -75,14 +75,27 @@ public class ReviewsController : ControllerBase
             .Select(g => new { Count = g.Count(), Average = g.Average(r => (double)r.Rating) })
             .FirstOrDefaultAsync();
 
-        var reviewCount = stats?.Count ?? 0;
-        var average = reviewCount > 0 ? Math.Round(stats!.Average, 2) : 0.0;
+        // Common case: reviews found — product existence is implicitly proven
+        if (stats != null)
+        {
+            return Ok(new
+            {
+                ProductId = productId,
+                AverageRating = Math.Round(stats.Average, 2),
+                ReviewCount = stats.Count
+            });
+        }
+
+        // Uncommon case: no reviews — distinguish 404 from zero-review product
+        var productExists = await _context.Products.AsNoTracking().AnyAsync(p => p.Id == productId);
+        if (!productExists)
+            return NotFound(new { message = $"Product with ID {productId} not found" });
 
         return Ok(new
         {
             ProductId = productId,
-            AverageRating = average,
-            ReviewCount = reviewCount
+            AverageRating = 0.0,
+            ReviewCount = 0
         });
     }
 
