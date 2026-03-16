@@ -134,7 +134,7 @@
     },
     {
       "Experiment": 9,
-      "StartedAt": "2026-03-15T16:19:15.7281520-07:00",
+      "StartedAt": "2026-03-15T16:19:15.728152-07:00",
       "CompletedAt": "2026-03-15T16:44:13.0812215-07:00",
       "Improved": true,
       "Regression": false,
@@ -150,7 +150,7 @@
     },
     {
       "Experiment": 10,
-      "StartedAt": "2026-03-15T16:44:13.0819550-07:00",
+      "StartedAt": "2026-03-15T16:44:13.081955-07:00",
       "CompletedAt": "2026-03-15T17:26:09.2255124-07:00",
       "Improved": true,
       "Regression": false,
@@ -183,7 +183,7 @@
     {
       "Experiment": 12,
       "StartedAt": "2026-03-15T17:56:18.5341272-07:00",
-      "CompletedAt": "2026-03-15T18:35:05.6603520-07:00",
+      "CompletedAt": "2026-03-15T18:35:05.660352-07:00",
       "Improved": true,
       "Regression": false,
       "P95": 546.3497599999998,
@@ -243,32 +243,24 @@
       "PrUrl": "https://github.com/J-Bax/Hone-SampleAPI/pull/81",
       "StaleCount": 0,
       "ConsecutiveFailures": 0
+    },
+    {
+      "Experiment": 16,
+      "StartedAt": "2026-03-15T20:25:20.4910223-07:00",
+      "CompletedAt": "2026-03-15T20:53:02.8669893-07:00",
+      "Improved": true,
+      "Regression": false,
+      "P95": 595.7017749999999,
+      "RPS": 698.5,
+      "Outcome": "improved",
+      "BranchName": "hone/experiment-16",
+      "BaseBranch": "hone/experiment-15",
+      "PrNumber": 82,
+      "PrUrl": "https://github.com/J-Bax/Hone-SampleAPI/pull/82",
+      "StaleCount": 0,
+      "ConsecutiveFailures": 0
     }
   ],
-  "Machine": {
-    "Cpu": {
-      "Name": "AMD Ryzen 7 3700X 8-Core Processor",
-      "PhysicalCores": 8,
-      "LogicalProcessors": 16,
-      "MaxClockSpeedMHz": 3593,
-      "Architecture": "X64"
-    },
-    "Memory": {
-      "TotalGB": 63.9,
-      "AvailableGB": 35.9
-    },
-    "OS": {
-      "Description": "Windows 10",
-      "Platform": "Windows"
-    },
-    "Runtime": {
-      "PowerShellVersion": "7.4.13",
-      "DotnetSdkVersion": "8.0.100-preview.4.23260.5",
-      "ClrVersion": ".NET 8.0.21"
-    },
-    "CollectedAt": "2026-03-15T21:52:45.2861909Z"
-  },
-  "LoopStartedAt": "2026-03-15T14:52:45.3056766-07:00",
   "LoopCompletedAt": "2026-03-15T20:05:03.0107163-07:00",
   "PrChain": [
     67,
@@ -304,5 +296,29 @@
     "hone/experiment-13",
     "hone/experiment-14",
     "hone/experiment-15"
-  ]
+  ],
+  "Machine": {
+    "Cpu": {
+      "Name": "AMD Ryzen 7 3700X 8-Core Processor",
+      "PhysicalCores": 8,
+      "LogicalProcessors": 16,
+      "MaxClockSpeedMHz": 3593,
+      "Architecture": "X64"
+    },
+    "Memory": {
+      "TotalGB": 63.9,
+      "AvailableGB": 29.8
+    },
+    "OS": {
+      "Description": "Windows 10",
+      "Platform": "Windows"
+    },
+    "Runtime": {
+      "PowerShellVersion": "7.4.13",
+      "DotnetSdkVersion": "8.0.100-preview.4.23260.5",
+      "ClrVersion": ".NET 8.0.21"
+    },
+    "CollectedAt": "2026-03-16T03:25:20.3695647Z"
+  },
+  "LoopStartedAt": "2026-03-15T20:25:20.3895837-07:00"
 }
