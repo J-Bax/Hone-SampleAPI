@@ -1,0 +1,187 @@
+{
+  "Timestamp": "2026-03-15T18:21:36.6058546-07:00",
+  "Experiment": 12,
+  "CsvPath": "C:\\Projects\\Hone\\sample-api\\results\\experiment-12\\dotnet-counters.csv",
+  "TotalSamples": 17806,
+  "Runtime": {
+    "CpuUsage": {
+      "Avg": 14.96,
+      "Min": 0.0,
+      "Max": 23.0,
+      "Last": 17.0,
+      "Samples": 614
+    },
+    "WorkingSetMB": {
+      "Avg": 703.91,
+      "Min": 315.0,
+      "Max": 1295.0,
+      "Last": 1265.0,
+      "Samples": 614
+    },
+    "GcHeapSizeMB": {
+      "Avg": 270.51,
+      "Min": 9.0,
+      "Max": 1085.0,
+      "Last": 1015.0,
+      "Samples": 614
+    },
+    "Gen0Collections": {
+      "Avg": 9629210.56,
+      "Min": 0.0,
+      "Max": 136044232.0,
+      "Last": 4688280.0,
+      "Samples": 1228
+    },
+    "Gen1Collections": {
+      "Avg": 9586956.75,
+      "Min": 0.0,
+      "Max": 61904304.0,
+      "Last": 53620912.0,
+      "Samples": 1228
+    },
+    "Gen2Collections": {
+      "Avg": 13691921.42,
+      "Min": 0.0,
+      "Max": 36227840.0,
+      "Last": 36227840.0,
+      "Samples": 1228
+    },
+    "Gen0SizeMB": {
+      "Avg": 19258419.53,
+      "Min": 2541288.0,
+      "Max": 136044232.0,
+      "Last": 4688280.0,
+      "Samples": 614
+    },
+    "Gen1SizeMB": {
+      "Avg": 19173912.73,
+      "Min": 384.0,
+      "Max": 61904304.0,
+      "Last": 53620912.0,
+      "Samples": 614
+    },
+    "Gen2SizeMB": {
+      "Avg": 27383842.8,
+      "Min": 8565960.0,
+      "Max": 36227840.0,
+      "Last": 36227840.0,
+      "Samples": 614
+    },
+    "LOHSizeMB": {
+      "Avg": 390464.0,
+      "Min": 390464.0,
+      "Max": 390464.0,
+      "Last": 390464.0,
+      "Samples": 614
+    },
+    "POHSizeMB": {
+      "Avg": 1756950.66,
+      "Min": 592680.0,
+      "Max": 2218592.0,
+      "Last": 2218592.0,
+      "Samples": 614
+    },
+    "GcPauseRatio": {
+      "Avg": 1.71,
+      "Min": 0.0,
+      "Max": 37.0,
+      "Last": 0.0,
+      "Samples": 614
+    },
+    "AllocRateMB": {
+      "Avg": 408898295.88,
+      "Min": 0.0,
+      "Max": 539103128.0,
+      "Last": 425093032.0,
+      "Samples": 614
+    },
+    "ExceptionCount": {
+      "Avg": 120.66,
+      "Min": 0.0,
+      "Max": 1576.0,
+      "Last": 134.0,
+      "Samples": 614
+    },
+    "ThreadPoolThreads": {
+      "Avg": 24.38,
+      "Min": 22.0,
+      "Max": 40.0,
+      "Last": 23.0,
+      "Samples": 614
+    },
+    "ThreadPoolQueue": {
+      "Avg": 75.28,
+      "Min": 0.0,
+      "Max": 137.0,
+      "Last": 15.0,
+      "Samples": 614
+    },
+    "ThreadPoolCompleted": {
+      "Avg": 24221.07,
+      "Min": 0.0,
+      "Max": 29749.0,
+      "Last": 27339.0,
+      "Samples": 614
+    },
+    "MonitorContentions": {
+      "Avg": 7.74,
+      "Min": 0.0,
+      "Max": 108.0,
+      "Last": 7.0,
+      "Samples": 614
+    },
+    "ActiveTimers": {
+      "Avg": 6.58,
+      "Min": 2.0,
+      "Max": 75.0,
+      "Last": 75.0,
+      "Samples": 614
+    },
+    "Assemblies": {
+      "Avg": 159.0,
+      "Min": 159.0,
+      "Max": 159.0,
+      "Last": 159.0,
+      "Samples": 614
+    }
+  },
+  "AspNetCore": {
+    "RequestRate": {
+      "Avg": 998.64,
+      "Min": 0.0,
+      "Max": 1189.0,
+      "Last": 1140.0,
+      "Samples": 614
+    },
+    "TotalRequests": {
+      "Avg": 306108.93,
+      "Min": 0.0,
+      "Max": 613168.0,
+      "Last": 613168.0,
+      "Samples": 614
+    },
+    "CurrentRequests": {
+      "Avg": 171.23,
+      "Min": 0.0,
+      "Max": 469.0,
+      "Last": 266.0,
+      "Samples": 614
+    },
+    "FailedRequests": {
+      "Avg": 0.0,
+      "Min": 0.0,
+      "Max": 0.0,
+      "Last": 0.0,
+      "Samples": 614
+    }
+  },
+  "HttpConnections": {
+    "CurrentConnections": null,
+    "TotalConnections": null
+  },
+  "HttpClient": {
+    "CurrentRequests": null,
+    "RequestsStarted": null,
+    "RequestsFailed": null
+  }
+}
