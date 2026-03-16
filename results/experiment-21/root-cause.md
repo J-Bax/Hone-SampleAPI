@@ -1,3 +1,14 @@
+# Root Cause Analysis — Experiment 21
+
+> Generated: 2026-03-15 22:42:06 | Classification: narrow — Classification skipped (SkipClassification = $true)
+
+| Metric | Current | Baseline |
+|--------|---------|----------|
+| p95 Latency | 544.804015ms | 7546.103045ms |
+| Requests/sec | 1078.1 | 125.5 |
+| Error Rate | 0% | 0% |
+
+---
 # Eliminate redundant category existence DB round trip in GetProductsByCategory
 
 > **File:** `SampleApi/Controllers/ProductsController.cs` | **Scope:** narrow
@@ -35,3 +46,4 @@ Every VU iteration hits `GET /api/products/by-category/Electronics`, which alway
 - p95 latency: ~3-5ms reduction per affected request (eliminates one DB round trip)
 - RPS: slight improvement from reduced connection pool contention
 - This endpoint is ~5.5% of total traffic. At ~4ms savings, overall p95 improvement is ~0.4%.
+
