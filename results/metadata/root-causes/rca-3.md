@@ -1,37 +1,55 @@
-# Add Select projection to product name lookup in Orders page
+# Add Select projection to product dictionary lookup in GetCart API endpoint
 
-> **File:** `SampleApi/Pages/Orders/Index.cshtml.cs` | **Scope:** narrow
+> **File:** `SampleApi/Controllers/CartController.cs` | **Scope:** narrow
 
 ## Evidence
 
-At `Orders/Index.cshtml.cs:58-61`, the Orders page fetches full `Product` entities but only uses the `Name` property:
+At `CartController.cs:30-34`, the `GetCart` endpoint loads full Product entities:
 
 ```csharp
-var productMap = await _context.Products
+var products = await _context.Products
     .AsNoTracking()
     .Where(p => productIds.Contains(p.Id))
-    .ToDictionaryAsync(p => p.Id);   // Full Product entities
+    .ToDictionaryAsync(p => p.Id);
 ```
 
-The only property accessed is `Name` (line 69):
+This materializes complete `Product` objects including `Description` (up to ~100 chars of NVARCHAR), `Category`, `CreatedAt`, and `UpdatedAt` — none of which are used. The only fields consumed are `Name` (line 49) and `Price` (lines 42, 50):
+
 ```csharp
 ProductName = product?.Name ?? "Unknown",
+ProductPrice = product?.Price ?? 0m,
 ```
 
-All other columns — `Description`, `Price`, `Category`, `CreatedAt`, `UpdatedAt` — are fetched from SQL Server, materialized into .NET objects, and immediately discarded. This is the same anti-pattern already fixed in `Checkout/Index.cshtml.cs:136-137` with a Select projection.
+The same optimization was already successfully applied to:
+- Cart page `LoadCart` (experiment 22, `Pages/Cart/Index.cshtml.cs:119-122`)
+- Orders page product lookup (experiment 23, `Pages/Orders/Index.cshtml.cs:58-62`)
 
-The CPU profiler's top hotspot is `TdsParserStateObject.TryReadChar` at 1.1% exclusive — reading unnecessary Unicode string data. The `StringConverter.Write` at 0.56% and aggregate JSON serialization at 1.4% don't apply here (Razor page, not JSON), but the SQL read overhead does.
+But the API controller endpoint was missed.
+
+The CPU profile shows 4.08% of samples in TDS parsing (materializing SQL data into .NET objects) and 0.51% in Unicode string decoding — both inflated by reading unnecessary NVARCHAR columns.
 
 ## Theory
 
-The Orders page is the last request in every VU iteration, occurring at peak load (up to 500 VUs). Each request loads 1-N orders, their items, and then full Product entities for all referenced products. The Product `Description` field (nvarchar potentially up to 2000+ chars) dominates the unnecessary data transfer. Under the k6 scenario, each VU creates orders with 2 items per iteration, and the orders page loads ALL orders for that customer across all iterations. As the test progresses, the number of orders per customer grows, amplifying the unnecessary product data fetched. This contributes to the 422 MB/sec allocation rate and Gen0→Gen1 promotion crisis identified by the GC profiler.
+Every VU iteration calls `GET /api/cart/{sessionId}`, which triggers this product lookup. While each cart typically has only 1 item (the k6 scenario adds 1 then clears), under high concurrency (500 VUs) this means 500+ concurrent queries materializing full Product rows. The extra columns (especially `Description` as NVARCHAR) consume:
+- SQL Server I/O to read wider rows
+- TDS network bandwidth for unused data
+- .NET heap allocations for string materialization
+- JSON serialization overhead (though unused fields aren't in the response)
+
+Using `.Select()` to project only `Id`, `Name`, and `Price` reduces the SQL result width by ~60%, cutting materialization and allocation overhead.
 
 ## Proposed Fixes
 
-1. **Add Select projection for Name only:** Replace the full entity query with `.Select(p => new { p.Id, p.Name }).ToDictionaryAsync(p => p.Id)`. Update the `TryGetValue` on line 69 to use the anonymous type's `Name` property. This eliminates 5 unused columns from the SQL query.
+1. **Add Select projection:** At `CartController.cs:30-34`, change the product query to project only the needed columns:
+   ```
+   .Select(p => new { p.Id, p.Name, p.Price })
+   .ToDictionaryAsync(p => p.Id);
+   ```
+   This mirrors the pattern already used in `Pages/Cart/Index.cshtml.cs:121` and `Pages/Orders/Index.cshtml.cs:61`.
 
 ## Expected Impact
 
-- p95 latency: ~2-3ms reduction per orders page request
-- GC pressure: meaningful reduction in mid-life string allocations
-- This endpoint is ~5.5% of traffic. Overall p95 improvement: ~0.2%.
+- Reduces SQL data transfer for product lookups in cart API by ~60%
+- Reduces .NET heap allocations per request (fewer string materializations)
+- Expected per-request latency reduction: ~5-8 ms
+- Overall p95 improvement: ~0.1% (cart API is ~5.5% of traffic, small per-request gain)

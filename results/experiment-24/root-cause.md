@@ -1,3 +1,14 @@
+# Root Cause Analysis — Experiment 24
+
+> Generated: 2026-03-16 00:08:46 | Classification: narrow — Classification skipped (SkipClassification = $true)
+
+| Metric | Current | Baseline |
+|--------|---------|----------|
+| p95 Latency | 546.113655ms | 7546.103045ms |
+| Requests/sec | 1100.1 | 125.5 |
+| Error Rate | 0% | 0% |
+
+---
 # Replace AddDbContext with AddDbContextPool to reduce allocation pressure
 
 > **File:** `SampleApi/Program.cs` | **Scope:** narrow
@@ -36,3 +47,4 @@ The memory-GC report confirms an extreme allocation rate of **433 MB/sec** (51 G
 - Reduced max GC pause severity (currently 113.6 ms), directly improving p95 tail latency
 - Reduced DI resolution CPU overhead (~1,500 samples)
 - Estimated p95 improvement: ~2% (10-15 ms off 546 ms) from combined allocation + GC + DI savings
+

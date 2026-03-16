@@ -1,42 +1,49 @@
-# Add Select projection to product lookup in Cart page LoadCart
+# Replace NEWID() random ordering with efficient deterministic query for featured products
 
-> **File:** `SampleApi/Pages/Cart/Index.cshtml.cs` | **Scope:** narrow
+> **File:** `SampleApi/Pages/Index.cshtml.cs` | **Scope:** narrow
 
 ## Evidence
 
-At `Cart/Index.cshtml.cs:117-121`, `LoadCart` fetches full `Product` entities when only `Id`, `Name`, and `Price` are used:
+At `Pages/Index.cshtml.cs:29`, the home page fetches featured products using:
 
 ```csharp
-var products = await _context.Products
-    .AsNoTracking()
-    .Where(p => productIds.Contains(p.Id))
-    .ToDictionaryAsync(p => p.Id);   // Full Product entities
+FeaturedProducts = await _context.Products.AsNoTracking()
+    .OrderBy(_ => EF.Functions.Random())
+    .Take(12)
+    .ToListAsync();
 ```
 
-Only `Name` and `Price` are accessed (lines 131-132):
+This translates to SQL: `SELECT TOP 12 * FROM Products ORDER BY NEWID()`. The `NEWID()` function generates a GUID for **every row** in the table (1,000 products), then SQL Server must sort all 1,000 rows to select the top 12. This is a guaranteed full table scan plus an expensive sort operation.
+
+The CPU profile shows SQL Server engine modules consuming **17% of total samples** (91,700 samples in sqlmin/sqllang/sqldk). The home page query is one of the contributors because `ORDER BY NEWID()` cannot use any index and forces a full scan + sort on every request.
+
+Additionally, at line 32, a separate `CountAsync()` query runs:
+
 ```csharp
-ProductName = product?.Name ?? "Unknown",
-ProductPrice = product?.Price ?? 0m,
+TotalProducts = await _context.Products.CountAsync();
 ```
 
-By contrast, the Checkout page (`Checkout/Index.cshtml.cs:133-137`) already uses the optimized pattern:
-```csharp
-.Select(p => new { p.Id, p.Name, p.Price })
-.ToDictionaryAsync(p => p.Id);
-```
-
-The CPU profiler identifies `TdsParserStateObject.TryReadChar` at 1.1% exclusive and `TryReadPlpUnicodeCharsChunk` at 0.22% — both indicate excessive Unicode string data (Description, Category) being read from SQL Server but never used. The memory profiler reports ~422 MB/sec allocation rate; full entity materialization contributes unnecessary `string` allocations for unused properties.
+This is a second round trip that also touches the Products table.
 
 ## Theory
 
-Loading full `Product` entities transfers all columns including `Description` (potentially large nvarchar), `Category`, `CreatedAt`, and `UpdatedAt` from SQL Server through the TDS wire protocol. Each unused column adds: (1) SQL Server I/O to read the column, (2) TDS protocol bytes on the wire, (3) .NET string allocations for materialization, (4) GC pressure from short-lived string objects. The GC profiler shows 86.7% Gen0→Gen1 promotion — mid-life objects from entity materialization that survive Gen0 but die in Gen1, causing 160ms max Gen1 pauses. Projecting only needed columns reduces all four costs.
+Under high concurrency (up to 500 VUs), every VU iteration hits the home page, triggering the `ORDER BY NEWID()` query. With 1,000 rows, SQL Server must:
+1. Scan the entire clustered index
+2. Compute NEWID() per row (GUID generation)
+3. Sort all 1,000 rows by the generated GUIDs
+4. Return only the top 12
+
+This creates significant SQL Server CPU pressure and lock contention under load. The sort operation also allocates tempdb workspace. Replacing with a deterministic ordering on an indexed column (e.g., `Id` descending) allows SQL Server to use the clustered index directly and return the first 12 rows without scanning or sorting the entire table.
 
 ## Proposed Fixes
 
-1. **Add Select projection:** Replace the full entity query with `.Select(p => new { p.Id, p.Name, p.Price }).ToDictionaryAsync(p => p.Id)` — identical to the pattern already used in `Checkout/Index.cshtml.cs:136-137`. Update the `TryGetValue` and property access on lines 125-132 to use the anonymous type.
+1. **Replace Random() with deterministic indexed ordering:** At line 29, change `OrderBy(_ => EF.Functions.Random())` to `OrderByDescending(p => p.Id)` (or `OrderByDescending(p => p.CreatedAt)` for "newest" semantics). The `Id` column is the clustered index primary key, so `ORDER BY Id DESC` is a simple backward index scan returning exactly 12 rows with zero sort overhead.
+
+2. **Optionally combine with Count:** The `CountAsync()` at line 32 could be replaced with a known-count approach or combined into the same query, but this is a minor secondary optimization.
 
 ## Expected Impact
 
-- p95 latency: ~2-3ms reduction per cart page request (less SQL data, fewer allocations)
-- GC pressure: reduced mid-life allocations contributing to Gen1 pause spikes
-- This endpoint is ~5.5% of traffic. Overall p95 improvement: ~0.3%.
+- Eliminates per-request full table scan + sort for the home page query
+- Reduces SQL Server CPU time for this endpoint by ~80-90%
+- Expected per-request latency reduction of ~25-40 ms for the home page
+- Overall p95 improvement: ~0.3-0.4% (home page is ~5.5% of traffic)
