@@ -26,7 +26,7 @@ public class IndexModel : PageModel
     public async Task OnGetAsync()
     {
         FeaturedProducts = await _context.Products.AsNoTracking()
-            .OrderByDescending(p => p.Id)
+            .OrderBy(_ => EF.Functions.Random())
             .Take(12)
             .ToListAsync();
         TotalProducts = await _context.Products.CountAsync();
