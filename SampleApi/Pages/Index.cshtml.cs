@@ -28,6 +28,7 @@ public class IndexModel : PageModel
         FeaturedProducts = await _context.Products.AsNoTracking()
             .OrderBy(_ => EF.Functions.Random())
             .Take(12)
+            .Select(p => new Product { Id = p.Id, Name = p.Name, Price = p.Price, Category = p.Category, CreatedAt = p.CreatedAt, UpdatedAt = p.UpdatedAt })
             .ToListAsync();
         TotalProducts = await _context.Products.CountAsync();
 
@@ -38,6 +39,7 @@ public class IndexModel : PageModel
         RecentReviews = await _context.Reviews.AsNoTracking()
             .OrderByDescending(r => r.CreatedAt)
             .Take(5)
+            .Select(r => new Review { Id = r.Id, ProductId = r.ProductId, CustomerName = r.CustomerName, Rating = r.Rating, CreatedAt = r.CreatedAt })
             .ToListAsync();
     }
 }

@@ -31,9 +31,9 @@
       "explanation": "Add Select projection to FeaturedProducts and RecentReviews excluding large text fields",
       "scope": "narrow",
       "rootCausePath": "C:\\Projects\\Hone\\sample-api\\results\\metadata\\root-causes\\rca-3.md",
-      "status": "pending",
-      "triedByExperiment": null,
-      "outcome": null
+      "status": "done",
+      "triedByExperiment": 32,
+      "outcome": "improved"
     }
   ]
 }
