@@ -1,48 +1,41 @@
-# Add Select projection to product lookup in CreateOrder
+# Add Select projection to FeaturedProducts and RecentReviews excluding large text fields
 
-> **File:** `SampleApi/Controllers/OrdersController.cs` | **Scope:** narrow
+> **File:** `SampleApi/Pages/Index.cshtml.cs` | **Scope:** narrow
 
 ## Evidence
 
-At `OrdersController.cs:112-116`, `CreateOrder` loads full Product entities to build order items:
+At `Pages/Index.cshtml.cs:28-31`, the Home page loads 12 featured products as full entities including the `Description` field:
 
 ```csharp
-var productIds = request.Items.Select(i => i.ProductId).ToList();
-var products = await _context.Products
-    .AsNoTracking()
-    .Where(p => productIds.Contains(p.Id))
-    .ToDictionaryAsync(p => p.Id);
+FeaturedProducts = await _context.Products.AsNoTracking()
+    .OrderBy(_ => EF.Functions.Random())
+    .Take(12)
+    .ToListAsync();
 ```
 
-The only fields used from the products are `Price` (line 131: `total += product.Price * itemReq.Quantity`) and `Id` (line 120: dictionary key). Yet the query returns all columns: `Name`, `Description` (~95 chars), `Category`, `CreatedAt`, `UpdatedAt`.
-
-Similarly at `OrdersController.cs:59-62`, `GetOrder` loads full Product entities but only uses `Name` (line 72: `ProductName = product?.Name ?? "Unknown"`):
+At `Pages/Index.cshtml.cs:38-41`, it also loads 5 recent reviews as full entities including the `Comment` field (up to 2000 chars per `Models/Review.cs:12`):
 
 ```csharp
-var products = await _context.Products
-    .AsNoTracking()
-    .Where(p => productIds.Contains(p.Id))
-    .ToDictionaryAsync(p => p.Id);
+RecentReviews = await _context.Reviews.AsNoTracking()
+    .OrderByDescending(r => r.CreatedAt)
+    .Take(5)
+    .ToListAsync();
 ```
 
-The CPU profiler's aggregate SQL data reading cost (3.8% inclusive for SqlDataReader methods) is amplified by every query that fetches unnecessary columns.
+Neither query uses a Select projection. The `Description` field averages ~100 chars across 12 products (~1.2KB), and the `Comment` field can be up to 2000 chars across 5 reviews (up to ~10KB). The CPU profile shows Unicode string decoding at 1.5% exclusive CPU — directly proportional to string column volume.
 
 ## Theory
 
-`POST /api/orders` accounts for ~5.6% of traffic. Each call creates an order with 2 items (per `seededId` in k6), triggering a `WHERE Id IN (...)` query that returns 2 full Product entities. While the per-request savings from projecting 2 products is small, it follows the same pattern as the larger Product list endpoints — reducing unnecessary Description and metadata column reads.
-
-Additionally, `GetOrder` (used by `CreatedAtAction` responses and potentially by direct API calls) loads full products when only `Name` is needed. Adding projection here aligns both read and write paths to fetch only what they use.
-
-The cumulative effect across all endpoints that over-fetch Product data contributes to the 420 MB/sec allocation rate.
+The Home page is rendered on every k6 iteration. The `EF.Functions.Random()` ordering already forces a full table scan of 1000 products (sorted randomly, top 12 returned). The full entity materialization adds unnecessary string allocation for Description fields that a home page product card typically doesn't display. The RecentReviews query fetches full Comment text; a home page review summary only needs rating, customer name, and a truncated preview. Together, these queries allocate ~1.2KB (products) + up to ~10KB (reviews) of unnecessary string data per request, flowing through the SQL TDS parser → Unicode decoder → EF materializer → Razor serializer pipeline.
 
 ## Proposed Fixes
 
-1. **Add `.Select(p => new { p.Id, p.Price })` to the CreateOrder product lookup at line 113-116**: Only `Id` and `Price` are needed for building order items and calculating totals.
+1. **Add Select projection to FeaturedProducts:** At line 28-31, add `.Select(p => new Product { Id = p.Id, Name = p.Name, Price = p.Price, Category = p.Category, CreatedAt = p.CreatedAt, UpdatedAt = p.UpdatedAt })` before `.ToListAsync()`, matching the pattern in `ProductsController`. This excludes Description from the SQL query.
 
-2. **Add `.Select(p => new { p.Id, p.Name })` to the GetOrder product lookup at line 59-62**: Only `Id` and `Name` are needed for the response DTO.
+2. **Add Select projection to RecentReviews:** At lines 38-41, add `.Select(r => new Review { Id = r.Id, ProductId = r.ProductId, CustomerName = r.CustomerName, Rating = r.Rating, CreatedAt = r.CreatedAt })` to exclude Comment from the SQL query. If a truncated comment preview is needed on the page, include a substring projection.
 
 ## Expected Impact
 
-- Per-request latency: ~1-3ms reduction on CreateOrder (eliminates Description + 4 unused columns from 2 product reads)
-- Allocation: modest reduction in string allocations per order creation
-- Overall p95 improvement: ~0.1-0.3% (~1ms off 544ms)
+- p95 latency: ~3-8ms reduction on Home page requests (less SQL data, fewer string allocations)
+- GC pressure: reduced allocation volume from eliminating up to ~11KB of unnecessary string data per request
+- The Home page is ~5.6% of total k6 traffic. With ~5ms average savings, overall p95 improvement is approximately 0.05%.

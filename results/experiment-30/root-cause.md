@@ -1,3 +1,14 @@
+# Root Cause Analysis — Experiment 30
+
+> Generated: 2026-03-16 10:50:16 | Classification: narrow — Classification skipped (SkipClassification = $true)
+
+| Metric | Current | Baseline |
+|--------|---------|----------|
+| p95 Latency | 534.5337ms | 7546.103045ms |
+| Requests/sec | 1101.5 | 125.5 |
+| Error Rate | 0% | 0% |
+
+---
 # Add Select projection to paginated product query excluding Description
 
 > **File:** `SampleApi/Pages/Products/Index.cshtml.cs` | **Scope:** narrow
@@ -31,3 +42,4 @@ Every request to `GET /Products` materializes 24 full `Product` entities through
 - p95 latency: ~3-8ms reduction on Products page requests (less SQL data reading, EF materialization, and serialization)
 - RPS: marginal improvement from reduced CPU work per request
 - The Products page is ~5.6% of total k6 traffic (1 of 18 requests per iteration). With ~5.5ms average latency savings, overall p95 improvement is approximately 0.06%.
+

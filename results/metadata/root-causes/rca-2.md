@@ -1,46 +1,34 @@
-# Replace FindAsync with AnyAsync for product existence check in AddToCart
+# Replace materialize-then-remove with raw SQL DELETE in ClearCart
 
 > **File:** `SampleApi/Controllers/CartController.cs` | **Scope:** narrow
 
 ## Evidence
 
-At `CartController.cs:74`, `AddToCart` uses `FindAsync` to check if a product exists:
+At `Controllers/CartController.cs:148-153`, the `ClearCart` endpoint materializes all cart items into memory before deleting them:
 
 ```csharp
-var product = await _context.Products.FindAsync(request.ProductId);
-if (product == null)
-    return NotFound(new { message = $"Product with ID {request.ProductId} not found" });
+var sessionItems = await _context.CartItems
+    .Where(c => c.SessionId == sessionId)
+    .ToListAsync();                        // Round trip 1: SELECT
+
+_context.CartItems.RemoveRange(sessionItems);
+await _context.SaveChangesAsync();          // Round trip 2: DELETE per item
 ```
 
-The loaded `Product` entity (including the ~95 char Description field) is never used after the null check — it exists solely for existence validation. `FindAsync` also attaches the entity to the change tracker (`EntityState.Unchanged`), adding memory overhead.
+This performs two database round trips: a SELECT to load entities, then N individual DELETE statements (one per cart item) batched in SaveChanges. The CPU profile shows `SemaphoreSlim.Wait` (293 samples) indicating connection pool contention under load — every unnecessary round trip holds a connection longer and increases contention.
 
-At `CartController.cs:78-79`, the subsequent `FirstOrDefaultAsync` for cart item deduplication does not use `AsNoTracking`:
-
-```csharp
-var existing = await _context.CartItems.FirstOrDefaultAsync(c =>
-    c.SessionId == request.SessionId && c.ProductId == request.ProductId);
-```
-
-This is correct since the `existing` entity may be modified at line 84 (`existing.Quantity += request.Quantity`). However, the Product loaded at line 74 remains tracked unnecessarily, consuming change tracker memory for the remainder of the request.
-
-The CPU profiler shows `DI.ResolveService` at 0.17% and `SqlDataReader (aggregate)` at 3.8% — both scale with per-request entity count. The memory profiler's 88% Gen0→Gen1 promotion ratio suggests per-request objects (like unnecessary Product entities) surviving async awaits.
+The k6 scenario calls `http.del(${BASE_URL}/api/cart/session/${sessionId})` every iteration, and each iteration has ~2 cart items (one from API POST at line 7 of the scenario, one from the page POST).
 
 ## Theory
 
-`POST /api/cart` accounts for ~5.6% of traffic. Each call materializes a full Product entity (with Description, category, timestamps) solely to check `!= null`. This generates:
-
-1. A `SELECT TOP 1 *` query reading all columns from the Products table
-2. Entity materialization allocating a Product object + Description string (~95 bytes)
-3. Change tracker entry creation (state object, original values snapshot)
-
-`AnyAsync` translates to `SELECT CASE WHEN EXISTS (SELECT 1 FROM Products WHERE Id = @p) THEN 1 ELSE 0 END` — a single bit result with no entity materialization, no column reads, and no change tracker overhead.
+Under 500 concurrent VUs, the ClearCart endpoint executes ~61 times/sec. Each call holds a database connection for two sequential operations: SELECT (fetch items) → DELETE (remove items). The SELECT is entirely wasteful since we don't need the entity data — we only need to delete rows matching the SessionId. Replacing with a single `DELETE FROM CartItems WHERE SessionId = @p` eliminates the SELECT round trip, halves connection hold time, reduces EF change tracker overhead (no entities tracked), and reduces GC pressure (no CartItem objects allocated). This directly addresses the SemaphoreSlim.Wait contention shown in the CPU profile.
 
 ## Proposed Fixes
 
-1. **Replace `FindAsync` with `AnyAsync` at line 74**: Change to `var productExists = await _context.Products.AnyAsync(p => p.Id == request.ProductId);` and check `if (!productExists)`. This eliminates the full Product entity read entirely.
+1. **Use raw SQL DELETE:** Replace lines 148-153 with `await _context.Database.ExecuteSqlInterpolatedAsync($"DELETE FROM CartItems WHERE SessionId = {sessionId}")`. This executes a single SQL statement without materializing any entities. Return `NoContent()` as before.
 
 ## Expected Impact
 
-- Per-request latency: ~3-5ms reduction (eliminates one full entity read + change tracker overhead)
-- Allocation: eliminates one Product + Description materialization per AddToCart call
-- Overall p95 improvement: ~0.3-0.5% (~2ms off 544ms)
+- p95 latency: ~8-15ms reduction on ClearCart requests (one fewer DB round trip, no entity materialization)
+- Connection pool: reduced contention under high concurrency (halved connection hold time for this endpoint)
+- The ClearCart endpoint is ~5.6% of total k6 traffic. With ~10ms latency savings, overall p95 improvement is approximately 0.1%.
