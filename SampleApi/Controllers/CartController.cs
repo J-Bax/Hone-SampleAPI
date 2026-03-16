@@ -31,6 +31,7 @@ public class CartController : ControllerBase
         var products = await _context.Products
             .AsNoTracking()
             .Where(p => productIds.Contains(p.Id))
+            .Select(p => new { p.Id, p.Name, p.Price })
             .ToDictionaryAsync(p => p.Id);
 
         var cartDetails = new List<object>();
