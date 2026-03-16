@@ -9,9 +9,9 @@
       "explanation": "Replace AddDbContext with AddDbContextPool to reduce allocation pressure",
       "scope": "narrow",
       "rootCausePath": "C:\\Projects\\Hone\\sample-api\\results\\metadata\\root-causes\\rca-1.md",
-      "status": "in_progress",
-      "triedByExperiment": null,
-      "outcome": null
+      "status": "done",
+      "triedByExperiment": 24,
+      "outcome": "regressed"
     },
     {
       "id": 2,
@@ -20,9 +20,9 @@
       "explanation": "Replace NEWID() random ordering with efficient deterministic query for featured products",
       "scope": "narrow",
       "rootCausePath": "C:\\Projects\\Hone\\sample-api\\results\\metadata\\root-causes\\rca-2.md",
-      "status": "pending",
-      "triedByExperiment": null,
-      "outcome": null
+      "status": "done",
+      "triedByExperiment": 25,
+      "outcome": "stale"
     },
     {
       "id": 3,

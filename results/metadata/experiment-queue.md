@@ -5,6 +5,6 @@
 
 **Generated:** experiment 24 at 03/16/2026 00:08:46
 
-- [ ] **#1** `SampleApi/Program.cs` — Replace AddDbContext with AddDbContextPool to reduce allocation pressure *(in progress)*
-- [ ] **#2** `SampleApi/Pages/Index.cshtml.cs` — Replace NEWID() random ordering with efficient deterministic query for featured products
+- [x] **#1** `SampleApi/Program.cs` — Replace AddDbContext with AddDbContextPool to reduce allocation pressure *(experiment 24 — regressed)*
+- [x] **#2** `SampleApi/Pages/Index.cshtml.cs` — Replace NEWID() random ordering with efficient deterministic query for featured products *(experiment 25 — stale)*
 - [ ] **#3** `SampleApi/Controllers/CartController.cs` — Add Select projection to product dictionary lookup in GetCart API endpoint
