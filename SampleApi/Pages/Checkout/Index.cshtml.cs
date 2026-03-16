@@ -103,13 +103,9 @@ public class IndexModel : PageModel
             total += price * cartItem.Quantity;
         }
 
-        await _context.SaveChangesAsync();
-
         order.TotalAmount = Math.Round(total, 2);
-        await _context.SaveChangesAsync();
-
         _context.CartItems.RemoveRange(sessionItems);
-        await _context.SaveChangesAsync();
+        await _context.SaveChangesAsync(); // Save order items, update total, and clear cart atomically
 
         OrderPlaced = true;
         OrderId = order.Id;

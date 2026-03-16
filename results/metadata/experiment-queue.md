@@ -7,4 +7,4 @@
 
 - [ ] **#1** [ARCHITECTURE] `SampleApi/Data/AppDbContext.cs` — Add database indexes for frequently filtered columns
 - [x] **#2** `SampleApi/Controllers/OrdersController.cs` — Batch product lookups and add AsNoTracking in CreateOrder *(experiment 10 — improved)*
-- [ ] **#3** `SampleApi/Pages/Checkout/Index.cshtml.cs` — Consolidate redundant SaveChangesAsync round trips in checkout post
+- [x] **#3** `SampleApi/Pages/Checkout/Index.cshtml.cs` — Consolidate redundant SaveChangesAsync round trips in checkout post *(experiment 11 — improved)*
