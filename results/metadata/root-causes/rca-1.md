@@ -1,48 +1,50 @@
-# Consolidate redundant DB round trips in review endpoints
+# Add database indexes on high-traffic filter columns
 
-> **File:** `SampleApi/Controllers/ReviewsController.cs` | **Scope:** narrow
+> **File:** `SampleApi/Data/AppDbContext.cs` | **Scope:** architecture
 
 ## Evidence
 
-At `ReviewsController.cs:65-74`, `GetAverageRating` executes **three separate DB queries**:
+At `AppDbContext.cs:19-63`, `OnModelCreating` defines entity configurations with **primary keys only** — no secondary indexes on any filter or foreign-key column:
 
 ```csharp
-var product = await _context.Products.FindAsync(productId);        // Query 1: full entity with tracking
-var reviewCount = await _context.Reviews.CountAsync(r => r.ProductId == productId);  // Query 2
-var average = reviewCount > 0
-    ? Math.Round(await _context.Reviews.Where(r => r.ProductId == productId).AverageAsync(r => (double)r.Rating), 2)  // Query 3
-    : 0.0;
+modelBuilder.Entity<CartItem>(entity =>
+{
+    entity.HasKey(e => e.Id);
+    entity.Property(e => e.SessionId).HasMaxLength(100).IsRequired();
+});
 ```
 
-At `ReviewsController.cs:50-51`, `GetReviewsByProduct` uses `FindAsync` to load the full Product entity with change tracking just to check existence:
+Every `WHERE` clause on these columns forces SQL Server into a full table scan:
+- `CartItems.SessionId` — used in **6 endpoints** (AddToCart duplicate check, GetCart, ClearCart, Cart page, Checkout GET, Checkout POST)
+- `Reviews.ProductId` — used in **4 endpoints** (GetReviewsByProduct, GetAverageRating, Detail page GET, Detail page POST)
+- `Products.Category` — used in **2 endpoints** (GetProductsByCategory, Detail page related products)
+- `Orders.CustomerName` — used in **1 endpoint** (Orders page)
+- `OrderItems.OrderId` — used in **1 endpoint** (Orders page)
 
-```csharp
-var product = await _context.Products.FindAsync(productId);
-if (product == null) return NotFound(...);
-```
+The CPU profile shows **19.5% of CPU in TDS parsing** (TryReadChar, TryReadSqlStringValue, TryReadPlpUnicodeCharsChunk), confirming SQL Server reads far more rows than needed.
 
-The CPU profile confirms SQL TDS parsing is the #1 cost center at 9.48% exclusive. Each unnecessary DB round trip adds ~1-2ms of LocalDB latency under contention.
+During the load test, the CartItems table grows rapidly (every VU iteration adds items), so scans become progressively more expensive. With 500 VUs and 1000 seed products + 2000 reviews, unindexed scans under concurrency cause page-level lock contention that directly inflates p95 latency.
 
 ## Theory
 
-Every DB round trip incurs connection acquisition, command execution, and result materialization overhead. Under 500 VU stress load, the connection pool becomes a bottleneck — each extra round trip increases queuing time disproportionately. `GetAverageRating` makes 3 round trips where a single aggregate query would suffice. The `FindAsync` calls also load full Product entities with change tracking (allocating tracker entries) when only an existence check is needed. At ~11% of traffic (2 of 18 requests per VU iteration), these redundant round trips fire ~110 times/sec at peak load.
+Without indexes, every filtered query does a sequential table scan — reading and locking every row in the table to find matching records. Under 500-VU concurrency, hundreds of concurrent scans compete for the same data pages, creating lock contention and queuing. This is amplified for CartItems because the table grows throughout the test (each VU adds/removes items), making scans increasingly expensive as the load test progresses.
+
+The TDS parsing dominance (19.5% CPU) is a direct symptom: SQL Server sends many irrelevant rows across the wire because it scans entire tables instead of seeking to matching rows via an index. Adding indexes converts O(n) scans to O(log n) seeks, dramatically reducing both CPU (less data parsed) and lock contention (shorter lock hold times).
 
 ## Proposed Fixes
 
-1. **Consolidate GetAverageRating into a single query:** Replace the 3 queries with a single `GroupBy` or conditional aggregate:
-   ```csharp
-   var stats = await _context.Reviews.Where(r => r.ProductId == productId)
-       .GroupBy(r => r.ProductId)
-       .Select(g => new { Count = g.Count(), Average = g.Average(r => (double)r.Rating) })
-       .FirstOrDefaultAsync();
-   ```
-   Use `_context.Products.AsNoTracking().AnyAsync(p => p.Id == productId)` for the existence check instead of `FindAsync`.
+1. **Add indexes in `OnModelCreating`:** Add `.HasIndex()` calls for each high-traffic filter column:
+   - `CartItem`: index on `SessionId`, plus a composite unique-ish index on `(SessionId, ProductId)` for the AddToCart duplicate check (`CartController.cs:77-78`, `Detail.cshtml.cs:63-64`)
+   - `Review`: index on `ProductId`
+   - `Product`: index on `Category`
+   - `Order`: index on `CustomerName`
+   - `OrderItem`: index on `OrderId`
 
-2. **Replace FindAsync with AnyAsync in GetReviewsByProduct (line 50):** Use `AsNoTracking().AnyAsync(p => p.Id == productId)` — avoids materializing the full entity and eliminates change tracker allocation.
+All changes are in `AppDbContext.cs` `OnModelCreating`. A new EF migration will be needed to apply the schema change.
 
 ## Expected Impact
 
-- p95 latency: ~4-8ms reduction on affected requests (eliminating 2-3 DB round trips)
-- RPS: slight improvement from reduced connection pool contention
-- Allocation reduction from eliminating change tracker entries for Product entities
-- Overall p95 improvement: ~0.8-1.5%, roughly 4-8ms off the 548ms p95
+- **p95 latency**: estimated 25-40ms reduction. Under high concurrency, converting table scans to index seeks reduces lock contention significantly, which disproportionately benefits p95 (tail latency).
+- **RPS**: modest increase from reduced per-request DB time.
+- **CPU**: TDS parsing percentage should drop as SQL Server returns fewer rows per query.
+- This is the single highest-impact change because it affects ~67% of all traffic and addresses the root cause of the dominant CPU hotspot (TDS parsing).

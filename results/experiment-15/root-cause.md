@@ -1,3 +1,14 @@
+# Root Cause Analysis — Experiment 15
+
+> Generated: 2026-03-15 19:40:18 | Classification: narrow — Adding .AsNoTracking() to the read-only queries (Reviews and RelatedProducts) in OnGetAsync is a single-file change to method internals that does not alter any API contract, dependency, or schema.
+
+| Metric | Current | Baseline |
+|--------|---------|----------|
+| p95 Latency | 548.763115ms | 7546.103045ms |
+| Requests/sec | 1032.4 | 125.5 |
+| Error Rate | 0% | 0% |
+
+---
 # Add AsNoTracking to all read-only queries on Detail page
 
 > **File:** `SampleApi/Pages/Products/Detail.cshtml.cs` | **Scope:** narrow
@@ -55,3 +66,4 @@ These snapshots are mid-lived (alive for the request duration), causing Gen0→G
 - **Memory**: reduces per-request allocation by ~15-25 KB (eliminated snapshot copies for ~12 entities × ~1-2 KB each)
 - **GC**: fewer Gen1 promotions → lower max GC pause
 - **p95 latency**: ~5-10ms improvement from reduced GC pauses and faster entity materialization (no snapshot creation)
+
