@@ -1,3 +1,14 @@
+# Root Cause Analysis — Experiment 12
+
+> Generated: 2026-03-15 18:10:19 | Classification: narrow — The optimization consolidates redundant DB queries (e.g., separate product-existence check + review fetch in GetReviewsByProduct, and count + average in GetAverageRating) into fewer round trips, all within this single controller file's method bodies, with no changes to API contracts, dependencies, or other files.
+
+| Metric | Current | Baseline |
+|--------|---------|----------|
+| p95 Latency | 548.443835ms | 7546.103045ms |
+| Requests/sec | 1006.2 | 125.5 |
+| Error Rate | 0% | 0% |
+
+---
 # Consolidate redundant DB round trips in review endpoints
 
 > **File:** `SampleApi/Controllers/ReviewsController.cs` | **Scope:** narrow
@@ -46,3 +57,4 @@ Every DB round trip incurs connection acquisition, command execution, and result
 - RPS: slight improvement from reduced connection pool contention
 - Allocation reduction from eliminating change tracker entries for Product entities
 - Overall p95 improvement: ~0.8-1.5%, roughly 4-8ms off the 548ms p95
+

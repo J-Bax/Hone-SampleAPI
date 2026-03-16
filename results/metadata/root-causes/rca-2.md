@@ -1,67 +1,52 @@
-# Batch product lookups and add AsNoTracking in CreateOrder
+# Add AsNoTracking to read-only cart and product queries
 
-> **File:** `SampleApi/Controllers/OrdersController.cs` | **Scope:** narrow
+> **File:** `SampleApi/Controllers/CartController.cs` | **Scope:** narrow
 
 ## Evidence
 
-At `OrdersController.cs:103–107`, the `CreateOrder` method performs a sequential `FindAsync` for each order item to look up the product:
+At `CartController.cs:25-32`, `GetCart` executes two queries without `AsNoTracking()`:
 
 ```csharp
-foreach (var itemReq in request.Items)
-{
-    var product = await _context.Products.FindAsync(itemReq.ProductId);
-    if (product == null)
-        continue;
+var sessionItems = await _context.CartItems
+    .Where(c => c.SessionId == sessionId)
+    .ToListAsync();                              // Line 25-27: tracking enabled
+
+var products = await _context.Products
+    .Where(p => productIds.Contains(p.Id))
+    .ToDictionaryAsync(p => p.Id);               // Line 30-32: tracking enabled
 ```
 
-The k6 scenario sends 2 items per order (lines with `seededId(100, 3)` and `seededId(100, 4)`), resulting in 2 sequential round trips per request. Products are loaded with change tracking enabled despite being read-only (only `product.Price` is used at line 117).
+Both result sets are used purely for reading — building a response DTO at lines 43-53. Neither entity is modified.
 
-Additionally, `GetOrdersByCustomer` at line 35 loads **all orders** into memory and filters client-side:
+The memory-gc profiler reports:
+- 48.3GB total allocations (~402 MB/sec)
+- 86.5% Gen1 promotion rate — "characteristic of EF Core DbContext tracking"
+- Peak heap of 1.05GB
 
-```csharp
-var allOrders = await _context.Orders.ToListAsync();
-var filtered = allOrders.Where(o =>
-    o.CustomerName.Equals(customerName, StringComparison.OrdinalIgnoreCase)).ToList();
-```
-
-And `GetOrder` at line 52 loads **all order items** into memory:
-
-```csharp
-var allItems = await _context.OrderItems.ToListAsync();
-var items = allItems.Where(i => i.OrderId == id).ToList();
-```
-
-Followed by N+1 product lookups at lines 58–59 for each item.
+The profiler explicitly identifies EF Core change tracking as the likely top allocator: "Use AsNoTracking() for read-only queries to eliminate change tracker allocations."
 
 ## Theory
 
-The `CreateOrder` N+1 pattern is the most impactful issue since `POST /api/orders` is called every k6 iteration (~5.6% of traffic). Each sequential `FindAsync` is a separate database round trip. Under 500 concurrent VUs, these extra round trips:
+When EF Core materializes entities with change tracking enabled, it creates a `StateEntry` per entity, snapshot copies of all property values, and identity map entries. These objects survive Gen0 (they're referenced by the DbContext for the request lifetime), promoting to Gen1 — explaining the abnormal 86.5% promotion rate. At 1006 RPS, GetCart materializes cart items + product entities with full tracking on every call. The product entities are particularly wasteful — loaded with all columns (Name, Description, Price, Category, timestamps) just to read Name and Price.
 
-1. Hold a DB connection for the duration of all sequential lookups (~2 round trips)
-2. Contribute to connection pool pressure that affects all other requests
-3. Load products with change tracking, adding unnecessary entries to EF's identity map and increasing allocation volume (GC analysis shows 392 MB/sec allocation rate)
-
-The `GetOrdersByCustomer` and `GetOrder` methods have worse patterns (full table scans + N+1) but are not in the k6 scenario — they represent latent performance debt that would surface if traffic patterns change.
+The cumulative allocation volume drives 199 GC collections during the test, creating throughput drag even with healthy individual pause times.
 
 ## Proposed Fixes
 
-1. **Batch product lookup in `CreateOrder`**: Replace the per-item `FindAsync` loop with a single batch query using `AsNoTracking`:
+1. **Add `.AsNoTracking()` to both queries in GetCart (lines 25 and 30):**
    ```csharp
-   var productIds = request.Items.Select(i => i.ProductId).ToList();
-   var products = await _context.Products
+   var sessionItems = await _context.CartItems
        .AsNoTracking()
-       .Where(p => productIds.Contains(p.Id))
-       .ToDictionaryAsync(p => p.Id);
+       .Where(c => c.SessionId == sessionId)
+       .ToListAsync();
    ```
-   Then iterate and use `products.TryGetValue(itemReq.ProductId, out var product)` instead of `FindAsync`.
+   Same for the Products query at line 30.
 
-2. **Fix `GetOrdersByCustomer`** (line 35): Replace `ToListAsync()` + client-side `Where` with a server-side `Where` clause and add `AsNoTracking()`.
-
-3. **Fix `GetOrder`** (line 52): Replace `_context.OrderItems.ToListAsync()` with `.Where(i => i.OrderId == id).ToListAsync()` and batch product lookups as in CreateOrder.
+2. **Add `.AsNoTracking()` to the ClearCart CartItems query (line 145):** Although items are removed, EF Core's `RemoveRange` works with untracked entities if you attach them. Alternatively, keep tracking here but ensure GetCart (the hot read path) is optimized.
 
 ## Expected Impact
 
-- **p95 latency for POST /api/orders**: ~15ms reduction from eliminating 1 DB round trip and change tracking overhead.
-- **Overall p95**: Modest direct improvement (~0.14%) given 5.6% traffic share, but the connection pool pressure reduction has cascading benefits for other endpoints.
-- **Allocation**: Reduced per-request allocations from removing change tracking on read-only product entities.
-- Fixing `GetOrdersByCustomer` and `GetOrder` addresses latent performance debt for future traffic pattern changes.
+- Allocation reduction: eliminates ~2 StateEntry objects + snapshots per cart item and product per request
+- GC pressure: reduced Gen1 promotion rate, fewer collections
+- p95 latency: ~2-4ms reduction from reduced allocation/GC overhead
+- The memory profiler's 48.3GB volume would decrease measurably on this high-frequency path

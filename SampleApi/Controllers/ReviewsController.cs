@@ -46,9 +46,9 @@ public class ReviewsController : ControllerBase
     [HttpGet("by-product/{productId}")]
     public async Task<ActionResult<IEnumerable<Review>>> GetReviewsByProduct(int productId)
     {
-        // First verify the product exists — separate query
-        var product = await _context.Products.FindAsync(productId);
-        if (product == null)
+        // Check existence without materializing the full entity or tracking it
+        var productExists = await _context.Products.AsNoTracking().AnyAsync(p => p.Id == productId);
+        if (!productExists)
             return NotFound(new { message = $"Product with ID {productId} not found" });
 
         var filtered = await _context.Reviews.AsNoTracking()
@@ -64,14 +64,19 @@ public class ReviewsController : ControllerBase
     [HttpGet("average/{productId}")]
     public async Task<ActionResult<object>> GetAverageRating(int productId)
     {
-        var product = await _context.Products.FindAsync(productId);
-        if (product == null)
+        var productExists = await _context.Products.AsNoTracking().AnyAsync(p => p.Id == productId);
+        if (!productExists)
             return NotFound(new { message = $"Product with ID {productId} not found" });
 
-        var reviewCount = await _context.Reviews.CountAsync(r => r.ProductId == productId);
-        var average = reviewCount > 0
-            ? Math.Round(await _context.Reviews.Where(r => r.ProductId == productId).AverageAsync(r => (double)r.Rating), 2)
-            : 0.0;
+        // Single aggregate query replaces three separate round trips
+        var stats = await _context.Reviews
+            .Where(r => r.ProductId == productId)
+            .GroupBy(r => r.ProductId)
+            .Select(g => new { Count = g.Count(), Average = g.Average(r => (double)r.Rating) })
+            .FirstOrDefaultAsync();
+
+        var reviewCount = stats?.Count ?? 0;
+        var average = reviewCount > 0 ? Math.Round(stats!.Average, 2) : 0.0;
 
         return Ok(new
         {

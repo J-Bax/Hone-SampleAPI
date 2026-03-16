@@ -1,47 +1,55 @@
-# Consolidate redundant SaveChangesAsync round trips in checkout post
+# Replace full table scans and N+1 queries in order read endpoints
 
-> **File:** `SampleApi/Pages/Checkout/Index.cshtml.cs` | **Scope:** narrow
+> **File:** `SampleApi/Controllers/OrdersController.cs` | **Scope:** narrow
 
 ## Evidence
 
-In `Checkout/Index.cshtml.cs`, the `OnPostAsync` method performs **4 separate `SaveChangesAsync` calls** (lines 81, 106, 109, 112):
+At `OrdersController.cs:34-37`, `GetOrdersByCustomer` loads the **entire Orders table** into memory and filters client-side:
 
 ```csharp
-await _context.SaveChangesAsync(); // Line 81: save order to get ID
-
-// ... add order items in loop ...
-
-await _context.SaveChangesAsync(); // Line 106: save order items
-
-order.TotalAmount = Math.Round(total, 2);
-await _context.SaveChangesAsync(); // Line 109: update order total
-
-_context.CartItems.RemoveRange(sessionItems);
-await _context.SaveChangesAsync(); // Line 112: clear cart
+var allOrders = await _context.Orders.ToListAsync();         // Full table scan
+var filtered = allOrders.Where(o =>
+    o.CustomerName.Equals(customerName, StringComparison.OrdinalIgnoreCase)).ToList();
 ```
 
-Lines 106, 109, and 112 are three separate database round trips for operations that could be batched into a single call. The first save (line 81) is required to obtain the order's auto-generated ID, but the remaining three are independently ordered only by the code structure, not by a database dependency.
+At `OrdersController.cs:52-58`, `GetOrder` loads **all OrderItems** and then does N+1 product lookups:
+
+```csharp
+var allItems = await _context.OrderItems.ToListAsync();      // Full table scan
+var items = allItems.Where(i => i.OrderId == id).ToList();   // Client-side filter
+
+foreach (var item in items)
+{
+    var product = await _context.Products.FindAsync(item.ProductId);  // N+1
+```
+
+The Orders table starts with 100 seed rows but **grows continuously** — every k6 VU iteration creates 2 orders (POST /api/orders + POST /Checkout). At 1006 RPS over a 2-minute test, thousands of orders accumulate. The OrderItems table grows even faster (2-3 items per order).
 
 ## Theory
 
-Each `SaveChangesAsync` is a full database round trip: acquire a connection from the pool, send the SQL command batch, wait for acknowledgement, return the connection. Under 500 concurrent VUs:
-
-1. **Connection pool pressure**: 3 round trips where 1 would suffice means the checkout path holds a connection 3× longer than necessary during the item/total/cart-clear phase.
-2. **Transaction overhead**: Each `SaveChangesAsync` wraps its changes in an implicit transaction, so there are 3 separate transaction commits instead of 1, with associated log flushes.
-3. **Cascading contention**: Longer connection hold times increase queue depth in the ADO.NET connection pool, adding wait time to all other concurrent requests.
-
-This is a **different issue** from the N+1 and per-item SaveChanges that experiment 3 addressed (which was about saves inside a loop). The current code correctly batches item additions but still commits them across 3 redundant round trips.
+`GetOrdersByCustomer` performs a full table scan followed by case-insensitive client-side filtering — the exact anti-pattern fixed in other controllers (experiments 1-5). As the Orders table grows across experiments, this query's cost scales linearly. `GetOrder` compounds the problem: a full OrderItems table scan plus N+1 per-item product lookups means O(items_in_DB) + O(items_in_order) queries per call. While these endpoints are not in the current k6 scenario, they represent the most severe unoptimized code paths remaining — identical patterns to the issues that yielded the largest improvements in experiments 1-5.
 
 ## Proposed Fixes
 
-1. **Move `order.TotalAmount` assignment before the items save**: Calculate and set `order.TotalAmount = Math.Round(total, 2)` immediately after the foreach loop (before line 106). EF Core will include the UPDATE in the same batch as the OrderItem INSERTs.
+1. **GetOrdersByCustomer (line 34-37):** Replace with server-side filter:
+   ```csharp
+   var filtered = await _context.Orders.AsNoTracking()
+       .Where(o => o.CustomerName == customerName)
+       .ToListAsync();
+   ```
 
-2. **Move `RemoveRange` before the save**: Call `_context.CartItems.RemoveRange(sessionItems)` before the single remaining `SaveChangesAsync`. EF Core will include the DELETE statements in the same command batch.
-
-3. **Result**: Lines 106, 109, and 112 collapse into a single `SaveChangesAsync` that persists order items, updates the order total, and clears the cart atomically.
+2. **GetOrder (lines 52-68):** Replace full OrderItems scan with server-side filter, and batch product lookups:
+   ```csharp
+   var items = await _context.OrderItems.AsNoTracking()
+       .Where(i => i.OrderId == id).ToListAsync();
+   var productIds = items.Select(i => i.ProductId).Distinct().ToList();
+   var products = await _context.Products.AsNoTracking()
+       .Where(p => productIds.Contains(p.Id)).ToDictionaryAsync(p => p.Id);
+   ```
 
 ## Expected Impact
 
-- **Per-request latency**: ~20ms reduction (eliminating 2 DB round trips and their associated transaction commits).
-- **Overall p95**: Small direct improvement given 5.6% traffic share, but reduces connection pool hold time by ~67% for the checkout path's second phase.
-- **Reliability**: Atomic commit of items + total + cart-clear is actually more correct — the current code can leave inconsistent state if the process crashes between saves.
+- These endpoints are **not in the current k6 scenario**, so measured p95/RPS impact is ~0%
+- However, the Orders/OrderItems tables grow every test run — these endpoints will degrade severely if exercised
+- Fixes identical anti-patterns to experiments 1-5 which yielded the largest gains (7546ms → 793ms)
+- Prevents future regression if k6 scenarios are expanded to include order lookup flows
