@@ -1,3 +1,14 @@
+# Root Cause Analysis — Experiment 36
+
+> Generated: 2026-03-16 20:14:39 | Classification: narrow — Classification skipped (SkipClassification = $true)
+
+| Metric | Current | Baseline |
+|--------|---------|----------|
+| p95 Latency | 7546.103045ms | 7546.103045ms |
+| Requests/sec | 125.5 | 125.5 |
+| Error Rate | 0% | 0% |
+
+---
 # Add result limit to search endpoint returning all 1000 products
 
 > **File:** `SampleApi/Controllers/ProductsController.cs` | **Scope:** narrow
@@ -42,3 +53,4 @@ With `TOP 50` (via `.Take(50)`), SQL Server can stop scanning after finding 50 m
 - p95 latency: estimated ~25-35ms reduction per search request (DB scan reduction + 95% less serialization)
 - RPS: should increase due to freed CPU and DB capacity
 - Overall p95 improvement: ~3% (5.6% traffic share × ~30ms / ~544ms current p95)
+
