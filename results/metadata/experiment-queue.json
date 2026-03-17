@@ -1,39 +1,39 @@
 {
-  "generatedByExperiment": 36,
-  "generatedAt": "2026-03-16T20:14:39.6398086-07:00",
+  "generatedByExperiment": 39,
+  "generatedAt": "2026-03-16T21:30:06.1383798-07:00",
   "items": [
     {
       "id": 1,
-      "filePath": "SampleApi/Controllers/ProductsController.cs",
-      "title": "Add result limit to search endpoint returning all 1000 products",
-      "explanation": "Add result limit to search endpoint returning all 1000 products",
+      "filePath": "SampleApi/Controllers/OrdersController.cs",
+      "title": "Consolidate two SaveChangesAsync into one in CreateOrder",
+      "explanation": "Consolidate two SaveChangesAsync into one in CreateOrder",
       "scope": "narrow",
       "rootCausePath": "C:\\Projects\\Hone\\sample-api\\results\\metadata\\root-causes\\rca-1.md",
       "status": "done",
-      "triedByExperiment": 36,
-      "outcome": "regressed"
+      "triedByExperiment": 39,
+      "outcome": "improved"
     },
     {
       "id": 2,
-      "filePath": "SampleApi/Pages/Index.cshtml.cs",
-      "title": "Replace ORDER BY NEWID() with efficient Skip/Take random sampling",
-      "explanation": "Replace ORDER BY NEWID() with efficient Skip/Take random sampling",
+      "filePath": "SampleApi/Pages/Checkout/Index.cshtml.cs",
+      "title": "Consolidate two SaveChangesAsync into one in checkout OnPostAsync",
+      "explanation": "Consolidate two SaveChangesAsync into one in checkout OnPostAsync",
       "scope": "narrow",
       "rootCausePath": "C:\\Projects\\Hone\\sample-api\\results\\metadata\\root-causes\\rca-2.md",
-      "status": "done",
-      "triedByExperiment": 37,
-      "outcome": "improved"
+      "status": "pending",
+      "triedByExperiment": null,
+      "outcome": null
     },
     {
       "id": 3,
-      "filePath": "SampleApi/Pages/Checkout/Index.cshtml.cs",
-      "title": "Use AsNoTracking and raw SQL DELETE for cart cleanup in checkout",
-      "explanation": "Use AsNoTracking and raw SQL DELETE for cart cleanup in checkout",
+      "filePath": "SampleApi/Controllers/ReviewsController.cs",
+      "title": "Add Select projection to GetReviewsByProduct excluding Comment",
+      "explanation": "Add Select projection to GetReviewsByProduct excluding Comment",
       "scope": "narrow",
       "rootCausePath": "C:\\Projects\\Hone\\sample-api\\results\\metadata\\root-causes\\rca-3.md",
-      "status": "done",
-      "triedByExperiment": 38,
-      "outcome": "improved"
+      "status": "pending",
+      "triedByExperiment": null,
+      "outcome": null
     }
   ]
 }

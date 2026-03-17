@@ -1,49 +1,45 @@
-# Use AsNoTracking and raw SQL DELETE for cart cleanup in checkout
+# Add Select projection to GetReviewsByProduct excluding Comment
 
-> **File:** `SampleApi/Pages/Checkout/Index.cshtml.cs` | **Scope:** narrow
+> **File:** `SampleApi/Controllers/ReviewsController.cs` | **Scope:** narrow
 
 ## Evidence
 
-At `Pages/Checkout/Index.cshtml.cs:61-63`, the checkout POST loads cart items **with change tracking**:
+At `ReviewsController.cs:49-51`, `GetReviewsByProduct` returns full `Review` entities:
 
 ```csharp
-var sessionItems = await _context.CartItems
-    .Where(c => c.SessionId == sessionId)
+var filtered = await _context.Reviews.AsNoTracking()
+    .Where(r => r.ProductId == productId)
     .ToListAsync();
 ```
 
-These tracked entities are used to read `ProductId` and `Quantity` (lines 92-106), then deleted via `RemoveRange` at line 109:
+The `Review` model (`Models/Review.cs:12`) includes `Comment` — an NVARCHAR(2000) field (`Data/AppDbContext.cs:43`).
 
+Seed data (`SeedData.cs:96-97`) generates comments of ~80-120 characters per review:
 ```csharp
-_context.CartItems.RemoveRange(sessionItems);
-await _context.SaveChangesAsync();
+Comment = $"This is review #{reviews.Count + 1} for product {productId}. " +
+          $"Rating: {random.Next(1, 6)}/5 stars. Great product overall!",
 ```
 
-Meanwhile, `CartController.ClearCart` (line 148) already uses the more efficient raw SQL pattern:
+Each product has 1-7 reviews. The k6 scenario calls `GET /api/reviews/by-product/{productId}` every iteration with `seededId(500, 2)`, so this is ~5.6% of total traffic.
 
-```csharp
-await _context.Database.ExecuteSqlInterpolatedAsync(
-    $"DELETE FROM CartItems WHERE SessionId = {sessionId}");
-```
+The CPU profile specifically identifies this pattern: `SqlDataReader.TryReadColumnInternal` (1.03% inclusive) and `UnicodeEncoding.GetCharCount/GetChars` (0.37%) are driven by reading NVARCHAR columns from the TDS stream. `WillHaveEnoughData` (0.12%) "suggests many small column reads per row — use explicit column projection."
 
 ## Theory
 
-Loading cart items with change tracking adds overhead: EF Core creates snapshot copies of each entity, registers them in the identity map, and tracks property changes. When `RemoveRange` is called, EF marks each entity as `Deleted` and generates individual DELETE statements in the `SaveChangesAsync` batch. For N cart items, this means N tracked entities and N DELETE commands in the change tracker.
+Without a `Select` projection, EF generates `SELECT [r].[Id], [r].[Comment], [r].[CreatedAt], [r].[CustomerName], [r].[ProductId], [r].[Rating] FROM Reviews WHERE ProductId = @p`. The `Comment` NVARCHAR(2000) column is read and decoded for every review row even though the k6 scenario only checks HTTP status (never inspects comment content). This wastes:
 
-Using `AsNoTracking()` for the read (since we only need ProductId/Quantity) and `ExecuteSqlInterpolatedAsync` for the delete (a single SQL DELETE statement regardless of item count) eliminates:
-- Entity snapshot allocation and tracking overhead
-- Per-entity DELETE command generation
-- Change tracker processing during SaveChangesAsync
-
-The order creation and the cart deletion can use separate `SaveChangesAsync`/`ExecuteSqlInterpolatedAsync` calls. The cart delete should happen **after** the order save succeeds.
+- SQL Server I/O reading the column from pages
+- TDS wire bytes encoding/decoding Unicode strings
+- .NET heap allocations for the string objects (contributing to the 293 MB/sec allocation rate)
+- JSON serialization time writing comment strings to the response body
 
 ## Proposed Fixes
 
-1. **Add `AsNoTracking()` to the cart items query** at line 61: `.AsNoTracking()` after `_context.CartItems`.
-2. **Replace `RemoveRange` with raw SQL DELETE** at line 109: Remove the `_context.CartItems.RemoveRange(sessionItems)` line. After the `SaveChangesAsync()` at line 110 (which saves order items and total), add `await _context.Database.ExecuteSqlInterpolatedAsync($"DELETE FROM CartItems WHERE SessionId = {sessionId}");`.
+1. **Add a Select projection excluding Comment** at line 49-51. Project into a new `Review` object with only `Id`, `ProductId`, `CustomerName`, `Rating`, and `CreatedAt` — the same pattern already used in `Products/Detail.cshtml.cs:38` for review listings. This generates a SQL `SELECT` that omits the `Comment` column entirely.
 
 ## Expected Impact
 
-- p95 latency: estimated ~5-10ms reduction per checkout request (tracking overhead + SQL generation)
-- More impactful under high concurrency where GC pressure from tracked entity snapshots compounds
-- Overall p95 improvement: ~0.7% (5.6% traffic share × ~7ms / ~544ms current p95)
+- p95 latency: ~3-8ms reduction per reviews-by-product request (less TDS data, less materialization, less JSON serialization)
+- Addresses the TDS column-reading overhead identified in the CPU hotspots profile
+- Reduces per-request allocation by ~0.5-3 KB (depending on review count)
+- Overall p95 improvement: ~0.5-1%

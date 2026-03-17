@@ -106,7 +106,6 @@ public class OrdersController : ControllerBase
         };
 
         _context.Orders.Add(order);
-        await _context.SaveChangesAsync(); // Save to get order ID
 
         decimal total = 0m;
 
