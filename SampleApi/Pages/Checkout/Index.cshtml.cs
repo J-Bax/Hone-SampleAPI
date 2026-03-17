@@ -59,6 +59,7 @@ public class IndexModel : PageModel
         var sessionId = GetSessionId();
 
         var sessionItems = await _context.CartItems
+            .AsNoTracking()
             .Where(c => c.SessionId == sessionId)
             .ToListAsync();
 
@@ -106,8 +107,9 @@ public class IndexModel : PageModel
         }
 
         order.TotalAmount = Math.Round(total, 2);
-        _context.CartItems.RemoveRange(sessionItems);
-        await _context.SaveChangesAsync(); // Save order items, update total, and clear cart atomically
+        await _context.SaveChangesAsync(); // Save order items and update total
+        await _context.Database.ExecuteSqlInterpolatedAsync(
+            $"DELETE FROM CartItems WHERE SessionId = {sessionId}");
 
         OrderPlaced = true;
         OrderId = order.Id;
