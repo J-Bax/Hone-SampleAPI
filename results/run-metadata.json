@@ -535,7 +535,7 @@
     {
       "Experiment": 34,
       "StartedAt": "2026-03-16T12:17:08.8642681-07:00",
-      "CompletedAt": "2026-03-16T12:41:42.7945930-07:00",
+      "CompletedAt": "2026-03-16T12:41:42.794593-07:00",
       "Improved": true,
       "Regression": false,
       "P95": 535.373775,
@@ -563,32 +563,24 @@
       "PrUrl": "https://github.com/J-Bax/Hone-SampleAPI/pull/101",
       "StaleCount": 0,
       "ConsecutiveFailures": 0
+    },
+    {
+      "Experiment": 36,
+      "StartedAt": "2026-03-16T20:07:14.8919434-07:00",
+      "CompletedAt": "2026-03-16T20:15:20.9716694-07:00",
+      "Improved": false,
+      "Regression": false,
+      "P95": null,
+      "RPS": null,
+      "Outcome": "test_failure",
+      "BranchName": "hone/experiment-36",
+      "BaseBranch": "hone/experiment-35",
+      "PrNumber": 102,
+      "PrUrl": "https://github.com/J-Bax/Hone-SampleAPI/pull/102",
+      "StaleCount": 1,
+      "ConsecutiveFailures": 1
     }
   ],
-  "Machine": {
-    "Cpu": {
-      "Name": "AMD Ryzen 7 3700X 8-Core Processor",
-      "PhysicalCores": 8,
-      "LogicalProcessors": 16,
-      "MaxClockSpeedMHz": 3593,
-      "Architecture": "X64"
-    },
-    "Memory": {
-      "TotalGB": 63.9,
-      "AvailableGB": 22.3
-    },
-    "OS": {
-      "Description": "Windows 10",
-      "Platform": "Windows"
-    },
-    "Runtime": {
-      "PowerShellVersion": "7.4.13",
-      "DotnetSdkVersion": "8.0.100-preview.4.23260.5",
-      "ClrVersion": ".NET 8.0.21"
-    },
-    "CollectedAt": "2026-03-16T15:33:11.8377594Z"
-  },
-  "LoopStartedAt": "2026-03-16T08:33:11.8611998-07:00",
   "LoopCompletedAt": "2026-03-16T13:06:20.7504573-07:00",
   "PrChain": [
     67,
@@ -664,5 +656,29 @@
     "hone/experiment-33",
     "hone/experiment-34",
     "hone/experiment-35"
-  ]
+  ],
+  "Machine": {
+    "Cpu": {
+      "Name": "AMD Ryzen 7 3700X 8-Core Processor",
+      "PhysicalCores": 8,
+      "LogicalProcessors": 16,
+      "MaxClockSpeedMHz": 3593,
+      "Architecture": "X64"
+    },
+    "Memory": {
+      "TotalGB": 63.9,
+      "AvailableGB": 42.2
+    },
+    "OS": {
+      "Description": "Windows 10",
+      "Platform": "Windows"
+    },
+    "Runtime": {
+      "PowerShellVersion": "7.4.13",
+      "DotnetSdkVersion": "8.0.100-preview.4.23260.5",
+      "ClrVersion": ".NET 8.0.21"
+    },
+    "CollectedAt": "2026-03-17T03:07:14.7542789Z"
+  },
+  "LoopStartedAt": "2026-03-16T20:07:14.7811426-07:00"
 }

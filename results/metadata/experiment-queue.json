@@ -9,9 +9,9 @@
       "explanation": "Add result limit to search endpoint returning all 1000 products",
       "scope": "narrow",
       "rootCausePath": "C:\\Projects\\Hone\\sample-api\\results\\metadata\\root-causes\\rca-1.md",
-      "status": "in_progress",
-      "triedByExperiment": null,
-      "outcome": null
+      "status": "done",
+      "triedByExperiment": 36,
+      "outcome": "regressed"
     },
     {
       "id": 2,
@@ -20,9 +20,9 @@
       "explanation": "Replace ORDER BY NEWID() with efficient Skip/Take random sampling",
       "scope": "narrow",
       "rootCausePath": "C:\\Projects\\Hone\\sample-api\\results\\metadata\\root-causes\\rca-2.md",
-      "status": "pending",
-      "triedByExperiment": null,
-      "outcome": null
+      "status": "done",
+      "triedByExperiment": 37,
+      "outcome": "improved"
     },
     {
       "id": 3,

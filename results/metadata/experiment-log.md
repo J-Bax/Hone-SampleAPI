@@ -39,3 +39,5 @@
 | 33 | 2026-03-16 12:17 | `SampleApi/Pages/Products/Detail.cshtml.cs` | Add Select projections to Reviews and RelatedProducts queries on Detail page | improved |
 | 34 | 2026-03-16 12:41 | `SampleApi/Pages/Products/Index.cshtml.cs` | Add Select projection to paginated product query excluding Description | improved |
 | 35 | 2026-03-16 13:06 | `SampleApi/Program.cs` | Set minimum log level to Warning to reduce per-request logging overhead | improved |
+| 36 | 2026-03-16 20:15 | `SampleApi/Controllers/ProductsController.cs` | Test failure: Add result limit to search endpoint returning all 1000 products | regressed |
+| 37 | 2026-03-16 20:39 | `SampleApi/Pages/Index.cshtml.cs` | Replace ORDER BY NEWID() with efficient Skip/Take random sampling | improved |

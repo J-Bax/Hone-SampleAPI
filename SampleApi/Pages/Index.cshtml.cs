@@ -25,12 +25,14 @@ public class IndexModel : PageModel
 
     public async Task OnGetAsync()
     {
+        TotalProducts = await _context.Products.CountAsync();
+        var offset = Random.Shared.Next(Math.Max(1, TotalProducts - 12));
         FeaturedProducts = await _context.Products.AsNoTracking()
-            .OrderBy(_ => EF.Functions.Random())
+            .OrderBy(p => p.Id)
+            .Skip(offset)
             .Take(12)
             .Select(p => new Product { Id = p.Id, Name = p.Name, Price = p.Price, Category = p.Category, CreatedAt = p.CreatedAt, UpdatedAt = p.UpdatedAt })
             .ToListAsync();
-        TotalProducts = await _context.Products.CountAsync();
 
         // Separate query for categories
         Categories = await _context.Categories.AsNoTracking().ToListAsync();
