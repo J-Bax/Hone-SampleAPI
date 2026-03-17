@@ -1,3 +1,14 @@
+# Root Cause Analysis — Experiment 45
+
+> Generated: 2026-03-17 00:31:12 | Classification: narrow — Classification skipped (SkipClassification = $true)
+
+| Metric | Current | Baseline |
+|--------|---------|----------|
+| p95 Latency | 505.0618ms | 7546.103045ms |
+| Requests/sec | 1244.7 | 125.5 |
+| Error Rate | 0% | 0% |
+
+---
 # Combine two-query cart+product pattern into single join in Checkout page
 
 > **File:** `SampleApi/Pages/Checkout/Index.cshtml.cs` | **Scope:** narrow
@@ -41,3 +52,4 @@ This exact pattern was successfully optimized in `CartController.GetCart` during
 - The compound effect under 500 VUs (reduced connection pool hold time) amplifies the per-request savings
 - Fewer intermediate allocations (no List + Dictionary) reduces Gen1 GC pressure
 - Overall p95 improvement: ~1-2%
+

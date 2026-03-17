@@ -1,54 +1,54 @@
-# Combine two-query GetCart into single join query
+# Add database indexes for sort-heavy queries on Reviews and Orders
 
-> **File:** `SampleApi/Controllers/CartController.cs` | **Scope:** narrow
+> **File:** `SampleApi/Data/AppDbContext.cs` | **Scope:** narrow
 
 ## Evidence
 
-At `CartController.cs:25-35`, the GetCart endpoint executes two sequential DB round trips:
+At `Pages/Index.cshtml.cs:41-45`, the home page queries recent reviews with a sort on `CreatedAt`:
 
 ```csharp
-// Round trip 1: get cart items
-var sessionItems = await _context.CartItems
-    .AsNoTracking()
-    .Where(c => c.SessionId == sessionId)
+RecentReviews = await _context.Reviews.AsNoTracking()
+    .OrderByDescending(r => r.CreatedAt)
+    .Take(5)
+    .Select(r => new Review { ... })
     .ToListAsync();
-
-var productIds = sessionItems.Select(c => c.ProductId).ToList();
-// Round trip 2: get product details
-var products = await _context.Products
-    .AsNoTracking()
-    .Where(p => productIds.Contains(p.Id))
-    .Select(p => new { p.Id, p.Name, p.Price })
-    .ToDictionaryAsync(p => p.Id);
 ```
 
-The same two-query pattern appears in the Cart page (`Pages/Cart/Index.cshtml.cs:107-122`) and Checkout page (`Pages/Checkout/Index.cshtml.cs:125-138`), but this fix targets the API endpoint specifically.
+The current `AppDbContext.cs:43-44` only has an index on `Reviews.ProductId`:
+```csharp
+entity.HasIndex(e => e.ProductId);
+```
 
-The CPU profiler shows EF Core's `SingleQueryingEnumerable.MoveNextAsync` at 5.85% inclusive CPU, and the async state machine overhead (Start + ExecutionContext changes) at ~5.3% — both inflated by the number of separate async DB operations per request. Each round trip incurs network latency to LocalDB, connection pool checkout, command execution, and result materialization.
+There is no index on `Reviews.CreatedAt`, forcing SQL Server to perform a full table scan + sort of the entire Reviews table to find just 5 rows.
+
+Similarly, at `Pages/Orders/Index.cshtml.cs:40-44`, the orders page sorts by `OrderDate`:
+
+```csharp
+Orders = await _context.Orders
+    .AsNoTracking()
+    .Where(o => o.CustomerName == customer)
+    .OrderByDescending(o => o.OrderDate)
+    .ToListAsync();
+```
+
+`AppDbContext.cs:51` has an index on `CustomerName` only — the subsequent `ORDER BY OrderDate DESC` requires an in-memory sort after the index seek.
+
+The CPU profiler attributes 8.2% of samples to `SqlDataReader.TryReadColumnInternal` with the observation that "queries return large result sets with many columns." Full-table scans for sort operations amplify this cost.
 
 ## Theory
 
-Two sequential DB round trips double the network latency and connection pool hold time compared to a single query. Under 500 VU stress load, this means each GetCart request holds a connection for both queries sequentially, increasing connection pool contention (the profiler detected SemaphoreSlim.Wait — 355 samples — suggesting connection pool pressure). A single JOIN query fetches cart items with their product details in one round trip, halving the per-request connection hold time and eliminating one full async state machine cycle.
+Without an index on `Reviews.CreatedAt`, the `ORDER BY CreatedAt DESC ... TOP 5` query must scan the entire Reviews table (seed data likely contains thousands of rows) and sort in tempdb before returning 5 rows. With a descending index, SQL Server satisfies the query with an index scan of exactly 5 entries — orders of magnitude less I/O.
 
-Additionally, the intermediate `List<CartItem>` and `Dictionary<int, ...>` allocations between the two queries contribute to the Gen0→Gen1 promotion pattern identified by the GC profiler (80% Gen1/Gen0 survival ratio, ~287 MB/sec allocation rate).
+For Orders, the existing `CustomerName` index efficiently filters rows, but the `ORDER BY OrderDate DESC` requires sorting the filtered result set in memory. During the load test, each VU creates orders continuously, so a single customer accumulates dozens of orders. A composite index on `(CustomerName, OrderDate)` allows SQL Server to return pre-sorted results directly from the index, eliminating the sort operator entirely.
 
 ## Proposed Fixes
 
-1. **Replace two queries with a single LINQ join:** At `CartController.cs:25-56`, replace the two-query pattern with a single join query that fetches cart items and product details together:
-   ```csharp
-   var cartData = await _context.CartItems
-       .AsNoTracking()
-       .Where(c => c.SessionId == sessionId)
-       .Join(_context.Products,
-           c => c.ProductId, p => p.Id,
-           (c, p) => new { c.Id, c.ProductId, ProductName = p.Name,
-               ProductPrice = p.Price, c.Quantity, c.AddedAt })
-       .ToListAsync();
-   ```
-   Then build the response directly from `cartData` without intermediate collections. This eliminates one DB round trip, one intermediate List allocation, and the Dictionary allocation.
+1. **Add `Reviews.CreatedAt` index:** In `OnModelCreating`, add `entity.HasIndex(e => e.CreatedAt)` to the Review entity configuration (after line 44).
+
+2. **Replace `Orders.CustomerName` index with composite `(CustomerName, OrderDate)`:** Change line 51 from `entity.HasIndex(e => e.CustomerName)` to `entity.HasIndex(e => new { e.CustomerName, e.OrderDate })` to cover both the WHERE filter and ORDER BY in a single index.
 
 ## Expected Impact
 
-- **p95 latency:** Estimated 3–7ms reduction per GetCart request from eliminating one DB round trip
-- **RPS:** Marginal improvement from reduced connection pool hold time and fewer allocations
-- **Overall p95 improvement:** ~0.4–0.8% — at 5.56% traffic share, the per-request savings compound with reduced GC pressure
+- p95 latency: ~2-5ms reduction for home page (Reviews scan → index seek), ~2-5ms for orders page (eliminate in-memory sort)
+- Reduced CPU spent on sort operations frees threads for other requests under contention
+- Overall p95 improvement: ~0.5-1%
