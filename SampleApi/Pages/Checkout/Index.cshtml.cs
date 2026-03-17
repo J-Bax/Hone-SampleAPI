@@ -79,7 +79,6 @@ public class IndexModel : PageModel
         };
 
         _context.Orders.Add(order);
-        await _context.SaveChangesAsync(); // Save to get ID
 
         var productIds = sessionItems.Select(c => c.ProductId).ToList();
         var products = await _context.Products
@@ -107,7 +106,7 @@ public class IndexModel : PageModel
         }
 
         order.TotalAmount = Math.Round(total, 2);
-        await _context.SaveChangesAsync(); // Save order items and update total
+        await _context.SaveChangesAsync(); // Save order, order items, and updated total
         await _context.Database.ExecuteSqlInterpolatedAsync(
             $"DELETE FROM CartItems WHERE SessionId = {sessionId}");
 
