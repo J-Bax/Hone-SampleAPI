@@ -22,33 +22,29 @@ public class CartController : ControllerBase
     [HttpGet("{sessionId}")]
     public async Task<ActionResult<object>> GetCart(string sessionId)
     {
-        var sessionItems = await _context.CartItems
+        var cartData = await _context.CartItems
             .AsNoTracking()
             .Where(c => c.SessionId == sessionId)
+            .Join(_context.Products,
+                c => c.ProductId, p => p.Id,
+                (c, p) => new { c.Id, c.ProductId, ProductName = p.Name,
+                    ProductPrice = p.Price, c.Quantity, c.AddedAt })
             .ToListAsync();
-
-        var productIds = sessionItems.Select(c => c.ProductId).ToList();
-        var products = await _context.Products
-            .AsNoTracking()
-            .Where(p => productIds.Contains(p.Id))
-            .Select(p => new { p.Id, p.Name, p.Price })
-            .ToDictionaryAsync(p => p.Id);
 
         var cartDetails = new List<object>();
         decimal total = 0m;
 
-        foreach (var item in sessionItems)
+        foreach (var item in cartData)
         {
-            products.TryGetValue(item.ProductId, out var product);
-            var subtotal = (product?.Price ?? 0m) * item.Quantity;
+            var subtotal = item.ProductPrice * item.Quantity;
             total += subtotal;
 
             cartDetails.Add(new
             {
                 item.Id,
                 item.ProductId,
-                ProductName = product?.Name ?? "Unknown",
-                ProductPrice = product?.Price ?? 0m,
+                item.ProductName,
+                item.ProductPrice,
                 item.Quantity,
                 Subtotal = subtotal,
                 item.AddedAt

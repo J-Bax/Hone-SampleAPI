@@ -47,3 +47,4 @@
 | 41 | 2026-03-16 22:43 | `SampleApi/Controllers/ReviewsController.cs` | Add Select projection to GetReviewsByProduct excluding Comment | improved |
 | 42 | 2026-03-16 23:23 | `SampleApi/Program.cs` | Configure JSON to skip null property serialization | stale |
 | 43 | 2026-03-16 23:48 | `SampleApi/Controllers/ProductsController.cs` | Add Select projection to GetProduct single-entity endpoint | stale |
+| 44 | 2026-03-17 00:12 | `SampleApi/Controllers/CartController.cs` | Combine two-query GetCart into single join query | improved |
