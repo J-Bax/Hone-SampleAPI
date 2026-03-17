@@ -6,5 +6,5 @@
 **Generated:** experiment 42 at 03/16/2026 22:58:43
 
 - [x] **#1** `SampleApi/Program.cs` — Configure JSON to skip null property serialization *(experiment 42 — stale)*
-- [ ] **#2** `SampleApi/Controllers/ProductsController.cs` — Add Select projection to GetProduct single-entity endpoint
+- [ ] **#2** `SampleApi/Controllers/ProductsController.cs` — Add Select projection to GetProduct single-entity endpoint *(in progress)*
 - [ ] **#3** `SampleApi/Controllers/CartController.cs` — Combine two-query GetCart into single join query

@@ -45,7 +45,17 @@ public class ProductsController : ControllerBase
     {
         var product = await _context.Products
             .AsNoTracking()
-            .FirstOrDefaultAsync(p => p.Id == id);
+            .Where(p => p.Id == id)
+            .Select(p => new Product
+            {
+                Id = p.Id,
+                Name = p.Name,
+                Price = p.Price,
+                Category = p.Category,
+                CreatedAt = p.CreatedAt,
+                UpdatedAt = p.UpdatedAt
+            })
+            .FirstOrDefaultAsync();
 
         if (product == null)
             return NotFound();
