@@ -43,3 +43,4 @@
 | 37 | 2026-03-16 20:39 | `SampleApi/Pages/Index.cshtml.cs` | Replace ORDER BY NEWID() with efficient Skip/Take random sampling | improved |
 | 38 | 2026-03-16 21:04 | `SampleApi/Pages/Checkout/Index.cshtml.cs` | Use AsNoTracking and raw SQL DELETE for cart cleanup in checkout | improved |
 | 39 | 2026-03-16 21:54 | `SampleApi/Controllers/OrdersController.cs` | Consolidate two SaveChangesAsync into one in CreateOrder | improved |
+| 40 | 2026-03-16 22:19 | `SampleApi/Pages/Checkout/Index.cshtml.cs` | Consolidate two SaveChangesAsync into one in checkout OnPostAsync | improved |
