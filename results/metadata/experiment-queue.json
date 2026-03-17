@@ -1,39 +1,39 @@
 {
-  "generatedByExperiment": 39,
-  "generatedAt": "2026-03-16T21:30:06.1383798-07:00",
+  "generatedByExperiment": 42,
+  "generatedAt": "2026-03-16T22:58:43.987374-07:00",
   "items": [
     {
       "id": 1,
-      "filePath": "SampleApi/Controllers/OrdersController.cs",
-      "title": "Consolidate two SaveChangesAsync into one in CreateOrder",
-      "explanation": "Consolidate two SaveChangesAsync into one in CreateOrder",
+      "filePath": "SampleApi/Program.cs",
+      "title": "Configure JSON to skip null property serialization",
+      "explanation": "Configure JSON to skip null property serialization",
       "scope": "narrow",
       "rootCausePath": "C:\\Projects\\Hone\\sample-api\\results\\metadata\\root-causes\\rca-1.md",
       "status": "done",
-      "triedByExperiment": 39,
-      "outcome": "improved"
+      "triedByExperiment": 42,
+      "outcome": "stale"
     },
     {
       "id": 2,
-      "filePath": "SampleApi/Pages/Checkout/Index.cshtml.cs",
-      "title": "Consolidate two SaveChangesAsync into one in checkout OnPostAsync",
-      "explanation": "Consolidate two SaveChangesAsync into one in checkout OnPostAsync",
+      "filePath": "SampleApi/Controllers/ProductsController.cs",
+      "title": "Add Select projection to GetProduct single-entity endpoint",
+      "explanation": "Add Select projection to GetProduct single-entity endpoint",
       "scope": "narrow",
       "rootCausePath": "C:\\Projects\\Hone\\sample-api\\results\\metadata\\root-causes\\rca-2.md",
-      "status": "done",
-      "triedByExperiment": 40,
-      "outcome": "improved"
+      "status": "pending",
+      "triedByExperiment": null,
+      "outcome": null
     },
     {
       "id": 3,
-      "filePath": "SampleApi/Controllers/ReviewsController.cs",
-      "title": "Add Select projection to GetReviewsByProduct excluding Comment",
-      "explanation": "Add Select projection to GetReviewsByProduct excluding Comment",
+      "filePath": "SampleApi/Controllers/CartController.cs",
+      "title": "Combine two-query GetCart into single join query",
+      "explanation": "Combine two-query GetCart into single join query",
       "scope": "narrow",
       "rootCausePath": "C:\\Projects\\Hone\\sample-api\\results\\metadata\\root-causes\\rca-3.md",
-      "status": "done",
-      "triedByExperiment": 41,
-      "outcome": "improved"
+      "status": "pending",
+      "triedByExperiment": null,
+      "outcome": null
     }
   ]
 }

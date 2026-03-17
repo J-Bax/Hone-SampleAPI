@@ -1,45 +1,54 @@
-# Add Select projection to GetReviewsByProduct excluding Comment
+# Combine two-query GetCart into single join query
 
-> **File:** `SampleApi/Controllers/ReviewsController.cs` | **Scope:** narrow
+> **File:** `SampleApi/Controllers/CartController.cs` | **Scope:** narrow
 
 ## Evidence
 
-At `ReviewsController.cs:49-51`, `GetReviewsByProduct` returns full `Review` entities:
+At `CartController.cs:25-35`, the GetCart endpoint executes two sequential DB round trips:
 
 ```csharp
-var filtered = await _context.Reviews.AsNoTracking()
-    .Where(r => r.ProductId == productId)
+// Round trip 1: get cart items
+var sessionItems = await _context.CartItems
+    .AsNoTracking()
+    .Where(c => c.SessionId == sessionId)
     .ToListAsync();
+
+var productIds = sessionItems.Select(c => c.ProductId).ToList();
+// Round trip 2: get product details
+var products = await _context.Products
+    .AsNoTracking()
+    .Where(p => productIds.Contains(p.Id))
+    .Select(p => new { p.Id, p.Name, p.Price })
+    .ToDictionaryAsync(p => p.Id);
 ```
 
-The `Review` model (`Models/Review.cs:12`) includes `Comment` — an NVARCHAR(2000) field (`Data/AppDbContext.cs:43`).
+The same two-query pattern appears in the Cart page (`Pages/Cart/Index.cshtml.cs:107-122`) and Checkout page (`Pages/Checkout/Index.cshtml.cs:125-138`), but this fix targets the API endpoint specifically.
 
-Seed data (`SeedData.cs:96-97`) generates comments of ~80-120 characters per review:
-```csharp
-Comment = $"This is review #{reviews.Count + 1} for product {productId}. " +
-          $"Rating: {random.Next(1, 6)}/5 stars. Great product overall!",
-```
-
-Each product has 1-7 reviews. The k6 scenario calls `GET /api/reviews/by-product/{productId}` every iteration with `seededId(500, 2)`, so this is ~5.6% of total traffic.
-
-The CPU profile specifically identifies this pattern: `SqlDataReader.TryReadColumnInternal` (1.03% inclusive) and `UnicodeEncoding.GetCharCount/GetChars` (0.37%) are driven by reading NVARCHAR columns from the TDS stream. `WillHaveEnoughData` (0.12%) "suggests many small column reads per row — use explicit column projection."
+The CPU profiler shows EF Core's `SingleQueryingEnumerable.MoveNextAsync` at 5.85% inclusive CPU, and the async state machine overhead (Start + ExecutionContext changes) at ~5.3% — both inflated by the number of separate async DB operations per request. Each round trip incurs network latency to LocalDB, connection pool checkout, command execution, and result materialization.
 
 ## Theory
 
-Without a `Select` projection, EF generates `SELECT [r].[Id], [r].[Comment], [r].[CreatedAt], [r].[CustomerName], [r].[ProductId], [r].[Rating] FROM Reviews WHERE ProductId = @p`. The `Comment` NVARCHAR(2000) column is read and decoded for every review row even though the k6 scenario only checks HTTP status (never inspects comment content). This wastes:
+Two sequential DB round trips double the network latency and connection pool hold time compared to a single query. Under 500 VU stress load, this means each GetCart request holds a connection for both queries sequentially, increasing connection pool contention (the profiler detected SemaphoreSlim.Wait — 355 samples — suggesting connection pool pressure). A single JOIN query fetches cart items with their product details in one round trip, halving the per-request connection hold time and eliminating one full async state machine cycle.
 
-- SQL Server I/O reading the column from pages
-- TDS wire bytes encoding/decoding Unicode strings
-- .NET heap allocations for the string objects (contributing to the 293 MB/sec allocation rate)
-- JSON serialization time writing comment strings to the response body
+Additionally, the intermediate `List<CartItem>` and `Dictionary<int, ...>` allocations between the two queries contribute to the Gen0→Gen1 promotion pattern identified by the GC profiler (80% Gen1/Gen0 survival ratio, ~287 MB/sec allocation rate).
 
 ## Proposed Fixes
 
-1. **Add a Select projection excluding Comment** at line 49-51. Project into a new `Review` object with only `Id`, `ProductId`, `CustomerName`, `Rating`, and `CreatedAt` — the same pattern already used in `Products/Detail.cshtml.cs:38` for review listings. This generates a SQL `SELECT` that omits the `Comment` column entirely.
+1. **Replace two queries with a single LINQ join:** At `CartController.cs:25-56`, replace the two-query pattern with a single join query that fetches cart items and product details together:
+   ```csharp
+   var cartData = await _context.CartItems
+       .AsNoTracking()
+       .Where(c => c.SessionId == sessionId)
+       .Join(_context.Products,
+           c => c.ProductId, p => p.Id,
+           (c, p) => new { c.Id, c.ProductId, ProductName = p.Name,
+               ProductPrice = p.Price, c.Quantity, c.AddedAt })
+       .ToListAsync();
+   ```
+   Then build the response directly from `cartData` without intermediate collections. This eliminates one DB round trip, one intermediate List allocation, and the Dictionary allocation.
 
 ## Expected Impact
 
-- p95 latency: ~3-8ms reduction per reviews-by-product request (less TDS data, less materialization, less JSON serialization)
-- Addresses the TDS column-reading overhead identified in the CPU hotspots profile
-- Reduces per-request allocation by ~0.5-3 KB (depending on review count)
-- Overall p95 improvement: ~0.5-1%
+- **p95 latency:** Estimated 3–7ms reduction per GetCart request from eliminating one DB round trip
+- **RPS:** Marginal improvement from reduced connection pool hold time and fewer allocations
+- **Overall p95 improvement:** ~0.4–0.8% — at 5.56% traffic share, the per-request savings compound with reduced GC pressure

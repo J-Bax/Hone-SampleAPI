@@ -1,3 +1,14 @@
+# Root Cause Analysis — Experiment 42
+
+> Generated: 2026-03-16 22:58:44 | Classification: narrow — Classification skipped (SkipClassification = $true)
+
+| Metric | Current | Baseline |
+|--------|---------|----------|
+| p95 Latency | 497.12074ms | 7546.103045ms |
+| Requests/sec | 1231 | 125.5 |
+| Error Rate | 0% | 0% |
+
+---
 # Configure JSON to skip null property serialization
 
 > **File:** `SampleApi/Program.cs` | **Scope:** narrow
@@ -35,3 +46,4 @@ The profiler's WriteNullSection (481 samples), WritePropertyNameSection, and Wri
 - **p95 latency:** Estimated 5–12ms reduction across all endpoints, with larger savings on list endpoints serializing hundreds of objects
 - **RPS:** ~2–3% improvement from reduced CPU time in serialization pipeline
 - **Overall p95 improvement:** ~1.5–2.5% — modest per-request savings but compounded across 100% of traffic
+
