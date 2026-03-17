@@ -5,6 +5,6 @@
 
 **Generated:** experiment 36 at 03/16/2026 20:14:39
 
-- [ ] **#1** `SampleApi/Controllers/ProductsController.cs` — Add result limit to search endpoint returning all 1000 products *(in progress)*
-- [ ] **#2** `SampleApi/Pages/Index.cshtml.cs` — Replace ORDER BY NEWID() with efficient Skip/Take random sampling
+- [x] **#1** `SampleApi/Controllers/ProductsController.cs` — Add result limit to search endpoint returning all 1000 products *(experiment 36 — regressed)*
+- [x] **#2** `SampleApi/Pages/Index.cshtml.cs` — Replace ORDER BY NEWID() with efficient Skip/Take random sampling *(experiment 37 — improved)*
 - [ ] **#3** `SampleApi/Pages/Checkout/Index.cshtml.cs` — Use AsNoTracking and raw SQL DELETE for cart cleanup in checkout
