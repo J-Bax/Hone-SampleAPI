@@ -7,4 +7,4 @@
 
 - [x] **#1** `SampleApi/Controllers/OrdersController.cs` — Consolidate two SaveChangesAsync into one in CreateOrder *(experiment 39 — improved)*
 - [x] **#2** `SampleApi/Pages/Checkout/Index.cshtml.cs` — Consolidate two SaveChangesAsync into one in checkout OnPostAsync *(experiment 40 — improved)*
-- [ ] **#3** `SampleApi/Controllers/ReviewsController.cs` — Add Select projection to GetReviewsByProduct excluding Comment
+- [x] **#3** `SampleApi/Controllers/ReviewsController.cs` — Add Select projection to GetReviewsByProduct excluding Comment *(experiment 41 — improved)*

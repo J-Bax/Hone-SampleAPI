@@ -44,3 +44,4 @@
 | 38 | 2026-03-16 21:04 | `SampleApi/Pages/Checkout/Index.cshtml.cs` | Use AsNoTracking and raw SQL DELETE for cart cleanup in checkout | improved |
 | 39 | 2026-03-16 21:54 | `SampleApi/Controllers/OrdersController.cs` | Consolidate two SaveChangesAsync into one in CreateOrder | improved |
 | 40 | 2026-03-16 22:19 | `SampleApi/Pages/Checkout/Index.cshtml.cs` | Consolidate two SaveChangesAsync into one in checkout OnPostAsync | improved |
+| 41 | 2026-03-16 22:43 | `SampleApi/Controllers/ReviewsController.cs` | Add Select projection to GetReviewsByProduct excluding Comment | improved |

@@ -48,6 +48,14 @@ public class ReviewsController : ControllerBase
     {
         var filtered = await _context.Reviews.AsNoTracking()
             .Where(r => r.ProductId == productId)
+            .Select(r => new Review
+            {
+                Id = r.Id,
+                ProductId = r.ProductId,
+                CustomerName = r.CustomerName,
+                Rating = r.Rating,
+                CreatedAt = r.CreatedAt
+            })
             .ToListAsync();
 
         // Common case: reviews found — product existence is implicitly proven

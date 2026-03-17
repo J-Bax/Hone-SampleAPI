@@ -31,9 +31,9 @@
       "explanation": "Add Select projection to GetReviewsByProduct excluding Comment",
       "scope": "narrow",
       "rootCausePath": "C:\\Projects\\Hone\\sample-api\\results\\metadata\\root-causes\\rca-3.md",
-      "status": "pending",
-      "triedByExperiment": null,
-      "outcome": null
+      "status": "done",
+      "triedByExperiment": 41,
+      "outcome": "improved"
     }
   ]
 }
