@@ -1,35 +1,44 @@
-# Add Select projection to paginated product query excluding Description
+# Replace ORDER BY NEWID() with efficient Skip/Take random sampling
 
-> **File:** `SampleApi/Pages/Products/Index.cshtml.cs` | **Scope:** narrow
+> **File:** `SampleApi/Pages/Index.cshtml.cs` | **Scope:** narrow
 
 ## Evidence
 
-At `Pages/Products/Index.cshtml.cs:56-60`, the paginated product query loads full `Product` entities including the `Description` text field:
+At `Pages/Index.cshtml.cs:28-32`, the home page loads featured products using:
 
 ```csharp
-Products = await query
-    .Skip((CurrentPage - 1) * PageSize)
-    .Take(PageSize)
-    .AsNoTracking()
+FeaturedProducts = await _context.Products.AsNoTracking()
+    .OrderBy(_ => EF.Functions.Random())
+    .Take(12)
+    .Select(p => new Product { Id = p.Id, Name = p.Name, ... })
     .ToListAsync();
 ```
 
-With `PageSize = 24` (line 15), this loads up to 24 full Product entities per request. The `Description` field is a nullable string with no length constraint in the model (`Product.cs:10`), potentially containing substantial text per product.
+This translates to `SELECT TOP 12 ... FROM Products ORDER BY NEWID()` in SQL Server. On the very next line (33), the total count is already queried:
 
-For comparison, the API's `ProductsController.GetProducts()` (lines 25-36) already uses a Select projection that excludes Description — this was added in experiment 27. The Razor Products page was attempted in experiment 30 but had a build failure, so this optimization has never successfully been applied.
+```csharp
+TotalProducts = await _context.Products.CountAsync();
+```
 
-The CPU profiler shows `ToListAsync` at 5.5% inclusive CPU with heavy `TryReadColumnInternal` and `UnicodeEncoding.GetChars` beneath it, confirming over-fetching of string columns.
+Experiment 25 attempted a "deterministic" replacement but was stale — likely because the deterministic approach still involved a sort or the random distribution was too predictable.
 
 ## Theory
 
-The Products page renders a grid of product cards showing Name, Price, and Category — Description is not displayed on the listing page. Loading 24 Description strings per request wastes SQL Server I/O bandwidth, TDS parsing CPU, and .NET heap allocations. Under 500 concurrent VUs, this amplifies into measurable throughput loss. The build failure in experiment 30 likely resulted from a type mismatch in the Select projection; the fix needs to project into `Product` objects (matching the `Products` property type) rather than anonymous types.
+`ORDER BY NEWID()` is one of the most expensive random-sampling patterns in SQL Server. For each of the 1000 rows in Products, SQL Server must:
+1. Generate a GUID via `NEWID()`
+2. Sort all 1000 rows by the generated GUIDs (O(n log n))
+3. Return only the top 12
+
+Under 500 concurrent VUs, this creates extreme CPU contention: 500 simultaneous full-table sorts. The sort operation cannot be indexed away because the sort key is computed at runtime.
+
+A Skip/Take approach using `Random.Shared.Next(count - 12)` as the skip offset avoids sorting entirely. SQL Server executes a simple `OFFSET @skip ROWS FETCH NEXT 12 ROWS ONLY` on the clustered index, which is O(skip + 12) — far cheaper than sorting all 1000 rows. The results are still pseudo-random across requests.
 
 ## Proposed Fixes
 
-1. **Add Select projection before ToListAsync** (line 56-60): Insert `.Select(p => new Product { Id = p.Id, Name = p.Name, Price = p.Price, Category = p.Category, CreatedAt = p.CreatedAt, UpdatedAt = p.UpdatedAt })` between `.AsNoTracking()` and `.ToListAsync()`. This matches the pattern already used in `ProductsController.GetProducts()` and ensures the `List<Product>` property type is preserved.
+1. **Replace `OrderBy(EF.Functions.Random())` with Skip/Take:** First query the count (or reorder to use `TotalProducts` which is already queried), then compute a random offset: `var offset = Random.Shared.Next(Math.Max(1, totalProducts - 12));`. Replace the OrderBy/Take chain with `.OrderBy(p => p.Id).Skip(offset).Take(12)`. This gives different products on each page load without the expensive sort. Move the `CountAsync` query before the featured products query so `TotalProducts` is available.
 
 ## Expected Impact
 
-- p95 latency: ~10-15ms reduction per request from avoiding 24 Description column reads
-- Allocation reduction: Eliminates 24 string allocations per request for Description
-- Overall p95 improvement: ~1.5-2%, as this endpoint accounts for ~5.5% of traffic
+- p95 latency: estimated ~15-25ms reduction per home page request (eliminates full-table sort)
+- The DB CPU savings cascade: freed CPU serves other concurrent queries faster
+- Overall p95 improvement: ~2% (5.6% traffic share × ~20ms / ~544ms current p95)

@@ -1,37 +1,49 @@
-# Set minimum log level to Warning to reduce per-request logging overhead
+# Use AsNoTracking and raw SQL DELETE for cart cleanup in checkout
 
-> **File:** `SampleApi/Program.cs` | **Scope:** narrow
+> **File:** `SampleApi/Pages/Checkout/Index.cshtml.cs` | **Scope:** narrow
 
 ## Evidence
 
-The CPU profiler identified console logging as a measurable overhead source:
-
-> `Microsoft.Extensions.Logging.Console.AnsiParser.Parse` — 0.09% exclusive CPU
-> Combined with `Logger.IsEnabled` checks (510 samples), logging adds measurable overhead.
-
-At `Program.cs:4-15`, the application uses default logging configuration with no explicit minimum level:
+At `Pages/Checkout/Index.cshtml.cs:61-63`, the checkout POST loads cart items **with change tracking**:
 
 ```csharp
-var builder = WebApplication.CreateBuilder(args);
-builder.Services.AddControllers();
-// ... no logging configuration ...
+var sessionItems = await _context.CartItems
+    .Where(c => c.SessionId == sessionId)
+    .ToListAsync();
 ```
 
-The default ASP.NET Core logging level is `Information` in Development, which causes EF Core to log every SQL query, Kestrel to log every request, and the DI container to log service resolution. Under 500 concurrent VUs firing 18 requests each, this generates thousands of log entries per second — each requiring string formatting, ANSI color parsing, and synchronous console writes.
+These tracked entities are used to read `ProductId` and `Quantity` (lines 92-106), then deleted via `RemoveRange` at line 109:
 
-The profiler also noted `SemaphoreSlim.Wait` (synchronous, not async) with `SpinWait.SpinOnceCore` (307 samples), which is consistent with the console logger's internal synchronization mechanism blocking threads under high throughput.
+```csharp
+_context.CartItems.RemoveRange(sessionItems);
+await _context.SaveChangesAsync();
+```
+
+Meanwhile, `CartController.ClearCart` (line 148) already uses the more efficient raw SQL pattern:
+
+```csharp
+await _context.Database.ExecuteSqlInterpolatedAsync(
+    $"DELETE FROM CartItems WHERE SessionId = {sessionId}");
+```
 
 ## Theory
 
-At Information level, every EF Core query execution logs the SQL text (including parameter values), every HTTP request logs method/path/status, and middleware logs pipeline execution. Under high concurrency, the synchronous console logger becomes a bottleneck: its internal semaphore serializes writes, causing thread pool threads to spin-wait. This manifests as the `SemaphoreSlim.Wait` + `SpinWait.SpinOnceCore` samples in the CPU profile. Raising the minimum level to Warning eliminates ~95% of log entries, removing both the formatting overhead and the synchronization contention.
+Loading cart items with change tracking adds overhead: EF Core creates snapshot copies of each entity, registers them in the identity map, and tracks property changes. When `RemoveRange` is called, EF marks each entity as `Deleted` and generates individual DELETE statements in the `SaveChangesAsync` batch. For N cart items, this means N tracked entities and N DELETE commands in the change tracker.
+
+Using `AsNoTracking()` for the read (since we only need ProductId/Quantity) and `ExecuteSqlInterpolatedAsync` for the delete (a single SQL DELETE statement regardless of item count) eliminates:
+- Entity snapshot allocation and tracking overhead
+- Per-entity DELETE command generation
+- Change tracker processing during SaveChangesAsync
+
+The order creation and the cart deletion can use separate `SaveChangesAsync`/`ExecuteSqlInterpolatedAsync` calls. The cart delete should happen **after** the order save succeeds.
 
 ## Proposed Fixes
 
-1. **Add logging configuration in Program.cs** after `CreateBuilder`: Add `builder.Logging.SetMinimumLevel(LogLevel.Warning);` to suppress Information and Debug log entries. This is a single line addition that affects all logging providers.
+1. **Add `AsNoTracking()` to the cart items query** at line 61: `.AsNoTracking()` after `_context.CartItems`.
+2. **Replace `RemoveRange` with raw SQL DELETE** at line 109: Remove the `_context.CartItems.RemoveRange(sessionItems)` line. After the `SaveChangesAsync()` at line 110 (which saves order items and total), add `await _context.Database.ExecuteSqlInterpolatedAsync($"DELETE FROM CartItems WHERE SessionId = {sessionId}");`.
 
 ## Expected Impact
 
-- p95 latency: ~3-8ms reduction across all requests from eliminated log formatting and reduced thread contention
-- Thread pool efficiency: Removing synchronous console logger contention frees threads for request processing
-- This affects 100% of traffic but per-request savings are small
-- Overall p95 improvement: ~1-1.5%
+- p95 latency: estimated ~5-10ms reduction per checkout request (tracking overhead + SQL generation)
+- More impactful under high concurrency where GC pressure from tracked entity snapshots compounds
+- Overall p95 improvement: ~0.7% (5.6% traffic share × ~7ms / ~544ms current p95)
