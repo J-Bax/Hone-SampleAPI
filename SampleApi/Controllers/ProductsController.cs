@@ -107,7 +107,6 @@ public class ProductsController : ControllerBase
                     CreatedAt = p.CreatedAt,
                     UpdatedAt = p.UpdatedAt
                 })
-                .Take(50)
                 .ToListAsync();
             return Ok(results);
         }
@@ -123,7 +122,6 @@ public class ProductsController : ControllerBase
                 CreatedAt = p.CreatedAt,
                 UpdatedAt = p.UpdatedAt
             })
-            .Take(50)
             .ToListAsync();
         return Ok(allProducts);
     }
