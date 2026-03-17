@@ -46,3 +46,4 @@
 | 40 | 2026-03-16 22:19 | `SampleApi/Pages/Checkout/Index.cshtml.cs` | Consolidate two SaveChangesAsync into one in checkout OnPostAsync | improved |
 | 41 | 2026-03-16 22:43 | `SampleApi/Controllers/ReviewsController.cs` | Add Select projection to GetReviewsByProduct excluding Comment | improved |
 | 42 | 2026-03-16 23:23 | `SampleApi/Program.cs` | Configure JSON to skip null property serialization | stale |
+| 43 | 2026-03-16 23:48 | `SampleApi/Controllers/ProductsController.cs` | Add Select projection to GetProduct single-entity endpoint | stale |
