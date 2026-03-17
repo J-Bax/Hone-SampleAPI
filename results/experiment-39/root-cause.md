@@ -1,3 +1,14 @@
+# Root Cause Analysis — Experiment 39
+
+> Generated: 2026-03-16 21:30:06 | Classification: narrow — Classification skipped (SkipClassification = $true)
+
+| Metric | Current | Baseline |
+|--------|---------|----------|
+| p95 Latency | 513.94764ms | 7546.103045ms |
+| Requests/sec | 1166.3 | 125.5 |
+| Error Rate | 0% | 0% |
+
+---
 # Consolidate two SaveChangesAsync into one in CreateOrder
 
 > **File:** `SampleApi/Controllers/OrdersController.cs` | **Scope:** narrow
@@ -39,3 +50,4 @@ The current two-save pattern was necessary before EF's temp-key fixup was levera
 - RPS: slight improvement from reduced DB connection pool contention
 - Indirect benefit: freeing ~65 round trips/sec under peak load reduces SQL Server contention for all concurrent requests, amplifying the per-request savings
 - Overall p95 improvement: ~1-2%
+
