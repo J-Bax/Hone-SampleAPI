@@ -1,23 +1,23 @@
 {
-  "generatedByExperiment": 45,
-  "generatedAt": "2026-03-17T00:31:12.0065775-07:00",
+  "generatedByExperiment": 1,
+  "generatedAt": "2026-03-23T03:04:54.6630955-07:00",
   "items": [
     {
       "id": 1,
-      "filePath": "SampleApi/Pages/Checkout/Index.cshtml.cs",
-      "title": "Combine two-query cart+product pattern into single join in Checkout page",
-      "explanation": "Combine two-query cart+product pattern into single join in Checkout page",
+      "filePath": "Program.cs",
+      "title": "Connection pool exhaustion causes 100% error rate under load",
+      "explanation": "Connection pool exhaustion causes 100% error rate under load",
       "scope": "narrow",
       "rootCausePath": "C:\\Projects\\Hone\\sample-api\\results\\metadata\\root-causes\\rca-1.md",
-      "status": "done",
-      "triedByExperiment": 45,
-      "outcome": "improved"
+      "status": "in_progress",
+      "triedByExperiment": null,
+      "outcome": null
     },
     {
       "id": 2,
-      "filePath": "SampleApi/Pages/Cart/Index.cshtml.cs",
-      "title": "Combine LoadCart two-query pattern into single join query",
-      "explanation": "Combine LoadCart two-query pattern into single join query",
+      "filePath": "SampleApi/Controllers/ProductsController.cs",
+      "title": "Unbounded product queries return all 1000 rows per request",
+      "explanation": "Unbounded product queries return all 1000 rows per request",
       "scope": "narrow",
       "rootCausePath": "C:\\Projects\\Hone\\sample-api\\results\\metadata\\root-causes\\rca-2.md",
       "status": "pending",
@@ -26,9 +26,9 @@
     },
     {
       "id": 3,
-      "filePath": "SampleApi/Data/AppDbContext.cs",
-      "title": "Add database indexes for sort-heavy queries on Reviews and Orders",
-      "explanation": "Add database indexes for sort-heavy queries on Reviews and Orders",
+      "filePath": "SampleApi/Pages/Products/Detail.cshtml.cs",
+      "title": "Add-to-cart POST re-executes full page load queries",
+      "explanation": "Add-to-cart POST re-executes full page load queries",
       "scope": "narrow",
       "rootCausePath": "C:\\Projects\\Hone\\sample-api\\results\\metadata\\root-causes\\rca-3.md",
       "status": "pending",

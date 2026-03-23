@@ -1,54 +1,46 @@
-# Add database indexes for sort-heavy queries on Reviews and Orders
+# Add-to-cart POST re-executes full page load queries
 
-> **File:** `SampleApi/Data/AppDbContext.cs` | **Scope:** narrow
+> **File:** `SampleApi/Pages/Products/Detail.cshtml.cs` | **Scope:** narrow
 
 ## Evidence
 
-At `Pages/Index.cshtml.cs:41-45`, the home page queries recent reviews with a sort on `CreatedAt`:
+At `Detail.cshtml.cs:89`, the `OnPostAsync` handler ends by calling `OnGetAsync`, which re-executes three database queries:
 
 ```csharp
-RecentReviews = await _context.Reviews.AsNoTracking()
-    .OrderByDescending(r => r.CreatedAt)
-    .Take(5)
-    .Select(r => new Review { ... })
-    .ToListAsync();
+public async Task<IActionResult> OnPostAsync(int id, int productId, int quantity = 1)
+{
+    // ... cart item lookup (line 67) ...
+    // ... SaveChangesAsync (line 85) ...
+    CartMessage = "Item added to cart!";
+    return await OnGetAsync(productId);  // re-runs 3 queries
+}
 ```
 
-The current `AppDbContext.cs:43-44` only has an index on `Reviews.ProductId`:
-```csharp
-entity.HasIndex(e => e.ProductId);
-```
+`OnGetAsync` (lines 27-51) executes:
+1. Product lookup: `_context.Products.AsNoTracking().FirstOrDefaultAsync(p => p.Id == id)` (line 30)
+2. Reviews list: `_context.Reviews.AsNoTracking().Where(r => r.ProductId == id)...ToListAsync()` (lines 34-39)
+3. Related products: `_context.Products.AsNoTracking().Where(p => p.Category == Product.Category && p.Id != id).Take(4)...ToListAsync()` (lines 43-48)
 
-There is no index on `Reviews.CreatedAt`, forcing SQL Server to perform a full table scan + sort of the entire Reviews table to find just 5 rows.
+The POST handler also performs its own DB operations:
+4. Cart item lookup: `_context.CartItems.FirstOrDefaultAsync(...)` (line 67)
+5. Cart save: `_context.SaveChangesAsync()` (line 85)
 
-Similarly, at `Pages/Orders/Index.cshtml.cs:40-44`, the orders page sorts by `OrderDate`:
-
-```csharp
-Orders = await _context.Orders
-    .AsNoTracking()
-    .Where(o => o.CustomerName == customer)
-    .OrderByDescending(o => o.OrderDate)
-    .ToListAsync();
-```
-
-`AppDbContext.cs:51` has an index on `CustomerName` only — the subsequent `ORDER BY OrderDate DESC` requires an in-memory sort after the index seek.
-
-The CPU profiler attributes 8.2% of samples to `SqlDataReader.TryReadColumnInternal` with the observation that "queries return large result sets with many columns." Full-table scans for sort operations amplify this cost.
+Total: **5 database round trips per POST request**. Under 500 VUs, each POST occupies a DB connection for 5 sequential queries, keeping connections checked out ~2.5x longer than necessary.
 
 ## Theory
 
-Without an index on `Reviews.CreatedAt`, the `ORDER BY CreatedAt DESC ... TOP 5` query must scan the entire Reviews table (seed data likely contains thousands of rows) and sort in tempdb before returning 5 rows. With a descending index, SQL Server satisfies the query with an index scan of exactly 5 entries — orders of magnitude less I/O.
+Each additional DB round trip in a request handler extends the time a connection is held from the pool. With 5 round trips vs. the 2 actually needed (cart check + save), each POST holds its connection ~2.5x longer. Under 500 VUs, this directly contributes to connection pool pressure. The 3 redundant queries (product, reviews, related products) also add ~60ms each of DB latency, inflating per-request time by ~180ms.
 
-For Orders, the existing `CustomerName` index efficiently filters rows, but the `ORDER BY OrderDate DESC` requires sorting the filtered result set in memory. During the load test, each VU creates orders continuously, so a single customer accumulates dozens of orders. A composite index on `(CustomerName, OrderDate)` allows SQL Server to return pre-sorted results directly from the index, eliminating the sort operator entirely.
+The re-execution of `OnGetAsync` also means the `CartItems.FirstOrDefaultAsync` at line 67 runs without `AsNoTracking()`, adding unnecessary change-tracking overhead for a read-only check.
 
 ## Proposed Fixes
 
-1. **Add `Reviews.CreatedAt` index:** In `OnModelCreating`, add `entity.HasIndex(e => e.CreatedAt)` to the Review entity configuration (after line 44).
+1. **Cache page data before POST processing:** In `OnPostAsync`, load the product once at the start, perform the cart operation, then populate the view model properties directly from the already-loaded data instead of calling `OnGetAsync`. This eliminates 3 of the 5 DB round trips. The reviews and related products can be loaded once alongside the initial product query.
 
-2. **Replace `Orders.CustomerName` index with composite `(CustomerName, OrderDate)`:** Change line 51 from `entity.HasIndex(e => e.CustomerName)` to `entity.HasIndex(e => new { e.CustomerName, e.OrderDate })` to cover both the WHERE filter and ORDER BY in a single index.
+2. **Add `AsNoTracking()` to cart item lookup:** At line 67, the `FirstOrDefaultAsync` on CartItems doesn't use `AsNoTracking()`. Since the existing item is subsequently modified, this one actually needs tracking — but if the item doesn't exist (new cart item path), the tracking overhead is wasted. Consider splitting the logic: use a raw SQL `EXISTS` check, then only load with tracking when needed.
 
 ## Expected Impact
 
-- p95 latency: ~2-5ms reduction for home page (Reviews scan → index seek), ~2-5ms for orders page (eliminate in-memory sort)
-- Reduced CPU spent on sort operations frees threads for other requests under contention
-- Overall p95 improvement: ~0.5-1%
+- Per-request DB round trips: Reduced from 5 to 2 (60% fewer)
+- Connection hold time: Reduced by ~180ms per POST (3 fewer queries × ~60ms each)
+- Overall p95 improvement: ~1.5% (5.6% of traffic × ~180ms savings on ~4000ms post-fix p95)

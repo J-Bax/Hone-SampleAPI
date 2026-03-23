@@ -1,43 +1,43 @@
-# Combine two-query cart+product pattern into single join in Checkout page
+# Connection pool exhaustion causes 100% error rate under load
 
-> **File:** `SampleApi/Pages/Checkout/Index.cshtml.cs` | **Scope:** narrow
+> **File:** `Program.cs` | **Scope:** narrow
 
 ## Evidence
 
-At `Checkout/Index.cshtml.cs:125-138`, `LoadCartSummary` makes two separate DB round trips:
+At `Program.cs:15-16`, the DbContext is registered without pooling:
 
 ```csharp
-var sessionItems = await _context.CartItems
-    .AsNoTracking()
-    .Where(c => c.SessionId == sessionId)
-    .ToListAsync();  // Query 1: cart items
-
-var products = await _context.Products
-    .AsNoTracking()
-    .Where(p => productIds.Contains(p.Id))
-    .Select(p => new { p.Id, p.Name, p.Price })
-    .ToDictionaryAsync(p => p.Id);  // Query 2: products
+builder.Services.AddDbContext<AppDbContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 ```
 
-The same two-query pattern appears in `OnPostAsync` at lines 61-88, where cart items and products are loaded separately before creating order items.
+The connection string in `appsettings.json:3` specifies no `Max Pool Size`:
 
-The CPU profiler shows SQL data reading at 8.2% inclusive and EF Core enumeration at 10.5% — each extra DB round trip adds connection pool contention under 500 concurrent VUs. The memory profiler identified a 293 MB/s allocation rate; the intermediate `List<CartItem>` and `Dictionary<int, anonymous>` allocations contribute to the mid-life crisis pattern where 85% of Gen0 objects promote to Gen1.
+```json
+"DefaultConnection": "Server=(localdb)\\MSSQLLocalDB;Database=HoneSampleDb;Trusted_Connection=True;MultipleActiveResultSets=true"
+```
+
+The default SQL Server connection pool size is **100 connections**. The k6 scenario ramps to **500 concurrent VUs**, each executing 18 sequential HTTP requests. At peak load, ~500 concurrent requests compete for 100 pooled connections. The remaining 400 requests queue up and eventually timeout (default 15s), producing `SqlException: Timeout expired. The timeout period elapsed prior to obtaining a connection from the pool.` This cascades into 100% HTTP 500 errors.
+
+Additionally, `AddDbContext` allocates a fresh `DbContext` per request. Under 500 VUs, this means ~500 simultaneous DbContext instances with full change-tracking overhead, each competing for scarce pooled connections.
 
 ## Theory
 
-Under high concurrency (up to 500 VUs), each additional DB round trip holds a connection pool slot longer and increases queuing delay for other requests. The two-query pattern materializes an intermediate `List<CartItem>`, extracts product IDs, then makes a second query — doubling the connection hold time and creating intermediate allocations. A single join sends one SQL statement to the server, halving the connection hold time and eliminating the intermediate materialization.
+SQL Server's ADO.NET connection pool defaults to `Max Pool Size=100`. When concurrent demand exceeds pool capacity, new requests block waiting for a connection to be returned. After the pool wait timeout expires (~15s by default), a `SqlException` is thrown, which ASP.NET surfaces as HTTP 500. Under 500 VUs with zero think-time, demand permanently exceeds capacity, causing every request to eventually timeout. This explains both the 100% error rate and the ~28s p95 latency (requests wait ~15s for pool timeout + processing overhead).
 
-This exact pattern was successfully optimized in `CartController.GetCart` during experiment 44 (RPS improved from 1196.8 to 1244.7), confirming the approach works.
+Using `AddDbContext` instead of `AddDbContextPool` also means each request instantiates a new `DbContext`, adding GC pressure and preventing EF Core from reusing internal data structures. Under extreme concurrency, this amplifies memory allocation rates and increases Gen0/Gen1 GC pauses.
+
+No transient fault retry policy is configured, so pool-exhaustion exceptions immediately fail the request rather than retrying after a brief backoff.
 
 ## Proposed Fixes
 
-1. **Single join in LoadCartSummary:** Replace the two separate queries with a single LINQ `Join` between `CartItems` and `Products`, projecting directly into the fields needed for `CartItemView` (`ProductId`, `ProductName`, `ProductPrice`, `Quantity`). This eliminates one DB round trip and the intermediate `List<CartItem>` + `Dictionary` allocations.
+1. **Switch to `AddDbContextPool` with increased pool size:** Replace `AddDbContext` with `AddDbContextPool<AppDbContext>` at `Program.cs:15`. This reuses DbContext instances from a pool, reducing allocation overhead and improving connection reuse. Set the pool size to 1024 (the EF Core default is 1024, which accommodates 500 VUs comfortably).
 
-2. **Single join in OnPostAsync:** Similarly replace the cart items + products two-query pattern (lines 61-88) with a single join that returns `ProductId`, `Quantity`, and `Price` — all the data needed to create `OrderItem` entries and compute the total.
+2. **Increase `Max Pool Size` in the connection string and add retry logic:** In `appsettings.json:3`, add `Max Pool Size=512;Connection Timeout=30` to the connection string. In the `UseSqlServer` options, enable `options.EnableRetryOnTransientFailures()` to handle transient pool-exhaustion errors gracefully.
 
 ## Expected Impact
 
-- p95 latency: ~5-10ms reduction on affected requests (eliminating 1 DB round trip each)
-- The compound effect under 500 VUs (reduced connection pool hold time) amplifies the per-request savings
-- Fewer intermediate allocations (no List + Dictionary) reduces Gen1 GC pressure
-- Overall p95 improvement: ~1-2%
+- Error rate: Expected to drop from 100% to <5% (threshold target)
+- p95 latency: Expected to drop from ~28000ms to ~3000-5000ms (connections no longer timeout)
+- RPS: Expected to increase from 20 to 100+ as requests complete successfully
+- This single fix addresses the root cause of the catastrophic failure mode. All other optimizations are secondary until connection pool exhaustion is resolved.

@@ -1,69 +1,55 @@
 # Root Cause Analysis — Experiment 1
 
-> Generated: 2026-03-22 18:31:50 | Classification: narrow — Classification skipped (SkipClassification = $true)
+> Generated: 2026-03-23 03:04:54 | Classification: narrow — Classification skipped (SkipClassification = $true)
 
 | Metric | Current | Baseline |
 |--------|---------|----------|
-| p95 Latency | 15107.2967ms | 15107.2967ms |
-| Requests/sec | 96.7 | 96.7 |
-| Error Rate | 3.47% | 3.47% |
+| p95 Latency | 27950.345ms | 27950.345ms |
+| Requests/sec | 20.1 | 20.1 |
+| Error Rate | 100% | 100% |
 
 ---
-# SearchProducts LIKE query returns unbounded results matching all 1000 products
+# Connection pool exhaustion causes 100% error rate under load
 
-> **File:** `SampleApi/Controllers/ProductsController.cs` | **Scope:** narrow
+> **File:** `Program.cs` | **Scope:** narrow
 
 ## Evidence
 
-At `ProductsController.cs:93-127`, the search endpoint uses a LIKE query with no result limit:
+At `Program.cs:15-16`, the DbContext is registered without pooling:
 
 ```csharp
-[HttpGet("search")]
-public async Task<ActionResult<IEnumerable<Product>>> SearchProducts([FromQuery] string? q)
-{
-    if (!string.IsNullOrWhiteSpace(q))
-    {
-        var results = await _context.Products
-            .AsNoTracking()
-            .Where(p => EF.Functions.Like(p.Name, $"%{q}%") ||
-                        EF.Functions.Like(p.Description, $"%{q}%"))
-            .Select(p => new Product { ... })
-            .ToListAsync();
-        return Ok(results);
-    }
-    // Falls through to return ALL products if q is empty
-    var allProducts = await _context.Products.AsNoTracking()...ToListAsync();
-    return Ok(allProducts);
-}
+builder.Services.AddDbContext<AppDbContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 ```
 
-The k6 scenario (`baseline.js:59`) always searches for `"Product"`:
+The connection string in `appsettings.json:3` specifies no `Max Pool Size`:
 
-```javascript
-const searchRes = http.get(`${BASE_URL}/api/products/search?q=Product`);
+```json
+"DefaultConnection": "Server=(localdb)\\MSSQLLocalDB;Database=HoneSampleDb;Trusted_Connection=True;MultipleActiveResultSets=true"
 ```
 
-Since all 1000 products are named `"Product XXXX - Category"` (see `SeedData.cs:42`), this LIKE query matches and returns ALL 1000 rows every time.
+The default SQL Server connection pool size is **100 connections**. The k6 scenario ramps to **500 concurrent VUs**, each executing 18 sequential HTTP requests. At peak load, ~500 concurrent requests compete for 100 pooled connections. The remaining 400 requests queue up and eventually timeout (default 15s), producing `SqlException: Timeout expired. The timeout period elapsed prior to obtaining a connection from the pool.` This cascades into 100% HTTP 500 errors.
+
+Additionally, `AddDbContext` allocates a fresh `DbContext` per request. Under 500 VUs, this means ~500 simultaneous DbContext instances with full change-tracking overhead, each competing for scarce pooled connections.
 
 ## Theory
 
-This endpoint has two performance problems:
+SQL Server's ADO.NET connection pool defaults to `Max Pool Size=100`. When concurrent demand exceeds pool capacity, new requests block waiting for a connection to be returned. After the pool wait timeout expires (~15s by default), a `SqlException` is thrown, which ASP.NET surfaces as HTTP 500. Under 500 VUs with zero think-time, demand permanently exceeds capacity, causing every request to eventually timeout. This explains both the 100% error rate and the ~28s p95 latency (requests wait ~15s for pool timeout + processing overhead).
 
-1. **Full table scan**: `LIKE '%Product%'` with a leading wildcard prevents SQL Server from using any index on the `Name` column. The query must scan every row in the Products table and also scan the `Description` column.
+Using `AddDbContext` instead of `AddDbContextPool` also means each request instantiates a new `DbContext`, adding GC pressure and preventing EF Core from reusing internal data structures. Under extreme concurrency, this amplifies memory allocation rates and increases Gen0/Gen1 GC pauses.
 
-2. **Unbounded result set**: Even after the scan, all 1000 matching rows are materialized, serialized, and sent over the wire. This holds a DB connection for ~50-100ms, identical to the GetProducts bottleneck.
-
-Combined with GetProducts, these two endpoints account for ~11.2% of traffic but consume disproportionate connection pool time, compounding the exhaustion cascade.
+No transient fault retry policy is configured, so pool-exhaustion exceptions immediately fail the request rather than retrying after a brief backoff.
 
 ## Proposed Fixes
 
-1. **Add result limiting and pagination**: Add `pageSize` (default 20, max 50) and `pageIndex` parameters. Apply `.Skip().Take()` to cap the result set. This eliminates the unbounded result problem regardless of how many rows match.
+1. **Switch to `AddDbContextPool` with increased pool size:** Replace `AddDbContext` with `AddDbContextPool<AppDbContext>` at `Program.cs:15`. This reuses DbContext instances from a pool, reducing allocation overhead and improving connection reuse. Set the pool size to 1024 (the EF Core default is 1024, which accommodates 500 VUs comfortably).
 
-2. **Fallback guard**: When `q` is null/empty (lines 114-126), the method returns ALL products — apply the same pagination to this fallback path.
+2. **Increase `Max Pool Size` in the connection string and add retry logic:** In `appsettings.json:3`, add `Max Pool Size=512;Connection Timeout=30` to the connection string. In the `UseSqlServer` options, enable `options.EnableRetryOnTransientFailures()` to handle transient pool-exhaustion errors gracefully.
 
 ## Expected Impact
 
-- p95 latency: Similar reduction profile to GetProducts — per-request DB time drops from ~100ms to ~10ms. Combined with the GetProducts fix, connection pool utilization should drop below saturation.
-- RPS: Contributes to the overall throughput recovery from 7.2 to 50+ RPS.
-- The LIKE scan cost remains but is bounded by Take(), keeping connection hold time short.
+- Error rate: Expected to drop from 100% to <5% (threshold target)
+- p95 latency: Expected to drop from ~28000ms to ~3000-5000ms (connections no longer timeout)
+- RPS: Expected to increase from 20 to 100+ as requests complete successfully
+- This single fix addresses the root cause of the catastrophic failure mode. All other optimizations are secondary until connection pool exhaustion is resolved.
 
