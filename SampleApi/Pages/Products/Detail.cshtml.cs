@@ -64,10 +64,6 @@ public class DetailModel : PageModel
             });
         }
 
-        // Load product and page data upfront so we don't re-run these queries
-        // after the cart operation via OnGetAsync.
-        var product = await _context.Products.AsNoTracking().FirstOrDefaultAsync(p => p.Id == productId);
-
         var existing = await _context.CartItems.FirstOrDefaultAsync(c =>
             c.SessionId == sessionId && c.ProductId == productId);
 
@@ -89,28 +85,7 @@ public class DetailModel : PageModel
         await _context.SaveChangesAsync();
         CartMessage = "Item added to cart!";
 
-        // Populate view model directly from already-loaded data instead of
-        // calling OnGetAsync, which would re-execute 3 additional DB queries.
-        Product = product;
-        if (Product != null)
-        {
-            Reviews = await _context.Reviews
-                .AsNoTracking()
-                .Where(r => r.ProductId == productId)
-                .OrderByDescending(r => r.CreatedAt)
-                .Select(r => new Review { Id = r.Id, ProductId = r.ProductId, CustomerName = r.CustomerName, Rating = r.Rating, CreatedAt = r.CreatedAt })
-                .ToListAsync();
-
-            AverageRating = Reviews.Any() ? Math.Round(Reviews.Average(r => r.Rating), 1) : 0;
-
-            RelatedProducts = await _context.Products
-                .AsNoTracking()
-                .Where(p => p.Category == Product.Category && p.Id != productId)
-                .Take(4)
-                .Select(p => new Product { Id = p.Id, Name = p.Name, Price = p.Price, Category = p.Category })
-                .ToListAsync();
-        }
-
-        return Page();
+        // Re-load page data
+        return await OnGetAsync(productId);
     }
 }
