@@ -20,9 +20,7 @@ public class ProductsController : ControllerBase
     /// Get all products.
     /// </summary>
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<Product>>> GetProducts(
-        [FromQuery] int page = 1,
-        [FromQuery] int pageSize = 20)
+    public async Task<ActionResult<IEnumerable<Product>>> GetProducts()
     {
         var products = await _context.Products
             .AsNoTracking()
@@ -35,8 +33,6 @@ public class ProductsController : ControllerBase
                 CreatedAt = p.CreatedAt,
                 UpdatedAt = p.UpdatedAt
             })
-            .Skip((page - 1) * pageSize)
-            .Take(pageSize)
             .ToListAsync();
         return Ok(products);
     }
@@ -111,7 +107,6 @@ public class ProductsController : ControllerBase
                     CreatedAt = p.CreatedAt,
                     UpdatedAt = p.UpdatedAt
                 })
-                .Take(50)
                 .ToListAsync();
             return Ok(results);
         }
@@ -127,7 +122,6 @@ public class ProductsController : ControllerBase
                 CreatedAt = p.CreatedAt,
                 UpdatedAt = p.UpdatedAt
             })
-            .Take(20)
             .ToListAsync();
         return Ok(allProducts);
     }
