@@ -66,6 +66,11 @@ public class CartController : ControllerBase
     [HttpPost]
     public async Task<ActionResult<CartItem>> AddToCart(AddToCartRequest request)
     {
+        // Check if product exists
+        var product = await _context.Products.FindAsync(request.ProductId);
+        if (product == null)
+            return NotFound(new { message = $"Product with ID {request.ProductId} not found" });
+
         var existing = await _context.CartItems.FirstOrDefaultAsync(c =>
             c.SessionId == request.SessionId && c.ProductId == request.ProductId);
 
@@ -73,14 +78,7 @@ public class CartController : ControllerBase
         {
             // Item already in cart — increment quantity
             existing.Quantity += request.Quantity;
-            try
-            {
-                await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateException)
-            {
-                return NotFound(new { message = $"Product with ID {request.ProductId} not found" });
-            }
+            await _context.SaveChangesAsync();
             return Ok(existing);
         }
 
@@ -93,14 +91,7 @@ public class CartController : ControllerBase
         };
 
         _context.CartItems.Add(cartItem);
-        try
-        {
-            await _context.SaveChangesAsync();
-        }
-        catch (DbUpdateException)
-        {
-            return NotFound(new { message = $"Product with ID {request.ProductId} not found" });
-        }
+        await _context.SaveChangesAsync();
 
         return CreatedAtAction(nameof(GetCart), new { sessionId = request.SessionId }, cartItem);
     }
