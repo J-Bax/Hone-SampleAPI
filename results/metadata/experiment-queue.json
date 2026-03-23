@@ -20,9 +20,9 @@
       "explanation": "Unbounded product queries return all 1000 rows per request",
       "scope": "narrow",
       "rootCausePath": "C:\\Projects\\Hone\\sample-api\\results\\metadata\\root-causes\\rca-2.md",
-      "status": "in_progress",
-      "triedByExperiment": null,
-      "outcome": null
+      "status": "done",
+      "triedByExperiment": 2,
+      "outcome": "regressed"
     },
     {
       "id": 3,
@@ -31,7 +31,7 @@
       "explanation": "Add-to-cart POST re-executes full page load queries",
       "scope": "narrow",
       "rootCausePath": "C:\\Projects\\Hone\\sample-api\\results\\metadata\\root-causes\\rca-3.md",
-      "status": "pending",
+      "status": "in_progress",
       "triedByExperiment": null,
       "outcome": null
     }

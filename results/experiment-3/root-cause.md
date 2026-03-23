@@ -1,68 +1,58 @@
 # Root Cause Analysis — Experiment 3
 
-> Generated: 2026-03-15 12:28:27 | Classification: narrow — All N+1 queries (per-item FindAsync), per-item SaveChangesAsync calls, and unfiltered ToListAsync fetches are contained within this single PageModel file and can be fixed with server-side .Where/.Include filtering, batched SaveChangesAsync, and RemoveRange without changing any public API contract, dependencies, or other files.
+> Generated: 2026-03-23 03:07:36 | Classification: narrow — Classification skipped (SkipClassification = $true)
 
 | Metric | Current | Baseline |
 |--------|---------|----------|
-| p95 Latency | 2166.121325ms | 7546.103045ms |
-| Requests/sec | 346.6 | 125.5 |
-| Error Rate | 0% | 0% |
+| p95 Latency | 27950.345ms | 27950.345ms |
+| Requests/sec | 20.1 | 20.1 |
+| Error Rate | 100% | 100% |
 
 ---
-# Eliminate N+1 queries and per-item SaveChanges in checkout flow
+# Add-to-cart POST re-executes full page load queries
 
-> **File:** `SampleApi/Pages/Checkout/Index.cshtml.cs` | **Scope:** narrow
+> **File:** `SampleApi/Pages/Products/Detail.cshtml.cs` | **Scope:** narrow
 
 ## Evidence
 
-The checkout `OnPostAsync` handler (lines 57-118) combines three severe anti-patterns:
+At `Detail.cshtml.cs:89`, the `OnPostAsync` handler ends by calling `OnGetAsync`, which re-executes three database queries:
 
-1. **Full table scan** — Line 61: `var allCartItems = await _context.CartItems.ToListAsync();` loads every cart item across all sessions, then filters in memory at line 62.
+```csharp
+public async Task<IActionResult> OnPostAsync(int id, int productId, int quantity = 1)
+{
+    // ... cart item lookup (line 67) ...
+    // ... SaveChangesAsync (line 85) ...
+    CartMessage = "Item added to cart!";
+    return await OnGetAsync(productId);  // re-runs 3 queries
+}
+```
 
-2. **N+1 product lookups in order creation** — Lines 84-100: Each cart item triggers a separate `FindAsync` and `SaveChangesAsync`:
-   ```csharp
-   foreach (var cartItem in sessionItems)
-   {
-       var product = await _context.Products.FindAsync(cartItem.ProductId);
-       // ...
-       _context.OrderItems.Add(new OrderItem { ... });
-       // ...
-       await _context.SaveChangesAsync(); // line 99 — DB round-trip per item!
-   }
-   ```
+`OnGetAsync` (lines 27-51) executes:
+1. Product lookup: `_context.Products.AsNoTracking().FirstOrDefaultAsync(p => p.Id == id)` (line 30)
+2. Reviews list: `_context.Reviews.AsNoTracking().Where(r => r.ProductId == id)...ToListAsync()` (lines 34-39)
+3. Related products: `_context.Products.AsNoTracking().Where(p => p.Category == Product.Category && p.Id != id).Take(4)...ToListAsync()` (lines 43-48)
 
-3. **Per-item cart deletion** — Lines 106-110:
-   ```csharp
-   foreach (var cartItem in sessionItems)
-   {
-       _context.CartItems.Remove(cartItem);
-       await _context.SaveChangesAsync(); // line 109 — another DB round-trip per item!
-   }
-   ```
+The POST handler also performs its own DB operations:
+4. Cart item lookup: `_context.CartItems.FirstOrDefaultAsync(...)` (line 67)
+5. Cart save: `_context.SaveChangesAsync()` (line 85)
 
-The `LoadCartSummary` method (lines 120-147) has the same full-table-scan + N+1 pattern: loads all cart items (line 124), then loops with `FindAsync` per item (line 132).
-
-For a cart with N items, `OnPostAsync` makes: 1 (load all carts) + N (find products) + N (save order items) + 1 (save total) + N (remove cart items) = **3N + 2 database round-trips**. Under the k6 load test, with hundreds of concurrent VUs, this creates massive database contention and serialized I/O waits.
+Total: **5 database round trips per POST request**. Under 500 VUs, each POST occupies a DB connection for 5 sequential queries, keeping connections checked out ~2.5x longer than necessary.
 
 ## Theory
 
-The per-item `SaveChangesAsync` pattern is catastrophic under concurrency: each call opens a transaction, writes to disk, and commits — creating serial I/O that cannot be parallelized. With 500 concurrent VUs at peak load, each checkout generates 3N+2 round-trips, saturating the SQL Server connection pool and creating head-of-line blocking.
+Each additional DB round trip in a request handler extends the time a connection is held from the pool. With 5 round trips vs. the 2 actually needed (cart check + save), each POST holds its connection ~2.5x longer. Under 500 VUs, this directly contributes to connection pool pressure. The 3 redundant queries (product, reviews, related products) also add ~60ms each of DB latency, inflating per-request time by ~180ms.
 
-The CartItems table grows throughout the test as VUs add items faster than checkouts clear them. By mid-test, `_context.CartItems.ToListAsync()` may be materializing thousands of rows, amplifying both the allocation pressure and the GC crisis.
-
-The `LoadCartSummary` N+1 pattern means even the GET (checkout page view) is expensive, and it's called as a fallback in the POST path too (line 67).
+The re-execution of `OnGetAsync` also means the `CartItems.FirstOrDefaultAsync` at line 67 runs without `AsNoTracking()`, adding unnecessary change-tracking overhead for a read-only check.
 
 ## Proposed Fixes
 
-1. **Batch SaveChangesAsync:** Move the `SaveChangesAsync` call outside both loops. Add all OrderItems to the context inside the loop, then call `SaveChangesAsync` once after the loop. Same for cart removal — call `RemoveRange()` and save once.
-   - Lines 84-100: Remove `SaveChangesAsync` from line 99, add single save after line 100.
-   - Lines 106-110: Replace loop with `_context.CartItems.RemoveRange(sessionItems); await _context.SaveChangesAsync();`
+1. **Cache page data before POST processing:** In `OnPostAsync`, load the product once at the start, perform the cart operation, then populate the view model properties directly from the already-loaded data instead of calling `OnGetAsync`. This eliminates 3 of the 5 DB round trips. The reviews and related products can be loaded once alongside the initial product query.
 
-2. **Server-side filtering + eager loading:** Replace `_context.CartItems.ToListAsync()` (lines 61, 124) with `_context.CartItems.Where(c => c.SessionId == sessionId).ToListAsync()`. Pre-load products for all cart items in a single query using `_context.Products.Where(p => productIds.Contains(p.Id)).ToDictionaryAsync(p => p.Id)` to eliminate N+1.
+2. **Add `AsNoTracking()` to cart item lookup:** At line 67, the `FirstOrDefaultAsync` on CartItems doesn't use `AsNoTracking()`. Since the existing item is subsequently modified, this one actually needs tracking — but if the item doesn't exist (new cart item path), the tracking overhead is wasted. Consider splitting the logic: use a raw SQL `EXISTS` check, then only load with tracking when needed.
 
 ## Expected Impact
 
-- **p95 latency:** Estimated 5-7% overall improvement. Batching reduces 3N+2 DB round-trips to 3-4 total. Server-side cart filtering eliminates materializing the entire (growing) CartItems table.
-- **DB connection pool:** Dramatically reduced contention from fewer concurrent transactions.
-- **Allocation volume:** Moderate reduction from not loading all cart items, contributing to lower GC pressure.
+- Per-request DB round trips: Reduced from 5 to 2 (60% fewer)
+- Connection hold time: Reduced by ~180ms per POST (3 fewer queries × ~60ms each)
+- Overall p95 improvement: ~1.5% (5.6% of traffic × ~180ms savings on ~4000ms post-fix p95)
 
