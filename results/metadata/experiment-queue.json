@@ -1,37 +1,37 @@
 {
-  "generatedByExperiment": 1,
-  "generatedAt": "2026-03-23T03:04:54.6630955-07:00",
+  "generatedByExperiment": 4,
+  "generatedAt": "2026-03-23T03:22:05.4800996-07:00",
   "items": [
     {
       "id": 1,
-      "filePath": "Program.cs",
-      "title": "Connection pool exhaustion causes 100% error rate under load",
-      "explanation": "Connection pool exhaustion causes 100% error rate under load",
+      "filePath": "SampleApi/Controllers/CartController.cs",
+      "title": "AddToCart performs 3 sequential DB round trips under high concurrency",
+      "explanation": "AddToCart performs 3 sequential DB round trips under high concurrency",
       "scope": "narrow",
       "rootCausePath": "C:\\Projects\\Hone\\sample-api\\results\\metadata\\root-causes\\rca-1.md",
-      "status": "done",
-      "triedByExperiment": 1,
-      "outcome": "regressed"
+      "status": "in_progress",
+      "triedByExperiment": null,
+      "outcome": null
     },
     {
       "id": 2,
-      "filePath": "SampleApi/Controllers/ProductsController.cs",
-      "title": "Unbounded product queries return all 1000 rows per request",
-      "explanation": "Unbounded product queries return all 1000 rows per request",
+      "filePath": "SampleApi/Pages/Checkout/Index.cshtml.cs",
+      "title": "Checkout OnPostAsync holds DB connections through 3 sequential write operations",
+      "explanation": "Checkout OnPostAsync holds DB connections through 3 sequential write operations",
       "scope": "narrow",
       "rootCausePath": "C:\\Projects\\Hone\\sample-api\\results\\metadata\\root-causes\\rca-2.md",
-      "status": "done",
-      "triedByExperiment": 2,
-      "outcome": "regressed"
+      "status": "pending",
+      "triedByExperiment": null,
+      "outcome": null
     },
     {
       "id": 3,
-      "filePath": "SampleApi/Pages/Products/Detail.cshtml.cs",
-      "title": "Add-to-cart POST re-executes full page load queries",
-      "explanation": "Add-to-cart POST re-executes full page load queries",
+      "filePath": "SampleApi/Data/AppDbContext.cs",
+      "title": "Missing database index on OrderItem.ProductId causes slow joins for order endpoints",
+      "explanation": "Missing database index on OrderItem.ProductId causes slow joins for order endpoints",
       "scope": "narrow",
       "rootCausePath": "C:\\Projects\\Hone\\sample-api\\results\\metadata\\root-causes\\rca-3.md",
-      "status": "in_progress",
+      "status": "pending",
       "triedByExperiment": null,
       "outcome": null
     }

@@ -1,52 +1,54 @@
-# Unbounded product queries return all 1000 rows per request
+# Checkout OnPostAsync holds DB connections through 3 sequential write operations
 
-> **File:** `SampleApi/Controllers/ProductsController.cs` | **Scope:** narrow
+> **File:** `SampleApi/Pages/Checkout/Index.cshtml.cs` | **Scope:** narrow
 
 ## Evidence
 
-At `ProductsController.cs:23-38`, `GetProducts()` loads the entire product catalog without pagination:
+At `Checkout/Index.cshtml.cs:57-114`, the `OnPostAsync` method performs three sequential database operations, each requiring a connection:
 
 ```csharp
-public async Task<ActionResult<IEnumerable<Product>>> GetProducts()
-{
-    var products = await _context.Products
-        .AsNoTracking()
-        .Select(p => new Product { ... })
-        .ToListAsync();
-    return Ok(products);
-}
+// Operation 1: Query cart items with product join (lines 61-69)
+var cartWithProducts = await _context.CartItems
+    .AsNoTracking()
+    .Where(c => c.SessionId == sessionId)
+    .Join(_context.Products.AsNoTracking(), ...)
+    .ToListAsync();
+
+// Operation 2: Save order + order items (line 104)
+await _context.SaveChangesAsync();
+
+// Operation 3: Delete cart items (lines 105-106)
+await _context.Database.ExecuteSqlInterpolatedAsync(
+    $"DELETE FROM CartItems WHERE SessionId = {sessionId}");
 ```
 
-At `ProductsController.cs:93-127`, `SearchProducts` with `q=Product` matches **all 1000 products** because every seeded product is named `"Product XXXX - Category"` (`SeedData.cs:42`). The LIKE pattern `%Product%` triggers a full table scan:
+Additionally, on the failure path (empty cart, line 73), `LoadCartSummary()` is called which executes another cart query with product join — meaning a cart that was just queried on line 61-69 gets queried again.
+
+The `LoadCartSummary` method (lines 116-149) performs the same cart-product join query as the main checkout flow:
 
 ```csharp
-.Where(p => EF.Functions.Like(p.Name, $"%{q}%") ||
-            EF.Functions.Like(p.Description, $"%{q}%"))
+var cartWithProducts = await _context.CartItems
+    .AsNoTracking()
+    .Where(c => c.SessionId == sessionId)
+    .Join(_context.Products.AsNoTracking(), ...)
+    .ToListAsync();
 ```
-
-The k6 scenario calls both endpoints every iteration:
-```javascript
-const listRes = http.get(`${BASE_URL}/api/products`);
-const searchRes = http.get(`${BASE_URL}/api/products/search?q=Product`);
-```
-
-Under 500 VUs, this means ~500 concurrent requests each serializing 1000 Product objects into JSON. Each response is ~200KB+, creating enormous network I/O and serialization CPU load.
 
 ## Theory
 
-Returning unbounded result sets has compounding costs under concurrency: (1) SQL Server must scan and return all rows, holding the connection longer; (2) EF Core must materialize 1000 entities per request; (3) the JSON serializer must process 1000 objects; (4) the response payload is ~200KB per request. With 500 VUs calling these endpoints, the server processes ~1 million product entities per second just for these two endpoints. This monopolizes DB connections (worsening pool exhaustion), consumes CPU on serialization, and saturates network bandwidth.
+Under 500 concurrent VUs, each checkout POST holds a DB connection through 3 sequential operations. The `SaveChangesAsync` (operation 2) must wait for the DB to process the INSERT for the order + all order items before proceeding to operation 3 (cart deletion). This creates extended connection hold times.
 
-The `LIKE '%Product%'` pattern with a leading wildcard prevents SQL Server from using the index on `Name`, forcing a full clustered index scan on every call.
+The separate `ExecuteSqlInterpolatedAsync` for cart deletion on line 105-106 is a fourth connection acquisition if the previous connection was released. Under connection pool exhaustion, this additional operation compounds the problem — every checkout request needs 3 sequential connection acquisitions from an already-depleted pool.
 
 ## Proposed Fixes
 
-1. **Add pagination to `GetProducts`:** Add `[FromQuery] int page = 1, [FromQuery] int pageSize = 20` parameters. Apply `.Skip((page - 1) * pageSize).Take(pageSize)` before `ToListAsync()`. This reduces per-request row count from 1000 to 20 (a 98% reduction).
+1. **Combine SaveChanges and cart deletion:** Instead of two separate write operations (SaveChangesAsync + ExecuteSqlInterpolatedAsync), load the cart items WITH tracking (remove AsNoTracking on line 62), call `_context.CartItems.RemoveRange(trackedCartItems)` to mark them for deletion, and let a single `SaveChangesAsync` handle both the order insert AND cart deletion atomically. This reduces from 3 DB round trips to 2 (one read, one write).
 
-2. **Limit `SearchProducts` result count:** Add `.Take(50)` to the search query at line 110 to cap results. Optionally switch from `LIKE '%q%'` to `LIKE 'q%'` (prefix match) at lines 99-100 to enable index usage when the search term appears at the start of the name.
+2. **Cache the cart query result for the failure path:** On line 71-74, if `cartWithProducts` is empty, `LoadCartSummary()` re-queries the same data. Instead, pass the already-fetched `cartWithProducts` to avoid the redundant query.
 
 ## Expected Impact
 
-- p95 latency for these endpoints: ~500ms reduction per request (smaller payloads, faster queries)
-- DB connection hold time reduced ~50x per request (20 rows vs 1000)
-- Network bandwidth reduced by ~98% for these endpoints
-- Overall p95 improvement: ~5% (after connection pool fix brings p95 to ~4000ms)
+- DB round trips per checkout reduced from 3 to 2 (33% reduction)
+- Connection hold time reduced since a single SaveChanges replaces two separate write operations
+- p95 latency improvement: ~4-6% overall (5.6% of traffic, ~8s saved per request from reduced connection wait time)
+- Atomicity improved: order creation and cart clearing happen in one transaction

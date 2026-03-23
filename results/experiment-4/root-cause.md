@@ -1,58 +1,58 @@
 # Root Cause Analysis — Experiment 4
 
-> Generated: 2026-03-15 13:05:29 | Classification: narrow — The optimization involves replacing client-side filtering (full-table ToListAsync + in-memory Where) with server-side query filtering, and eliminating the N+1 product lookups via Include/join — all changes are confined to query logic within the single OnGetAsync method of this PageModel, with no contract, dependency, or schema changes.
+> Generated: 2026-03-23 03:22:05 | Classification: narrow — Classification skipped (SkipClassification = $true)
 
 | Metric | Current | Baseline |
 |--------|---------|----------|
-| p95 Latency | 2179.352105ms | 7546.103045ms |
-| Requests/sec | 349.3 | 125.5 |
-| Error Rate | 0% | 0% |
+| p95 Latency | 27950.345ms | 27950.345ms |
+| Requests/sec | 20.1 | 20.1 |
+| Error Rate | 100% | 100% |
 
 ---
-# Eliminate full-table scans and N+1 queries in Orders page
+# AddToCart performs 3 sequential DB round trips under high concurrency
 
-> **File:** `SampleApi/Pages/Orders/Index.cshtml.cs` | **Scope:** narrow
+> **File:** `SampleApi/Controllers/CartController.cs` | **Scope:** narrow
 
 ## Evidence
 
-At `Pages/Orders/Index.cshtml.cs:40`, the handler loads the **entire Orders table** into memory:
+At `CartController.cs:67-96`, the `AddToCart` method executes three sequential database operations:
 
 ```csharp
-var allOrders = await _context.Orders.ToListAsync();
+// Round trip 1: Check product exists (line 70)
+var product = await _context.Products.FindAsync(request.ProductId);
+
+// Round trip 2: Check for existing cart item (lines 74-75)
+var existing = await _context.CartItems.FirstOrDefaultAsync(c =>
+    c.SessionId == request.SessionId && c.ProductId == request.ProductId);
+
+// Round trip 3: Save changes (line 81 or 94)
+await _context.SaveChangesAsync();
 ```
 
-Then at line 46, it loads the **entire OrderItems table**:
+Each round trip acquires and holds a SQL connection from the pool. Under 500 concurrent VUs (the k6 stress stage), this endpoint is called once per VU iteration (~5.6% of total traffic). With 500 concurrent requests each holding connections for 3 sequential DB operations, the default SQL Server connection pool (100 connections) is overwhelmed. The connection string in `appsettings.json` confirms no custom pool size:
 
-```csharp
-var allItems = await _context.OrderItems.ToListAsync();
+```json
+"DefaultConnection": "Server=(localdb)\\MSSQLLocalDB;Database=HoneSampleDb;Trusted_Connection=True;MultipleActiveResultSets=true"
 ```
 
-Finally, at line 55, it issues an **N+1 query** — one `FindAsync` per order item to resolve product names:
-
-```csharp
-var product = await _context.Products.FindAsync(item.ProductId);
-```
-
-The CPU profiler confirms this is the dominant bottleneck: `IndexModel.<OnGetAsync>b__2(OrderItem)` accounts for **28.5% inclusive CPU**, and `<OnGetAsync>b__0(Order)` accounts for **22% inclusive CPU**. EF Core's `SingleQueryingEnumerable.MoveNextAsync` shows **18.5% inclusive CPU** materializing massive result sets. Change tracking (`StartTrackingFromQuery`) adds **1.8%** of overhead for what is a read-only page.
-
-The GC report shows an **inverted generation distribution** (Gen2: 171, Gen0: 5) with **15.6% GC pause ratio** and **422.8ms max pause**. Loading all Orders and OrderItems creates large `List<T>` objects that land on the LOH (>85KB), directly triggering Gen2 collections.
+No `Max Pool Size` is configured, so the default of 100 applies.
 
 ## Theory
 
-Every request to `/Orders?customer=X` transfers the entire Orders table, the entire OrderItems table, and then issues N individual product lookups — even though the page only needs orders for a single customer. Under the k6 stress test, orders accumulate rapidly (every VU creates one per iteration), so these tables grow large. The massive in-memory materialization creates LOH allocations, triggering expensive Gen2 GC pauses that directly inflate p95 latency. The client-side filtering (line 42) discards >99% of the data that was already transferred and materialized.
+The `FindAsync` on line 70 is purely a product-existence check — the result is only used for a null check and never read otherwise. This wastes one full DB round trip per request. The `CartItem` table already has a foreign key on `ProductId` (implied by EF conventions), so inserting a cart item with an invalid `ProductId` would throw a `DbUpdateException` that can be caught.
+
+Under 500 VUs, each AddToCart call holds a connection for ~3× the time of a single-operation endpoint. With 500 concurrent calls × 3 operations = up to 1500 queued connection requests against a pool of 100, causing massive connection wait times (approaching the 30s default command timeout) and ultimately 100% request failures.
 
 ## Proposed Fixes
 
-1. **Server-side filter + eager load + AsNoTracking:** Replace the three separate queries with a single EF Core query that filters by `CustomerName` in SQL, uses `.Include(o => o.OrderItems)` (requires navigation property) or a join, and projects product names via a subquery or batch lookup. Add `.AsNoTracking()` since this is a read-only page. Example approach:
-   - Filter orders server-side: `_context.Orders.AsNoTracking().Where(o => o.CustomerName == customer)`
-   - Batch-load order items: `_context.OrderItems.AsNoTracking().Where(i => orderIds.Contains(i.OrderId))`
-   - Batch-load products: `_context.Products.AsNoTracking().Where(p => productIds.Contains(p.Id)).ToDictionaryAsync(p => p.Id)`
-   - Build the `OrderItemsMap` from the dictionary instead of N+1 queries.
+1. **Remove the redundant product-existence check:** Delete lines 70-72 (the `FindAsync` + null check). Instead, wrap the `SaveChangesAsync` call in a try/catch for `DbUpdateException` to return a 404-equivalent if the FK constraint is violated. This reduces round trips from 3 to 2, cutting connection hold time by ~33%.
+
+2. **Combine the upsert into a single query:** Replace the `FirstOrDefaultAsync` + conditional save with a raw SQL `MERGE`/upsert statement via `ExecuteSqlInterpolatedAsync`, reducing to a single DB round trip.
 
 ## Expected Impact
 
-- p95 latency: Estimated **400-600ms reduction** overall. The Orders page consumes ~50% of server CPU; eliminating full table scans and N+1 queries will reduce per-request cost by 10-50x.
-- GC pressure: Dramatically reduced LOH allocations → fewer Gen2 collections → lower GC pause ratio.
-- RPS: Should increase as server spends far less CPU per request.
-- This is the single highest-impact fix available based on profiling data.
+- Connection hold time per AddToCart request reduced by 33-66% (3 ops → 2 or 1)
+- Under 500 VUs, concurrent connection demand from this endpoint drops from ~1500 to ~1000 or ~500 queued operations
+- p95 latency improvement: ~5-10% overall (this endpoint is 5.6% of traffic but its connection pressure cascades to all other endpoints waiting for pool connections)
+- Error rate should decrease as connection pool contention is reduced
 

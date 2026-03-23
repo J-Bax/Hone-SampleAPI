@@ -1,43 +1,46 @@
-# Connection pool exhaustion causes 100% error rate under load
+# AddToCart performs 3 sequential DB round trips under high concurrency
 
-> **File:** `Program.cs` | **Scope:** narrow
+> **File:** `SampleApi/Controllers/CartController.cs` | **Scope:** narrow
 
 ## Evidence
 
-At `Program.cs:15-16`, the DbContext is registered without pooling:
+At `CartController.cs:67-96`, the `AddToCart` method executes three sequential database operations:
 
 ```csharp
-builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+// Round trip 1: Check product exists (line 70)
+var product = await _context.Products.FindAsync(request.ProductId);
+
+// Round trip 2: Check for existing cart item (lines 74-75)
+var existing = await _context.CartItems.FirstOrDefaultAsync(c =>
+    c.SessionId == request.SessionId && c.ProductId == request.ProductId);
+
+// Round trip 3: Save changes (line 81 or 94)
+await _context.SaveChangesAsync();
 ```
 
-The connection string in `appsettings.json:3` specifies no `Max Pool Size`:
+Each round trip acquires and holds a SQL connection from the pool. Under 500 concurrent VUs (the k6 stress stage), this endpoint is called once per VU iteration (~5.6% of total traffic). With 500 concurrent requests each holding connections for 3 sequential DB operations, the default SQL Server connection pool (100 connections) is overwhelmed. The connection string in `appsettings.json` confirms no custom pool size:
 
 ```json
 "DefaultConnection": "Server=(localdb)\\MSSQLLocalDB;Database=HoneSampleDb;Trusted_Connection=True;MultipleActiveResultSets=true"
 ```
 
-The default SQL Server connection pool size is **100 connections**. The k6 scenario ramps to **500 concurrent VUs**, each executing 18 sequential HTTP requests. At peak load, ~500 concurrent requests compete for 100 pooled connections. The remaining 400 requests queue up and eventually timeout (default 15s), producing `SqlException: Timeout expired. The timeout period elapsed prior to obtaining a connection from the pool.` This cascades into 100% HTTP 500 errors.
-
-Additionally, `AddDbContext` allocates a fresh `DbContext` per request. Under 500 VUs, this means ~500 simultaneous DbContext instances with full change-tracking overhead, each competing for scarce pooled connections.
+No `Max Pool Size` is configured, so the default of 100 applies.
 
 ## Theory
 
-SQL Server's ADO.NET connection pool defaults to `Max Pool Size=100`. When concurrent demand exceeds pool capacity, new requests block waiting for a connection to be returned. After the pool wait timeout expires (~15s by default), a `SqlException` is thrown, which ASP.NET surfaces as HTTP 500. Under 500 VUs with zero think-time, demand permanently exceeds capacity, causing every request to eventually timeout. This explains both the 100% error rate and the ~28s p95 latency (requests wait ~15s for pool timeout + processing overhead).
+The `FindAsync` on line 70 is purely a product-existence check — the result is only used for a null check and never read otherwise. This wastes one full DB round trip per request. The `CartItem` table already has a foreign key on `ProductId` (implied by EF conventions), so inserting a cart item with an invalid `ProductId` would throw a `DbUpdateException` that can be caught.
 
-Using `AddDbContext` instead of `AddDbContextPool` also means each request instantiates a new `DbContext`, adding GC pressure and preventing EF Core from reusing internal data structures. Under extreme concurrency, this amplifies memory allocation rates and increases Gen0/Gen1 GC pauses.
-
-No transient fault retry policy is configured, so pool-exhaustion exceptions immediately fail the request rather than retrying after a brief backoff.
+Under 500 VUs, each AddToCart call holds a connection for ~3× the time of a single-operation endpoint. With 500 concurrent calls × 3 operations = up to 1500 queued connection requests against a pool of 100, causing massive connection wait times (approaching the 30s default command timeout) and ultimately 100% request failures.
 
 ## Proposed Fixes
 
-1. **Switch to `AddDbContextPool` with increased pool size:** Replace `AddDbContext` with `AddDbContextPool<AppDbContext>` at `Program.cs:15`. This reuses DbContext instances from a pool, reducing allocation overhead and improving connection reuse. Set the pool size to 1024 (the EF Core default is 1024, which accommodates 500 VUs comfortably).
+1. **Remove the redundant product-existence check:** Delete lines 70-72 (the `FindAsync` + null check). Instead, wrap the `SaveChangesAsync` call in a try/catch for `DbUpdateException` to return a 404-equivalent if the FK constraint is violated. This reduces round trips from 3 to 2, cutting connection hold time by ~33%.
 
-2. **Increase `Max Pool Size` in the connection string and add retry logic:** In `appsettings.json:3`, add `Max Pool Size=512;Connection Timeout=30` to the connection string. In the `UseSqlServer` options, enable `options.EnableRetryOnTransientFailures()` to handle transient pool-exhaustion errors gracefully.
+2. **Combine the upsert into a single query:** Replace the `FirstOrDefaultAsync` + conditional save with a raw SQL `MERGE`/upsert statement via `ExecuteSqlInterpolatedAsync`, reducing to a single DB round trip.
 
 ## Expected Impact
 
-- Error rate: Expected to drop from 100% to <5% (threshold target)
-- p95 latency: Expected to drop from ~28000ms to ~3000-5000ms (connections no longer timeout)
-- RPS: Expected to increase from 20 to 100+ as requests complete successfully
-- This single fix addresses the root cause of the catastrophic failure mode. All other optimizations are secondary until connection pool exhaustion is resolved.
+- Connection hold time per AddToCart request reduced by 33-66% (3 ops → 2 or 1)
+- Under 500 VUs, concurrent connection demand from this endpoint drops from ~1500 to ~1000 or ~500 queued operations
+- p95 latency improvement: ~5-10% overall (this endpoint is 5.6% of traffic but its connection pressure cascades to all other endpoints waiting for pool connections)
+- Error rate should decrease as connection pool contention is reduced

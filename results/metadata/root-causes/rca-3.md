@@ -1,46 +1,43 @@
-# Add-to-cart POST re-executes full page load queries
+# Missing database index on OrderItem.ProductId causes slow joins for order endpoints
 
-> **File:** `SampleApi/Pages/Products/Detail.cshtml.cs` | **Scope:** narrow
+> **File:** `SampleApi/Data/AppDbContext.cs` | **Scope:** narrow
 
 ## Evidence
 
-At `Detail.cshtml.cs:89`, the `OnPostAsync` handler ends by calling `OnGetAsync`, which re-executes three database queries:
+At `AppDbContext.cs:55-60`, the `OrderItem` entity configuration only indexes `OrderId`:
 
 ```csharp
-public async Task<IActionResult> OnPostAsync(int id, int productId, int quantity = 1)
+modelBuilder.Entity<OrderItem>(entity =>
 {
-    // ... cart item lookup (line 67) ...
-    // ... SaveChangesAsync (line 85) ...
-    CartMessage = "Item added to cart!";
-    return await OnGetAsync(productId);  // re-runs 3 queries
-}
+    entity.HasKey(e => e.Id);
+    entity.Property(e => e.UnitPrice).HasColumnType("decimal(18,2)");
+    entity.HasIndex(e => e.OrderId);
+});
 ```
 
-`OnGetAsync` (lines 27-51) executes:
-1. Product lookup: `_context.Products.AsNoTracking().FirstOrDefaultAsync(p => p.Id == id)` (line 30)
-2. Reviews list: `_context.Reviews.AsNoTracking().Where(r => r.ProductId == id)...ToListAsync()` (lines 34-39)
-3. Related products: `_context.Products.AsNoTracking().Where(p => p.Category == Product.Category && p.Id != id).Take(4)...ToListAsync()` (lines 43-48)
+There is **no index on `OrderItem.ProductId`**. Multiple endpoints join `OrderItems` with `Products` on `ProductId`:
 
-The POST handler also performs its own DB operations:
-4. Cart item lookup: `_context.CartItems.FirstOrDefaultAsync(...)` (line 67)
-5. Cart save: `_context.SaveChangesAsync()` (line 85)
+- `OrdersController.GetOrder` (lines 58-63): `_context.Products.Where(p => productIds.Contains(p.Id))`
+- `OrdersController.CreateOrder` (lines 112-117): `_context.Products.Where(p => productIds.Contains(p.Id))`
+- `Orders/Index.cshtml.cs` (lines 56-62): `_context.Products.Where(p => productIds.Contains(p.Id))`
 
-Total: **5 database round trips per POST request**. Under 500 VUs, each POST occupies a DB connection for 5 sequential queries, keeping connections checked out ~2.5x longer than necessary.
+The `Orders` page is hit once per VU iteration (5.6% of traffic), and `POST /api/orders` (CreateOrder) is also hit once per VU iteration (another 5.6%). Together, these account for ~11.2% of traffic doing product lookups by ID for order items.
+
+Additionally, the `Order` entity has an index on `CustomerName` (line 52) but no index on `Status`, which is queried in the seed data but not in the k6 scenario. The important missing index is `OrderItem.ProductId`.
 
 ## Theory
 
-Each additional DB round trip in a request handler extends the time a connection is held from the pool. With 5 round trips vs. the 2 actually needed (cart check + save), each POST holds its connection ~2.5x longer. Under 500 VUs, this directly contributes to connection pool pressure. The 3 redundant queries (product, reviews, related products) also add ~60ms each of DB latency, inflating per-request time by ~180ms.
+Without an index on `OrderItem.ProductId`, the `Contains(p.Id)` queries that join order items with products require scanning the OrderItems table. With ~100 seed orders having 1-5 items each (~300 order items initially), plus continuous order creation under load (500 VUs each creating an order per iteration), the OrderItems table grows rapidly during the test. Each product-ID lookup becomes progressively slower as the table grows.
 
-The re-execution of `OnGetAsync` also means the `CartItems.FirstOrDefaultAsync` at line 67 runs without `AsNoTracking()`, adding unnecessary change-tracking overhead for a read-only check.
+Under 500 concurrent VUs, each creating orders and viewing order history, the unindexed scans compound connection hold times. Combined with the other endpoints' connection pressure, this contributes to pool exhaustion.
 
 ## Proposed Fixes
 
-1. **Cache page data before POST processing:** In `OnPostAsync`, load the product once at the start, perform the cart operation, then populate the view model properties directly from the already-loaded data instead of calling `OnGetAsync`. This eliminates 3 of the 5 DB round trips. The reviews and related products can be loaded once alongside the initial product query.
-
-2. **Add `AsNoTracking()` to cart item lookup:** At line 67, the `FirstOrDefaultAsync` on CartItems doesn't use `AsNoTracking()`. Since the existing item is subsequently modified, this one actually needs tracking — but if the item doesn't exist (new cart item path), the tracking overhead is wasted. Consider splitting the logic: use a raw SQL `EXISTS` check, then only load with tracking when needed.
+1. **Add an index on `OrderItem.ProductId`:** In the `OnModelCreating` method, add `entity.HasIndex(e => e.ProductId)` to the `OrderItem` configuration block (after line 59). This enables index seeks instead of table scans for all product-ID lookups on order items.
 
 ## Expected Impact
 
-- Per-request DB round trips: Reduced from 5 to 2 (60% fewer)
-- Connection hold time: Reduced by ~180ms per POST (3 fewer queries × ~60ms each)
-- Overall p95 improvement: ~1.5% (5.6% of traffic × ~180ms savings on ~4000ms post-fix p95)
+- Product lookup queries in order endpoints change from table scans to index seeks
+- Per-request latency for order endpoints reduced by ~10-30ms as OrderItems table grows
+- p95 latency improvement: ~2-3% overall (11.2% combined traffic × modest per-query improvement)
+- Secondary benefit: faster queries release connections sooner, reducing pool contention
