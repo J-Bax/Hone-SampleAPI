@@ -20,11 +20,27 @@
       "DotnetSdkVersion": "8.0.419",
       "ClrVersion": ".NET 8.0.21"
     },
-    "CollectedAt": "2026-03-23T09:40:48.0278138Z"
+    "CollectedAt": "2026-03-23T09:40:46.8900203Z"
   },
-  "BaselineRun": {
-    "StartedAt": "2026-03-23T09:40:48.0278138Z",
-    "CompletedAt": "2026-03-23T02:55:39.4189164-07:00"
-  },
-  "Experiments": []
+  "BaselineRun": null,
+  "LoopStartedAt": "2026-03-23T02:40:46.9121266-07:00",
+  "LoopCompletedAt": null,
+  "Experiments": [
+    {
+      "Experiment": 1,
+      "StartedAt": "2026-03-23T02:57:38.2669808-07:00",
+      "CompletedAt": "2026-03-23T03:06:58.8542812-07:00",
+      "Improved": false,
+      "Regression": false,
+      "P95": null,
+      "RPS": null,
+      "Outcome": "api_start_failure",
+      "BranchName": "hone/experiment-1",
+      "BaseBranch": "master",
+      "PrNumber": null,
+      "PrUrl": null,
+      "StaleCount": 1,
+      "ConsecutiveFailures": 1
+    }
+  ]
 }

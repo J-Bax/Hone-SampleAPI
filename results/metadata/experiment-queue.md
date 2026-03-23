@@ -5,6 +5,6 @@
 
 **Generated:** experiment 1 at 03/23/2026 03:04:54
 
-- [ ] **#1** `Program.cs` — Connection pool exhaustion causes 100% error rate under load *(in progress)*
-- [ ] **#2** `SampleApi/Controllers/ProductsController.cs` — Unbounded product queries return all 1000 rows per request
+- [x] **#1** `Program.cs` — Connection pool exhaustion causes 100% error rate under load *(experiment 1 — regressed)*
+- [ ] **#2** `SampleApi/Controllers/ProductsController.cs` — Unbounded product queries return all 1000 rows per request *(in progress)*
 - [ ] **#3** `SampleApi/Pages/Products/Detail.cshtml.cs` — Add-to-cart POST re-executes full page load queries

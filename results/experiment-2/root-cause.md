@@ -1,59 +1,64 @@
 # Root Cause Analysis — Experiment 2
 
-> Generated: 2026-03-15 12:02:30 | Classification: narrow — The optimization replaces client-side `.ToListAsync()` + `.Where()` with server-side `.Where().ToListAsync()` in method bodies within a single controller file, changing only query internals without altering routes, response shapes, dependencies, or other files.
+> Generated: 2026-03-23 03:06:58 | Classification: narrow — Classification skipped (SkipClassification = $true)
 
 | Metric | Current | Baseline |
 |--------|---------|----------|
-| p95 Latency | 2203.84149ms | 7546.103045ms |
-| Requests/sec | 341.5 | 125.5 |
-| Error Rate | 0% | 0% |
+| p95 Latency | 27950.345ms | 27950.345ms |
+| Requests/sec | 20.1 | 20.1 |
+| Error Rate | 100% | 100% |
 
 ---
-# Replace full reviews table scan with server-side query filtering
+# Unbounded product queries return all 1000 rows per request
 
-> **File:** `SampleApi/Controllers/ReviewsController.cs` | **Scope:** narrow
+> **File:** `SampleApi/Controllers/ProductsController.cs` | **Scope:** narrow
 
 ## Evidence
 
-Both read-by-product endpoints in `ReviewsController.cs` load the entire `Reviews` table (~2,000 rows from seed data, growing under load) into memory:
+At `ProductsController.cs:23-38`, `GetProducts()` loads the entire product catalog without pagination:
 
-- **Line 54** (`GetReviewsByProduct`):
-  ```csharp
-  var allReviews = await _context.Reviews.ToListAsync();
-  var filtered = allReviews.Where(r => r.ProductId == productId).ToList();
-  ```
-- **Line 70** (`GetAverageRating`):
-  ```csharp
-  var allReviews = await _context.Reviews.ToListAsync();
-  var productReviews = allReviews.Where(r => r.ProductId == productId).ToList();
-  var average = productReviews.Any()
-      ? Math.Round(productReviews.Average(r => r.Rating), 2) : 0.0;
-  ```
-- **Lines 95-97** (`CreateReview`): After saving, pointlessly loads ALL reviews again and computes an unused average:
-  ```csharp
-  var allReviews = await _context.Reviews.ToListAsync();
-  var productReviews = allReviews.Where(r => r.ProductId == review.ProductId).ToList();
-  var _ = productReviews.Average(r => r.Rating); // Wasted computation
-  ```
+```csharp
+public async Task<ActionResult<IEnumerable<Product>>> GetProducts()
+{
+    var products = await _context.Products
+        .AsNoTracking()
+        .Select(p => new Product { ... })
+        .ToListAsync();
+    return Ok(products);
+}
+```
 
-The Reviews table starts with ~2,000 rows and each product has 1-7 reviews, meaning each request materializes ~2,000 objects to return ~4. The CPU profile shows the top hotspot chain flowing through EF materialization and TDS parsing, and the GC report confirms 37.3 GB total allocations with catastrophic Gen2 pressure.
+At `ProductsController.cs:93-127`, `SearchProducts` with `q=Product` matches **all 1000 products** because every seeded product is named `"Product XXXX - Category"` (`SeedData.cs:42`). The LIKE pattern `%Product%` triggers a full table scan:
+
+```csharp
+.Where(p => EF.Functions.Like(p.Name, $"%{q}%") ||
+            EF.Functions.Like(p.Description, $"%{q}%"))
+```
+
+The k6 scenario calls both endpoints every iteration:
+```javascript
+const listRes = http.get(`${BASE_URL}/api/products`);
+const searchRes = http.get(`${BASE_URL}/api/products/search?q=Product`);
+```
+
+Under 500 VUs, this means ~500 concurrent requests each serializing 1000 Product objects into JSON. Each response is ~200KB+, creating enormous network I/O and serialization CPU load.
 
 ## Theory
 
-Each call to `GetReviewsByProduct` and `GetAverageRating` materializes ~2,000 Review entities with full change tracking, only to discard ~99.8% of them. With these 2 endpoints representing 11.1% of k6 traffic, this pattern generates ~10% of total allocation volume. The `GetAverageRating` endpoint is particularly wasteful because SQL Server can compute `AVG(Rating)` directly — materializing 2,000 rows to compute an average in C# turns a trivial SQL aggregate into a multi-megabyte allocation.
+Returning unbounded result sets has compounding costs under concurrency: (1) SQL Server must scan and return all rows, holding the connection longer; (2) EF Core must materialize 1000 entities per request; (3) the JSON serializer must process 1000 objects; (4) the response payload is ~200KB per request. With 500 VUs calling these endpoints, the server processes ~1 million product entities per second just for these two endpoints. This monopolizes DB connections (worsening pool exhaustion), consumes CPU on serialization, and saturates network bandwidth.
 
-The `CreateReview` endpoint (line 95-97) adds insult to injury: it loads all reviews *again* after saving, computes an average, and discards it — pure waste. While `CreateReview` isn't called in the k6 scenario, it demonstrates the pervasive anti-pattern.
+The `LIKE '%Product%'` pattern with a leading wildcard prevents SQL Server from using the index on `Name`, forcing a full clustered index scan on every call.
 
 ## Proposed Fixes
 
-1. **Server-side WHERE + AsNoTracking:** Replace `ToListAsync()` + LINQ-to-Objects with:
-   - `GetReviewsByProduct` (line 54): `_context.Reviews.AsNoTracking().Where(r => r.ProductId == productId).ToListAsync()`
-   - `GetAverageRating` (lines 70-75): Use database aggregation: `_context.Reviews.Where(r => r.ProductId == productId).AverageAsync(r => (double?)r.Rating) ?? 0.0` and `_context.Reviews.CountAsync(r => r.ProductId == productId)` — zero entity materialization.
-   - `CreateReview` (lines 95-97): Delete the dead code entirely.
+1. **Add pagination to `GetProducts`:** Add `[FromQuery] int page = 1, [FromQuery] int pageSize = 20` parameters. Apply `.Skip((page - 1) * pageSize).Take(pageSize)` before `ToListAsync()`. This reduces per-request row count from 1000 to 20 (a 98% reduction).
+
+2. **Limit `SearchProducts` result count:** Add `.Take(50)` to the search query at line 110 to cap results. Optionally switch from `LIKE '%q%'` to `LIKE 'q%'` (prefix match) at lines 99-100 to enable index usage when the search term appears at the start of the name.
 
 ## Expected Impact
 
-- **p95 latency:** Estimated 7-9% overall improvement. Per-request allocations drop from ~2,000 entities to ~4 (for by-product) or zero (for average, using SQL aggregation).
-- **RPS:** Moderate increase from reduced GC pressure.
-- **Allocation volume:** Estimated 8-10% reduction in total allocations, directly reducing Gen2 collection frequency.
+- p95 latency for these endpoints: ~500ms reduction per request (smaller payloads, faster queries)
+- DB connection hold time reduced ~50x per request (20 rows vs 1000)
+- Network bandwidth reduced by ~98% for these endpoints
+- Overall p95 improvement: ~5% (after connection pool fix brings p95 to ~4000ms)
 

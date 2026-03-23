@@ -9,9 +9,9 @@
       "explanation": "Connection pool exhaustion causes 100% error rate under load",
       "scope": "narrow",
       "rootCausePath": "C:\\Projects\\Hone\\sample-api\\results\\metadata\\root-causes\\rca-1.md",
-      "status": "in_progress",
-      "triedByExperiment": null,
-      "outcome": null
+      "status": "done",
+      "triedByExperiment": 1,
+      "outcome": "regressed"
     },
     {
       "id": 2,
@@ -20,7 +20,7 @@
       "explanation": "Unbounded product queries return all 1000 rows per request",
       "scope": "narrow",
       "rootCausePath": "C:\\Projects\\Hone\\sample-api\\results\\metadata\\root-causes\\rca-2.md",
-      "status": "pending",
+      "status": "in_progress",
       "triedByExperiment": null,
       "outcome": null
     },
