@@ -2,42 +2,42 @@
   "scenarios": {
     "baseline": {
       "description": "Steady-state: 50 VUs for 30s",
-      "file": "scenarios/baseline.js",
+      "file": "baseline.js",
       "use_for_optimization": true
     },
     "stress": {
       "description": "Progressive ramp: 10→200 VUs over 2 min",
-      "file": "scenarios/stress.js",
+      "file": "stress.js",
       "use_for_optimization": false
     },
     "spike": {
       "description": "Sudden burst: idle → 100 VUs instant",
-      "file": "scenarios/spike.js",
+      "file": "spike.js",
       "use_for_optimization": false
     },
     "stress-products": {
       "description": "Products CRUD lifecycle: 10→200 VUs over 2 min",
-      "file": "scenarios/stress-products.js",
+      "file": "stress-products.js",
       "use_for_optimization": false
     },
     "stress-orders": {
       "description": "Orders lifecycle (create, query, status updates): 10→200 VUs over 2 min",
-      "file": "scenarios/stress-orders.js",
+      "file": "stress-orders.js",
       "use_for_optimization": false
     },
     "stress-cart": {
       "description": "Cart operations (add, read, update qty, remove, clear): 10→200 VUs over 2 min",
-      "file": "scenarios/stress-cart.js",
+      "file": "stress-cart.js",
       "use_for_optimization": false
     },
     "stress-reviews": {
       "description": "Reviews CRUD lifecycle: 10→200 VUs over 2 min",
-      "file": "scenarios/stress-reviews.js",
+      "file": "stress-reviews.js",
       "use_for_optimization": false
     },
     "stress-ui": {
       "description": "Razor Page UI journey (home→browse→cart→checkout→orders): 10→200 VUs over 2 min",
-      "file": "scenarios/stress-ui.js",
+      "file": "stress-ui.js",
       "use_for_optimization": false
     }
   }
