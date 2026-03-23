@@ -90,8 +90,14 @@ public class ProductsController : ControllerBase
     /// Search products by name.
     /// </summary>
     [HttpGet("search")]
-    public async Task<ActionResult<IEnumerable<Product>>> SearchProducts([FromQuery] string? q)
+    public async Task<ActionResult<IEnumerable<Product>>> SearchProducts(
+        [FromQuery] string? q,
+        [FromQuery] int pageIndex = 0,
+        [FromQuery] int pageSize = 20)
     {
+        pageSize = Math.Clamp(pageSize, 1, 50);
+        pageIndex = Math.Max(pageIndex, 0);
+
         if (!string.IsNullOrWhiteSpace(q))
         {
             var results = await _context.Products
@@ -107,6 +113,8 @@ public class ProductsController : ControllerBase
                     CreatedAt = p.CreatedAt,
                     UpdatedAt = p.UpdatedAt
                 })
+                .Skip(pageIndex * pageSize)
+                .Take(pageSize)
                 .ToListAsync();
             return Ok(results);
         }
@@ -122,6 +130,8 @@ public class ProductsController : ControllerBase
                 CreatedAt = p.CreatedAt,
                 UpdatedAt = p.UpdatedAt
             })
+            .Skip(pageIndex * pageSize)
+            .Take(pageSize)
             .ToListAsync();
         return Ok(allProducts);
     }
