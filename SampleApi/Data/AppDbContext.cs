@@ -57,6 +57,7 @@ public class AppDbContext : DbContext
             entity.HasKey(e => e.Id);
             entity.Property(e => e.UnitPrice).HasColumnType("decimal(18,2)");
             entity.HasIndex(e => e.OrderId);
+            entity.HasIndex(e => e.ProductId);
         });
 
         modelBuilder.Entity<CartItem>(entity =>

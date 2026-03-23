@@ -5,6 +5,6 @@
 
 **Generated:** experiment 4 at 03/23/2026 03:22:05
 
-- [ ] **#1** `SampleApi/Controllers/CartController.cs` — AddToCart performs 3 sequential DB round trips under high concurrency *(in progress)*
-- [ ] **#2** `SampleApi/Pages/Checkout/Index.cshtml.cs` — Checkout OnPostAsync holds DB connections through 3 sequential write operations
-- [ ] **#3** `SampleApi/Data/AppDbContext.cs` — Missing database index on OrderItem.ProductId causes slow joins for order endpoints
+- [x] **#1** `SampleApi/Controllers/CartController.cs` — AddToCart performs 3 sequential DB round trips under high concurrency *(experiment 4 — regressed)*
+- [ ] **#2** `SampleApi/Pages/Checkout/Index.cshtml.cs` — Checkout OnPostAsync holds DB connections through 3 sequential write operations *(in progress)*
+- [ ] **#3** `SampleApi/Data/AppDbContext.cs` — Missing database index on OrderItem.ProductId causes slow joins for order endpoints *(in progress)*

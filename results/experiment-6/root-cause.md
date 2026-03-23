@@ -1,65 +1,55 @@
 # Root Cause Analysis — Experiment 6
 
-> Generated: 2026-03-15 14:52:59 | Classification: narrow — The full table scans on Reviews (line 34) and Products (line 41) can be replaced with server-side filtered queries (e.g., .Where().ToListAsync()) entirely within this single PageModel file, requiring no dependency changes, no new files, and no API contract modifications.
+> Generated: 2026-03-23 03:23:34 | Classification: narrow — Classification skipped (SkipClassification = $true)
 
 | Metric | Current | Baseline |
 |--------|---------|----------|
-| p95 Latency | 7546.103045ms | 7546.103045ms |
-| Requests/sec | 125.5 | 125.5 |
-| Error Rate | 0% | 0% |
+| p95 Latency | 27950.345ms | 27950.345ms |
+| Requests/sec | 20.1 | 20.1 |
+| Error Rate | 100% | 100% |
 
 ---
-# Eliminate full Reviews and Products table scans in product detail page
+# Missing database index on OrderItem.ProductId causes slow joins for order endpoints
 
-> **File:** `SampleApi/Pages/Products/Detail.cshtml.cs` | **Scope:** narrow
+> **File:** `SampleApi/Data/AppDbContext.cs` | **Scope:** narrow
 
 ## Evidence
 
-At `Pages/Products/Detail.cshtml.cs:34`, the handler loads the **entire Reviews table**:
+At `AppDbContext.cs:55-60`, the `OrderItem` entity configuration only indexes `OrderId`:
 
 ```csharp
-var allReviews = await _context.Reviews.ToListAsync();
-Reviews = allReviews.Where(r => r.ProductId == id)
-                    .OrderByDescending(r => r.CreatedAt)
-                    .ToList();
+modelBuilder.Entity<OrderItem>(entity =>
+{
+    entity.HasKey(e => e.Id);
+    entity.Property(e => e.UnitPrice).HasColumnType("decimal(18,2)");
+    entity.HasIndex(e => e.OrderId);
+});
 ```
 
-At line 41, it loads the **entire Products table** just to pick 4 related products:
+There is **no index on `OrderItem.ProductId`**. Multiple endpoints join `OrderItems` with `Products` on `ProductId`:
 
-```csharp
-var allProducts = await _context.Products.ToListAsync();
-RelatedProducts = allProducts
-    .Where(p => p.Category == Product.Category && p.Id != id)
-    .OrderBy(_ => Guid.NewGuid())
-    .Take(4)
-    .ToList();
-```
+- `OrdersController.GetOrder` (lines 58-63): `_context.Products.Where(p => productIds.Contains(p.Id))`
+- `OrdersController.CreateOrder` (lines 112-117): `_context.Products.Where(p => productIds.Contains(p.Id))`
+- `Orders/Index.cshtml.cs` (lines 56-62): `_context.Products.Where(p => productIds.Contains(p.Id))`
 
-Additionally, the `OnPostAsync` method at line 65 loads all CartItems to check for duplicates:
-```csharp
-var allCartItems = await _context.CartItems.ToListAsync();
-var existing = allCartItems.FirstOrDefault(c =>
-    c.SessionId == sessionId && c.ProductId == productId);
-```
+The `Orders` page is hit once per VU iteration (5.6% of traffic), and `POST /api/orders` (CreateOrder) is also hit once per VU iteration (another 5.6%). Together, these account for ~11.2% of traffic doing product lookups by ID for order items.
 
-And at line 88, `OnPostAsync` calls `return await OnGetAsync(productId)`, re-executing all the above queries.
-
-The k6 scenario hits this page twice per iteration: once via GET (`/Products/Detail/{id}`) and once via POST (add to cart form submission, which re-renders the page).
+Additionally, the `Order` entity has an index on `CustomerName` (line 52) but no index on `Status`, which is queried in the seed data but not in the k6 scenario. The important missing index is `OrderItem.ProductId`.
 
 ## Theory
 
-Two full table scans (Reviews + Products) per GET, plus a CartItems scan on POST, means 5 full table scans across 2 requests per iteration. The Reviews table grows with the dataset, and Products (seed data) is fixed but still wasteful to load entirely when only 4 related items are needed. The `Guid.NewGuid()` ordering at line 44 prevents any query caching benefit. These materializations contribute to memory pressure and compete for DB connections with the heavier Orders and Cart operations.
+Without an index on `OrderItem.ProductId`, the `Contains(p.Id)` queries that join order items with products require scanning the OrderItems table. With ~100 seed orders having 1-5 items each (~300 order items initially), plus continuous order creation under load (500 VUs each creating an order per iteration), the OrderItems table grows rapidly during the test. Each product-ID lookup becomes progressively slower as the table grows.
+
+Under 500 concurrent VUs, each creating orders and viewing order history, the unindexed scans compound connection hold times. Combined with the other endpoints' connection pressure, this contributes to pool exhaustion.
 
 ## Proposed Fixes
 
-1. **Server-side queries:** 
-   - Reviews: `_context.Reviews.Where(r => r.ProductId == id).OrderByDescending(r => r.CreatedAt).ToListAsync()`
-   - Related products: `_context.Products.Where(p => p.Category == Product.Category && p.Id != id).Take(4).ToListAsync()` (drop random ordering or use SQL `NEWID()` via `OrderBy(p => EF.Functions.Random())`)
-   - Cart duplicate check in OnPostAsync: `_context.CartItems.FirstOrDefaultAsync(c => c.SessionId == sessionId && c.ProductId == productId)`
+1. **Add an index on `OrderItem.ProductId`:** In the `OnModelCreating` method, add `entity.HasIndex(e => e.ProductId)` to the `OrderItem` configuration block (after line 59). This enables index seeks instead of table scans for all product-ID lookups on order items.
 
 ## Expected Impact
 
-- p95 latency: Estimated **100-150ms overall reduction**. Two requests per iteration (~11.1% of traffic) each doing 2-3 unnecessary full table scans.
-- Memory: Reduced allocations from not materializing entire Reviews and Products tables.
-- DB contention: Fewer concurrent full table scans frees connection pool for heavier operations.
+- Product lookup queries in order endpoints change from table scans to index seeks
+- Per-request latency for order endpoints reduced by ~10-30ms as OrderItems table grows
+- p95 latency improvement: ~2-3% overall (11.2% combined traffic × modest per-query improvement)
+- Secondary benefit: faster queries release connections sooner, reducing pool contention
 

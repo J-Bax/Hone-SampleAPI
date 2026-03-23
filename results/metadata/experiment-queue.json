@@ -9,9 +9,9 @@
       "explanation": "AddToCart performs 3 sequential DB round trips under high concurrency",
       "scope": "narrow",
       "rootCausePath": "C:\\Projects\\Hone\\sample-api\\results\\metadata\\root-causes\\rca-1.md",
-      "status": "in_progress",
-      "triedByExperiment": null,
-      "outcome": null
+      "status": "done",
+      "triedByExperiment": 4,
+      "outcome": "regressed"
     },
     {
       "id": 2,
@@ -20,7 +20,7 @@
       "explanation": "Checkout OnPostAsync holds DB connections through 3 sequential write operations",
       "scope": "narrow",
       "rootCausePath": "C:\\Projects\\Hone\\sample-api\\results\\metadata\\root-causes\\rca-2.md",
-      "status": "pending",
+      "status": "in_progress",
       "triedByExperiment": null,
       "outcome": null
     },
@@ -31,7 +31,7 @@
       "explanation": "Missing database index on OrderItem.ProductId causes slow joins for order endpoints",
       "scope": "narrow",
       "rootCausePath": "C:\\Projects\\Hone\\sample-api\\results\\metadata\\root-causes\\rca-3.md",
-      "status": "pending",
+      "status": "in_progress",
       "triedByExperiment": null,
       "outcome": null
     }

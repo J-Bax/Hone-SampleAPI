@@ -7,3 +7,4 @@
 | 1 | 2026-03-23 03:06 | `Program.cs` | API start failure: Connection pool exhaustion causes 100% error rate under load | regressed |
 | 2 | 2026-03-23 03:07 | `SampleApi/Controllers/ProductsController.cs` | Test failure: Unbounded product queries return all 1000 rows per request | regressed |
 | 3 | 2026-03-23 03:14 | `SampleApi/Pages/Products/Detail.cshtml.cs` | API start failure: Add-to-cart POST re-executes full page load queries | regressed |
+| 4 | 2026-03-23 03:23 | `SampleApi/Controllers/CartController.cs` | Test failure: AddToCart performs 3 sequential DB round trips under high concurrency | regressed |
