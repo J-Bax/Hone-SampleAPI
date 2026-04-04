@@ -86,6 +86,12 @@ dotnet test SampleApi.Tests/
 
 43 tests cover all API endpoints and Razor Pages (14 products/categories, 8 reviews, 7 orders, 7 cart, 7 Razor Pages).
 
+## Hone target layout
+
+The sample API is configured as a Hone target through `sample-api\.hone\config.psd1`.
+
+Baseline metrics, experiment artifacts, metadata, and `hone.jsonl` are now written under `sample-api\.hone\results\`.
+
 ## Database
 
 On first run, the database is auto-created and seeded with:

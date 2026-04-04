@@ -43,26 +43,27 @@ ehthumbs.db
 Desktop.ini
 .DS_Store
 
-# ----- Results -----
-# Default: ignore everything in results/
-results/*
-!results/.gitkeep
-!results/baseline.json
-!results/baseline-*.json
-!results/run-metadata.json
-!results/hone.jsonl
-!results/metadata/
+# ----- Hone results -----
+# Default: ignore everything in .hone/results/
+.hone/results/*
+!.hone/results/.gitkeep
+!.hone/results/baseline.json
+!.hone/results/baseline-*.json
+!.hone/results/run-metadata.json
+!.hone/results/hone.jsonl
+!.hone/results/metadata/
 
 # Experiment directories — commit agent analysis and metrics, ignore raw profiling data
-!results/experiment-*/
+!.hone/results/experiment-*/
 # Ignore raw profiling collector output (large binaries, ETLs, CSVs, export logs)
 # but keep parsed summary JSONs via specific negations
-results/experiment-*/diagnostics/perfview-cpu/
-results/experiment-*/diagnostics/perfview/
-results/experiment-*/diagnostics/k6-*.json
+.hone/results/experiment-*/diagnostics/perfview-cpu/
+.hone/results/experiment-*/diagnostics/perfview/
+.hone/results/experiment-*/diagnostics/k6-*.json
 # perfview-gc: ignore dir, then un-ignore just gc-report.json
-results/experiment-*/diagnostics/perfview-gc/*
-!results/experiment-*/diagnostics/perfview-gc/gc-report.json
+.hone/results/experiment-*/diagnostics/perfview-gc/*
+!.hone/results/experiment-*/diagnostics/perfview-gc/gc-report.json
 # dotnet-counters: ignore dir, then un-ignore just dotnet-counters.json
-results/experiment-*/diagnostics/dotnet-counters/*
-!results/experiment-*/diagnostics/dotnet-counters/dotnet-counters.json
+.hone/results/experiment-*/diagnostics/dotnet-counters/*
+!.hone/results/experiment-*/diagnostics/dotnet-counters/dotnet-counters.json
+

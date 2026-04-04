@@ -1,0 +1,163 @@
+{"timestamp":"2026-03-31T00:01:41.4661389-07:00","experiment":0,"phase":"baseline","level":"info","message":"Establishing performance baseline","data":{}}
+{"timestamp":"2026-03-31T00:01:43.3854450-07:00","experiment":0,"phase":"experiment","level":"info","message":"Building solution: C:\\Projects\\Hone-Group\\OptimizationTargets\\eShopOnWeb-Honed\\eShopOnWeb.sln","data":{}}
+{"timestamp":"2026-03-31T00:01:53.7419904-07:00","experiment":0,"phase":"experiment","level":"info","message":"Build succeeded","data":{}}
+{"timestamp":"2026-03-31T00:02:03.8076054-07:00","experiment":0,"phase":"measure","level":"info","message":"Running k6 scenario: C:\\Projects\\Hone-Group\\OptimizationTargets\\eShopOnWeb-Honed\\.hone\\scenarios\\baseline.js against http://localhost:59255","data":{}}
+{"timestamp":"2026-03-31T00:02:03.8229745-07:00","experiment":0,"phase":"measure","level":"info","message":"Running warmup pass","data":{}}
+{"timestamp":"2026-03-31T00:03:44.3666688-07:00","experiment":0,"phase":"measure","level":"info","message":"Running k6 scenario: C:\\Projects\\Hone-Group\\OptimizationTargets\\eShopOnWeb-Honed\\.hone\\scenarios\\baseline.js against http://localhost:1","data":{}}
+{"timestamp":"2026-03-31T00:03:44.4271068-07:00","experiment":0,"phase":"measure","level":"info","message":"Running warmup pass","data":{}}
+{"timestamp":"2026-03-31T00:03:59.1377565-07:00","experiment":0,"phase":"measure","level":"info","message":"Cooldown 5s — after warmup","data":{}}
+{"timestamp":"2026-03-31T00:04:04.9172895-07:00","experiment":0,"phase":"measure","level":"warning","message":"Could not find API process listening on port 1 — skipping counter collection","data":{}}
+{"timestamp":"2026-03-31T00:04:04.9315404-07:00","experiment":0,"phase":"measure","level":"info","message":"Measured run 1 / 5","data":{}}
+{"timestamp":"2026-03-31T00:04:05.4133188-07:00","experiment":0,"phase":"measure","level":"info","message":"Run 1 — p95: 0ms, RPS: 210","data":{"errorRate":1,"rps":210.03549599882382,"p95":0,"run":1}}
+{"timestamp":"2026-03-31T00:04:05.4253114-07:00","experiment":0,"phase":"measure","level":"info","message":"Restarting API before run 2 (Stop → Prepare → Start)","data":{}}
+{"timestamp":"2026-03-31T00:04:09.7345794-07:00","experiment":0,"phase":"measure","level":"info","message":"Measured run 2 / 5","data":{}}
+{"timestamp":"2026-03-31T00:05:11.3142755-07:00","experiment":0,"phase":"measure","level":"info","message":"Run 2 — p95: 1015.388355ms, RPS: 114.9","data":{"errorRate":0,"rps":114.86313059357744,"p95":1015.3883549999999,"run":2}}
+{"timestamp":"2026-03-31T00:05:11.3218862-07:00","experiment":0,"phase":"measure","level":"info","message":"Restarting API before run 3 (Stop → Prepare → Start)","data":{}}
+{"timestamp":"2026-03-31T00:05:17.2315449-07:00","experiment":0,"phase":"measure","level":"info","message":"Measured run 3 / 5","data":{}}
+{"timestamp":"2026-03-31T00:05:33.6688215-07:00","experiment":0,"phase":"measure","level":"info","message":"Running k6 scenario: C:\\Projects\\Hone-Group\\OptimizationTargets\\eShopOnWeb-Honed\\.hone\\scenarios\\baseline.js against http://localhost:1","data":{}}
+{"timestamp":"2026-03-31T00:05:33.7242577-07:00","experiment":0,"phase":"measure","level":"info","message":"Running warmup pass","data":{}}
+{"timestamp":"2026-03-31T00:05:48.3742174-07:00","experiment":0,"phase":"measure","level":"info","message":"Cooldown 5s — after warmup","data":{}}
+{"timestamp":"2026-03-31T00:05:53.8644471-07:00","experiment":0,"phase":"measure","level":"warning","message":"Could not find API process listening on port 1 — skipping counter collection","data":{}}
+{"timestamp":"2026-03-31T00:05:53.8801949-07:00","experiment":0,"phase":"measure","level":"info","message":"Measured run 1 / 5","data":{}}
+{"timestamp":"2026-03-31T00:05:54.3801373-07:00","experiment":0,"phase":"measure","level":"info","message":"Run 1 — p95: 0ms, RPS: 173.6","data":{"run":1,"errorRate":1,"rps":173.63522711487707,"p95":0}}
+{"timestamp":"2026-03-31T00:05:54.3912129-07:00","experiment":0,"phase":"measure","level":"info","message":"Restarting API before run 2 (Stop → Prepare → Start)","data":{}}
+{"timestamp":"2026-03-31T00:06:02.2036582-07:00","experiment":0,"phase":"measure","level":"info","message":"Measured run 2 / 5","data":{}}
+{"timestamp":"2026-03-31T00:06:18.9315025-07:00","experiment":0,"phase":"measure","level":"info","message":"Run 3 — p95: 1015.797445ms, RPS: 84.9","data":{"errorRate":0.0030745580322828594,"rps":84.93873416764193,"p95":1015.7974449999999,"run":3}}
+{"timestamp":"2026-03-31T00:06:18.9390678-07:00","experiment":0,"phase":"measure","level":"info","message":"Restarting API before run 4 (Stop → Prepare → Start)","data":{}}
+{"timestamp":"2026-03-31T00:06:27.9062632-07:00","experiment":0,"phase":"measure","level":"info","message":"Measured run 4 / 5","data":{}}
+{"timestamp":"2026-03-31T00:07:03.4781366-07:00","experiment":0,"phase":"measure","level":"info","message":"Run 2 — p95: 1016.057095ms, RPS: 99.8","data":{"run":2,"errorRate":0.002798814619690484,"rps":99.82408248791643,"p95":1016.057095}}
+{"timestamp":"2026-03-31T00:07:03.4854079-07:00","experiment":0,"phase":"measure","level":"info","message":"Restarting API before run 3 (Stop → Prepare → Start)","data":{}}
+{"timestamp":"2026-03-31T00:07:12.5003133-07:00","experiment":0,"phase":"measure","level":"info","message":"Measured run 3 / 5","data":{}}
+{"timestamp":"2026-03-31T00:07:29.8099882-07:00","experiment":0,"phase":"measure","level":"info","message":"Run 4 — p95: 1015.463335ms, RPS: 84.9","data":{"errorRate":0.06273983115886415,"rps":84.91605155479628,"p95":1015.463335,"run":4}}
+{"timestamp":"2026-03-31T00:07:29.8181081-07:00","experiment":0,"phase":"measure","level":"info","message":"Restarting API before run 5 (Stop → Prepare → Start)","data":{}}
+{"timestamp":"2026-03-31T00:07:38.7508413-07:00","experiment":0,"phase":"measure","level":"info","message":"Measured run 5 / 5","data":{}}
+{"timestamp":"2026-03-31T00:08:14.2803233-07:00","experiment":0,"phase":"measure","level":"info","message":"Run 3 — p95: 1011.7988ms, RPS: 98.9","data":{"run":3,"errorRate":0,"rps":98.92916932872285,"p95":1011.7988}}
+{"timestamp":"2026-03-31T00:08:14.2871773-07:00","experiment":0,"phase":"measure","level":"info","message":"Restarting API before run 4 (Stop → Prepare → Start)","data":{}}
+{"timestamp":"2026-03-31T00:08:23.2318265-07:00","experiment":0,"phase":"measure","level":"info","message":"Measured run 4 / 5","data":{}}
+{"timestamp":"2026-03-31T00:08:40.4798180-07:00","experiment":0,"phase":"measure","level":"info","message":"Run 5 — p95: 1013.14887ms, RPS: 85.6","data":{"errorRate":0.061547256097560975,"rps":85.62789440394168,"p95":1013.14887,"run":5}}
+{"timestamp":"2026-03-31T00:08:40.5180978-07:00","experiment":0,"phase":"measure","level":"info","message":"Median selected: run 2 — p95: 1015.3883549999999ms (from 5 runs: 0ms, 1013.14887ms, 1015.3883549999999ms, 1015.463335ms, 1015.7974449999999ms)","data":{}}
+{"timestamp":"2026-03-31T00:08:40.5345958-07:00","experiment":0,"phase":"measure","level":"info","message":"k6 completed — p95: 1015.388355ms, RPS: 114.9","data":{"errorRate":0,"rps":114.86313059357744,"p95":1015.3883549999999,"runs":5}}
+{"timestamp":"2026-03-31T00:09:24.6618311-07:00","experiment":0,"phase":"measure","level":"info","message":"Run 4 — p95: 1012.97402ms, RPS: 115.2","data":{"run":4,"errorRate":0.0398349694124342,"rps":115.1982273456077,"p95":1012.97402}}
+{"timestamp":"2026-03-31T00:09:24.6688521-07:00","experiment":0,"phase":"measure","level":"info","message":"Restarting API before run 5 (Stop → Prepare → Start)","data":{}}
+{"timestamp":"2026-03-31T00:09:33.4686696-07:00","experiment":0,"phase":"measure","level":"info","message":"Measured run 5 / 5","data":{}}
+{"timestamp":"2026-03-31T00:11:31.4296096-07:00","experiment":0,"phase":"baseline","level":"info","message":"Establishing performance baseline","data":{}}
+{"timestamp":"2026-03-31T00:11:33.8777721-07:00","experiment":0,"phase":"experiment","level":"info","message":"Building solution: C:\\Projects\\Hone-Group\\OptimizationTargets\\eShopOnWeb-Honed\\eShopOnWeb.sln","data":{}}
+{"timestamp":"2026-03-31T00:11:37.3493062-07:00","experiment":0,"phase":"experiment","level":"info","message":"Build succeeded","data":{}}
+{"timestamp":"2026-03-31T00:11:44.7284083-07:00","experiment":0,"phase":"measure","level":"info","message":"Running k6 scenario: C:\\Projects\\Hone-Group\\OptimizationTargets\\eShopOnWeb-Honed\\.hone\\scenarios\\baseline.js against http://localhost:60757","data":{}}
+{"timestamp":"2026-03-31T00:11:44.7427438-07:00","experiment":0,"phase":"measure","level":"info","message":"Running warmup pass","data":{}}
+{"timestamp":"2026-03-31T00:13:04.6042115-07:00","experiment":0,"phase":"baseline","level":"info","message":"Establishing performance baseline","data":{}}
+{"timestamp":"2026-03-31T00:13:06.8084241-07:00","experiment":0,"phase":"experiment","level":"info","message":"Building solution: C:\\Projects\\Hone-Group\\OptimizationTargets\\eShopOnWeb-Honed\\eShopOnWeb.sln","data":{}}
+{"timestamp":"2026-03-31T00:13:09.6675090-07:00","experiment":0,"phase":"experiment","level":"info","message":"Build succeeded","data":{}}
+{"timestamp":"2026-03-31T00:13:14.6217107-07:00","experiment":0,"phase":"measure","level":"info","message":"Running k6 scenario: C:\\Projects\\Hone-Group\\OptimizationTargets\\eShopOnWeb-Honed\\.hone\\scenarios\\baseline.js against http://localhost:60769","data":{}}
+{"timestamp":"2026-03-31T00:13:14.6370421-07:00","experiment":0,"phase":"measure","level":"info","message":"Running warmup pass","data":{}}
+{"timestamp":"2026-03-31T00:15:05.3696677-07:00","experiment":0,"phase":"baseline","level":"info","message":"Establishing performance baseline","data":{}}
+{"timestamp":"2026-03-31T00:15:07.7023546-07:00","experiment":0,"phase":"experiment","level":"info","message":"Building solution: C:\\Projects\\Hone-Group\\OptimizationTargets\\eShopOnWeb-Honed\\eShopOnWeb.sln","data":{}}
+{"timestamp":"2026-03-31T00:15:10.7668000-07:00","experiment":0,"phase":"experiment","level":"info","message":"Build succeeded","data":{}}
+{"timestamp":"2026-03-31T00:15:15.7247377-07:00","experiment":0,"phase":"measure","level":"info","message":"Running k6 scenario: C:\\Projects\\Hone-Group\\OptimizationTargets\\eShopOnWeb-Honed\\.hone\\scenarios\\baseline.js against http://localhost:60787","data":{}}
+{"timestamp":"2026-03-31T00:15:15.7394336-07:00","experiment":0,"phase":"measure","level":"info","message":"Running warmup pass","data":{}}
+{"timestamp":"2026-03-31T00:17:07.2008384-07:00","experiment":0,"phase":"baseline","level":"info","message":"Establishing performance baseline","data":{}}
+{"timestamp":"2026-03-31T00:17:09.6170407-07:00","experiment":0,"phase":"experiment","level":"info","message":"Building solution: C:\\Projects\\Hone-Group\\OptimizationTargets\\eShopOnWeb-Honed\\eShopOnWeb.sln","data":{}}
+{"timestamp":"2026-03-31T00:17:12.7227774-07:00","experiment":0,"phase":"experiment","level":"info","message":"Build succeeded","data":{}}
+{"timestamp":"2026-03-31T00:17:17.6986051-07:00","experiment":0,"phase":"measure","level":"info","message":"Running k6 scenario: C:\\Projects\\Hone-Group\\OptimizationTargets\\eShopOnWeb-Honed\\.hone\\scenarios\\baseline.js against http://localhost:60813","data":{}}
+{"timestamp":"2026-03-31T00:17:17.7132698-07:00","experiment":0,"phase":"measure","level":"info","message":"Running warmup pass","data":{}}
+{"timestamp":"2026-03-31T00:17:29.5043941-07:00","experiment":0,"phase":"measure","level":"info","message":"Cooldown 5s — after warmup","data":{}}
+{"timestamp":"2026-03-31T00:17:34.9500487-07:00","experiment":0,"phase":"measure","level":"info","message":"Starting dotnet-counters collection for PID 2448744 (providers: System.Runtime,Microsoft.AspNetCore.Hosting,Microsoft.AspNetCore.Http.Connections,System.Net.Http)","data":{}}
+{"timestamp":"2026-03-31T00:17:39.4983546-07:00","experiment":0,"phase":"measure","level":"info","message":"dotnet-counters collecting (PID: 2450144) → C:\\Projects\\Hone-Group\\OptimizationTargets\\eShopOnWeb-Honed\\results\\experiment-0\\dotnet-counters.csv","data":{}}
+{"timestamp":"2026-03-31T00:17:39.5092494-07:00","experiment":0,"phase":"measure","level":"info","message":"Measured run 1 / 5","data":{}}
+{"timestamp":"2026-03-31T00:18:40.7661721-07:00","experiment":0,"phase":"measure","level":"info","message":"Run 1 — p95: 1013.30755ms, RPS: 115.7","data":{"p95":1013.30755,"rps":115.65155606325062,"run":1,"errorRate":0}}
+{"timestamp":"2026-03-31T00:18:40.7764490-07:00","experiment":0,"phase":"measure","level":"info","message":"Restarting API before run 2 (Stop → Prepare → Start)","data":{}}
+{"timestamp":"2026-03-31T00:18:47.4513542-07:00","experiment":0,"phase":"measure","level":"info","message":"Measured run 2 / 5","data":{}}
+{"timestamp":"2026-03-31T00:19:49.0484953-07:00","experiment":0,"phase":"measure","level":"info","message":"Run 2 — p95: 1013.880795ms, RPS: 114.9","data":{"p95":1013.8807949999999,"rps":114.92572483136651,"run":2,"errorRate":0}}
+{"timestamp":"2026-03-31T00:19:49.0566301-07:00","experiment":0,"phase":"measure","level":"info","message":"Restarting API before run 3 (Stop → Prepare → Start)","data":{}}
+{"timestamp":"2026-03-31T00:19:55.5343228-07:00","experiment":0,"phase":"measure","level":"info","message":"Measured run 3 / 5","data":{}}
+{"timestamp":"2026-03-31T00:20:57.0080923-07:00","experiment":0,"phase":"measure","level":"info","message":"Run 3 — p95: 1013.20954ms, RPS: 115.1","data":{"p95":1013.2095400000001,"rps":115.07232070849152,"run":3,"errorRate":0}}
+{"timestamp":"2026-03-31T00:20:57.0149805-07:00","experiment":0,"phase":"measure","level":"info","message":"Restarting API before run 4 (Stop → Prepare → Start)","data":{}}
+{"timestamp":"2026-03-31T00:21:02.9684882-07:00","experiment":0,"phase":"measure","level":"info","message":"Measured run 4 / 5","data":{}}
+{"timestamp":"2026-03-31T00:22:04.4147300-07:00","experiment":0,"phase":"measure","level":"info","message":"Run 4 — p95: 1014.8446ms, RPS: 115","data":{"p95":1014.8446,"rps":115.04928916677085,"run":4,"errorRate":0}}
+{"timestamp":"2026-03-31T00:22:04.4227971-07:00","experiment":0,"phase":"measure","level":"info","message":"Restarting API before run 5 (Stop → Prepare → Start)","data":{}}
+{"timestamp":"2026-03-31T00:22:10.5160667-07:00","experiment":0,"phase":"measure","level":"info","message":"Measured run 5 / 5","data":{}}
+{"timestamp":"2026-03-31T00:23:11.9624742-07:00","experiment":0,"phase":"measure","level":"info","message":"Run 5 — p95: 1015.3868ms, RPS: 115.2","data":{"p95":1015.3868,"rps":115.18865908803295,"run":5,"errorRate":0}}
+{"timestamp":"2026-03-31T00:23:11.9787551-07:00","experiment":0,"phase":"measure","level":"info","message":"Median selected: run 2 — p95: 1013.8807949999999ms (from 5 runs: 1013.2095400000001ms, 1013.30755ms, 1013.8807949999999ms, 1014.8446ms, 1015.3868ms)","data":{}}
+{"timestamp":"2026-03-31T00:23:12.0018685-07:00","experiment":0,"phase":"measure","level":"info","message":"k6 completed — p95: 1013.880795ms, RPS: 114.9","data":{"p95":1013.8807949999999,"rps":114.92572483136651,"runs":5,"errorRate":0}}
+{"timestamp":"2026-03-31T00:23:12.0382818-07:00","experiment":0,"phase":"measure","level":"info","message":"Stopping dotnet-counters collection","data":{}}
+{"timestamp":"2026-03-31T00:23:13.5918665-07:00","experiment":0,"phase":"measure","level":"info","message":"Counter summary — CPU avg: 0.52%, GC heap max: 171.31MB, Gen2: 6494336, GC pause: 81%, Threads max: 15, Exceptions: 102","data":{"cpuAvg":0.52,"gcPauseMax":81.0,"gcHeapMax":171.31,"gen2Collections":6494336.0,"threadPoolMax":15.0}}
+{"timestamp":"2026-03-31T00:23:13.6025918-07:00","experiment":0,"phase":"measure","level":"info","message":"Counter metrics saved to: C:\\Projects\\Hone-Group\\OptimizationTargets\\eShopOnWeb-Honed\\results\\experiment-0\\dotnet-counters.json","data":{}}
+{"timestamp":"2026-03-31T00:23:13.6189386-07:00","experiment":0,"phase":"baseline","level":"info","message":"Run metadata saved to: C:\\Projects\\Hone-Group\\OptimizationTargets\\eShopOnWeb-Honed\\results\\run-metadata.json","data":{}}
+{"timestamp":"2026-03-31T00:23:13.6274272-07:00","experiment":0,"phase":"baseline","level":"info","message":"Counter baseline saved to: C:\\Projects\\Hone-Group\\OptimizationTargets\\eShopOnWeb-Honed\\results\\baseline-counters.json","data":{}}
+{"timestamp":"2026-03-31T00:23:13.6352070-07:00","experiment":0,"phase":"baseline","level":"info","message":"Baseline saved to: C:\\Projects\\Hone-Group\\OptimizationTargets\\eShopOnWeb-Honed\\results\\baseline.json","data":{"p95":1013.8807949999999,"rps":114.92572483136651}}
+{"timestamp":"2026-03-31T00:23:13.6901964-07:00","experiment":0,"phase":"measure","level":"info","message":"Running scenario 'stress': Breaking-point: staged 10-200 VUs, all endpoints including auth and writes","data":{}}
+{"timestamp":"2026-03-31T00:23:13.7058029-07:00","experiment":0,"phase":"measure","level":"info","message":"Running k6 scenario: C:\\Projects\\Hone-Group\\OptimizationTargets\\eShopOnWeb-Honed\\.hone\\scenarios\\stress.js against http://localhost:61095","data":{}}
+{"timestamp":"2026-03-31T00:25:15.4693641-07:00","experiment":0,"phase":"measure","level":"info","message":"Run 1 — p95: 1020.0543ms, RPS: 371.7","data":{"p95":1020.0543,"rps":371.72790849945363,"run":1,"errorRate":0}}
+{"timestamp":"2026-03-31T00:25:15.4779007-07:00","experiment":0,"phase":"measure","level":"info","message":"k6 completed — p95: 1020.0543ms, RPS: 371.7","data":{"p95":1020.0543,"rps":371.72790849945363,"runs":1,"errorRate":0}}
+{"timestamp":"2026-03-31T00:25:15.5178085-07:00","experiment":0,"phase":"measure","level":"info","message":"Cooldown 5s — between scenarios","data":{}}
+{"timestamp":"2026-03-31T00:25:20.5306209-07:00","experiment":0,"phase":"measure","level":"info","message":"Running scenario 'stress-catalog': Catalog CRUD lifecycle: auth, create, read, update, delete, browse","data":{}}
+{"timestamp":"2026-03-31T00:25:20.5465022-07:00","experiment":0,"phase":"measure","level":"info","message":"Running k6 scenario: C:\\Projects\\Hone-Group\\OptimizationTargets\\eShopOnWeb-Honed\\.hone\\scenarios\\stress-catalog.js against http://localhost:61095","data":{}}
+{"timestamp":"2026-03-31T00:26:21.7544125-07:00","experiment":0,"phase":"measure","level":"info","message":"Run 1 — p95: 1014.34268ms, RPS: 132.3","data":{"p95":1014.34268,"rps":132.3150678895882,"run":1,"errorRate":0}}
+{"timestamp":"2026-03-31T00:26:21.7623406-07:00","experiment":0,"phase":"measure","level":"info","message":"k6 completed — p95: 1014.34268ms, RPS: 132.3","data":{"p95":1014.34268,"rps":132.3150678895882,"runs":1,"errorRate":0}}
+{"timestamp":"2026-03-31T00:26:21.8051587-07:00","experiment":0,"phase":"measure","level":"info","message":"Cooldown 5s — between scenarios","data":{}}
+{"timestamp":"2026-03-31T00:26:26.8117724-07:00","experiment":0,"phase":"measure","level":"info","message":"Running scenario 'stress-auth': Authentication load: admin login, user login, invalid credentials","data":{}}
+{"timestamp":"2026-03-31T00:26:26.8262202-07:00","experiment":0,"phase":"measure","level":"info","message":"Running k6 scenario: C:\\Projects\\Hone-Group\\OptimizationTargets\\eShopOnWeb-Honed\\.hone\\scenarios\\stress-auth.js against http://localhost:61095","data":{}}
+{"timestamp":"2026-03-31T00:27:27.4390086-07:00","experiment":0,"phase":"measure","level":"info","message":"Run 1 — p95: 99.147695ms, RPS: 190.7","data":{"p95":99.14769499999998,"rps":190.69734458499946,"run":1,"errorRate":0}}
+{"timestamp":"2026-03-31T00:27:27.4467890-07:00","experiment":0,"phase":"measure","level":"info","message":"k6 completed — p95: 99.147695ms, RPS: 190.7","data":{"p95":99.14769499999998,"rps":190.69734458499946,"runs":1,"errorRate":0}}
+{"timestamp":"2026-03-31T00:27:27.4788176-07:00","experiment":0,"phase":"measure","level":"info","message":"Cooldown 5s — between scenarios","data":{}}
+{"timestamp":"2026-03-31T00:27:32.4818005-07:00","experiment":0,"phase":"measure","level":"info","message":"Running scenario 'warmup': JIT/EF primer: 5 VUs for 10s, lightweight reads + one auth","data":{}}
+{"timestamp":"2026-03-31T00:27:32.4955963-07:00","experiment":0,"phase":"measure","level":"info","message":"Running k6 scenario: C:\\Projects\\Hone-Group\\OptimizationTargets\\eShopOnWeb-Honed\\.hone\\scenarios\\warmup.js against http://localhost:61095","data":{}}
+{"timestamp":"2026-03-31T00:27:43.5974506-07:00","experiment":0,"phase":"measure","level":"info","message":"Run 1 — p95: 1017.0866ms, RPS: 16.4","data":{"p95":1017.0866,"rps":16.44910516209954,"run":1,"errorRate":0}}
+{"timestamp":"2026-03-31T00:27:43.6040436-07:00","experiment":0,"phase":"measure","level":"info","message":"k6 completed — p95: 1017.0866ms, RPS: 16.4","data":{"p95":1017.0866,"rps":16.44910516209954,"runs":1,"errorRate":0}}
+{"timestamp":"2026-03-31T00:27:43.6136039-07:00","experiment":0,"phase":"baseline","level":"info","message":"Scenario baseline saved: stress — p95: 1020.0543ms","data":{}}
+{"timestamp":"2026-03-31T00:27:43.6211899-07:00","experiment":0,"phase":"baseline","level":"info","message":"Scenario baseline saved: stress-catalog — p95: 1014.34268ms","data":{}}
+{"timestamp":"2026-03-31T00:27:43.6304624-07:00","experiment":0,"phase":"baseline","level":"info","message":"Scenario baseline saved: stress-auth — p95: 99.147695ms","data":{}}
+{"timestamp":"2026-03-31T00:27:43.6381027-07:00","experiment":0,"phase":"baseline","level":"info","message":"Scenario baseline saved: warmup — p95: 1017.0866ms","data":{}}
+{"timestamp":"2026-03-31T05:06:37.8970532-07:00","experiment":0,"phase":"baseline","level":"info","message":"Establishing performance baseline","data":{}}
+{"timestamp":"2026-03-31T05:06:40.5538440-07:00","experiment":0,"phase":"experiment","level":"info","message":"Building solution: C:\\Projects\\Hone-Group\\OptimizationTargets\\eShopOnWeb-Honed\\eShopOnWeb.sln","data":{}}
+{"timestamp":"2026-03-31T05:06:57.2421692-07:00","experiment":0,"phase":"experiment","level":"info","message":"Build succeeded","data":{}}
+{"timestamp":"2026-03-31T05:07:07.3468487-07:00","experiment":0,"phase":"measure","level":"info","message":"Running k6 scenario: C:\\Projects\\Hone-Group\\OptimizationTargets\\eShopOnWeb-Honed\\.hone\\scenarios\\baseline.js against http://localhost:56148","data":{}}
+{"timestamp":"2026-03-31T05:07:07.3613979-07:00","experiment":0,"phase":"measure","level":"info","message":"Running warmup pass","data":{}}
+{"timestamp":"2026-03-31T05:07:19.1582551-07:00","experiment":0,"phase":"measure","level":"info","message":"Cooldown 5s — after warmup","data":{}}
+{"timestamp":"2026-03-31T05:07:24.5821522-07:00","experiment":0,"phase":"measure","level":"info","message":"Starting dotnet-counters collection for PID 2490308 (providers: System.Runtime,Microsoft.AspNetCore.Hosting,Microsoft.AspNetCore.Http.Connections,System.Net.Http)","data":{}}
+{"timestamp":"2026-03-31T05:07:29.1446999-07:00","experiment":0,"phase":"measure","level":"info","message":"dotnet-counters collecting (PID: 2484508) → C:\\Projects\\Hone-Group\\OptimizationTargets\\eShopOnWeb-Honed\\results\\experiment-0\\dotnet-counters.csv","data":{}}
+{"timestamp":"2026-03-31T05:07:29.1553096-07:00","experiment":0,"phase":"measure","level":"info","message":"Measured run 1 / 5","data":{}}
+{"timestamp":"2026-03-31T05:08:30.4936841-07:00","experiment":0,"phase":"measure","level":"info","message":"Run 1 — p95: 1015.367635ms, RPS: 115.4","data":{"run":1,"p95":1015.3676350000001,"rps":115.40386916862869,"errorRate":0}}
+{"timestamp":"2026-03-31T05:08:30.5022770-07:00","experiment":0,"phase":"measure","level":"info","message":"Restarting API before run 2 (Stop → Prepare → Start)","data":{}}
+{"timestamp":"2026-03-31T05:08:37.6158944-07:00","experiment":0,"phase":"measure","level":"info","message":"Measured run 2 / 5","data":{}}
+{"timestamp":"2026-03-31T05:09:39.1446615-07:00","experiment":0,"phase":"measure","level":"info","message":"Run 2 — p95: 1014.90584ms, RPS: 114.9","data":{"run":2,"p95":1014.90584,"rps":114.92549611018357,"errorRate":0}}
+{"timestamp":"2026-03-31T05:09:39.1514047-07:00","experiment":0,"phase":"measure","level":"info","message":"Restarting API before run 3 (Stop → Prepare → Start)","data":{}}
+{"timestamp":"2026-03-31T05:09:46.2671457-07:00","experiment":0,"phase":"measure","level":"info","message":"Measured run 3 / 5","data":{}}
+{"timestamp":"2026-03-31T05:10:47.7163799-07:00","experiment":0,"phase":"measure","level":"info","message":"Run 3 — p95: 1015.03974ms, RPS: 115","data":{"run":3,"p95":1015.03974,"rps":114.96779657781957,"errorRate":0}}
+{"timestamp":"2026-03-31T05:10:47.7230941-07:00","experiment":0,"phase":"measure","level":"info","message":"Restarting API before run 4 (Stop → Prepare → Start)","data":{}}
+{"timestamp":"2026-03-31T05:10:54.3266220-07:00","experiment":0,"phase":"measure","level":"info","message":"Measured run 4 / 5","data":{}}
+{"timestamp":"2026-03-31T05:11:55.7722700-07:00","experiment":0,"phase":"measure","level":"info","message":"Run 4 — p95: 1013.9026ms, RPS: 115.1","data":{"run":4,"p95":1013.9026,"rps":115.08176242097808,"errorRate":0}}
+{"timestamp":"2026-03-31T05:11:55.7806720-07:00","experiment":0,"phase":"measure","level":"info","message":"Restarting API before run 5 (Stop → Prepare → Start)","data":{}}
+{"timestamp":"2026-03-31T05:12:02.8672973-07:00","experiment":0,"phase":"measure","level":"info","message":"Measured run 5 / 5","data":{}}
+{"timestamp":"2026-03-31T05:13:04.3704734-07:00","experiment":0,"phase":"measure","level":"info","message":"Run 5 — p95: 1014.894345ms, RPS: 115.1","data":{"run":5,"p95":1014.894345,"rps":115.05167315206438,"errorRate":0}}
+{"timestamp":"2026-03-31T05:13:04.3997660-07:00","experiment":0,"phase":"measure","level":"info","message":"Median selected: run 2 — p95: 1014.90584ms (from 5 runs: 1013.9026ms, 1014.894345ms, 1014.90584ms, 1015.03974ms, 1015.3676350000001ms)","data":{}}
+{"timestamp":"2026-03-31T05:13:04.4175846-07:00","experiment":0,"phase":"measure","level":"info","message":"k6 completed — p95: 1014.90584ms, RPS: 114.9","data":{"p95":1014.90584,"rps":114.92549611018357,"errorRate":0,"runs":5}}
+{"timestamp":"2026-03-31T05:13:04.4525546-07:00","experiment":0,"phase":"measure","level":"info","message":"Stopping dotnet-counters collection","data":{}}
+{"timestamp":"2026-03-31T05:13:06.0231358-07:00","experiment":0,"phase":"measure","level":"info","message":"Counter summary — CPU avg: 0.41%, GC heap max: 171.65MB, Gen2: 6121800, GC pause: 83%, Threads max: 21, Exceptions: 102","data":{"cpuAvg":0.41,"gcPauseMax":83.0,"gcHeapMax":171.65,"gen2Collections":6121800.0,"threadPoolMax":21.0}}
+{"timestamp":"2026-03-31T05:13:06.0324754-07:00","experiment":0,"phase":"measure","level":"info","message":"Counter metrics saved to: C:\\Projects\\Hone-Group\\OptimizationTargets\\eShopOnWeb-Honed\\results\\experiment-0\\dotnet-counters.json","data":{}}
+{"timestamp":"2026-03-31T05:13:06.0490101-07:00","experiment":0,"phase":"baseline","level":"info","message":"Run metadata saved to: C:\\Projects\\Hone-Group\\OptimizationTargets\\eShopOnWeb-Honed\\results\\run-metadata.json","data":{}}
+{"timestamp":"2026-03-31T05:13:06.0572897-07:00","experiment":0,"phase":"baseline","level":"info","message":"Counter baseline saved to: C:\\Projects\\Hone-Group\\OptimizationTargets\\eShopOnWeb-Honed\\results\\baseline-counters.json","data":{}}
+{"timestamp":"2026-03-31T05:13:06.0652249-07:00","experiment":0,"phase":"baseline","level":"info","message":"Baseline saved to: C:\\Projects\\Hone-Group\\OptimizationTargets\\eShopOnWeb-Honed\\results\\baseline.json","data":{"rps":114.92549611018357,"p95":1014.90584}}
+{"timestamp":"2026-03-31T05:13:06.1006596-07:00","experiment":0,"phase":"measure","level":"info","message":"Running scenario 'stress': Breaking-point: staged 10-200 VUs, all endpoints including auth and writes","data":{}}
+{"timestamp":"2026-03-31T05:13:06.1176705-07:00","experiment":0,"phase":"measure","level":"info","message":"Running k6 scenario: C:\\Projects\\Hone-Group\\OptimizationTargets\\eShopOnWeb-Honed\\.hone\\scenarios\\stress.js against http://localhost:56411","data":{}}
+{"timestamp":"2026-03-31T05:15:07.7117312-07:00","experiment":0,"phase":"measure","level":"info","message":"Run 1 — p95: 1017.57986ms, RPS: 376.9","data":{"run":1,"p95":1017.57986,"rps":376.93619478209575,"errorRate":0}}
+{"timestamp":"2026-03-31T05:15:07.7204899-07:00","experiment":0,"phase":"measure","level":"info","message":"k6 completed — p95: 1017.57986ms, RPS: 376.9","data":{"p95":1017.57986,"rps":376.93619478209575,"errorRate":0,"runs":1}}
+{"timestamp":"2026-03-31T05:15:07.7623989-07:00","experiment":0,"phase":"measure","level":"info","message":"Cooldown 5s — between scenarios","data":{}}
+{"timestamp":"2026-03-31T05:15:12.7725810-07:00","experiment":0,"phase":"measure","level":"info","message":"Running scenario 'stress-catalog': Catalog CRUD lifecycle: auth, create, read, update, delete, browse","data":{}}
+{"timestamp":"2026-03-31T05:15:12.7877796-07:00","experiment":0,"phase":"measure","level":"info","message":"Running k6 scenario: C:\\Projects\\Hone-Group\\OptimizationTargets\\eShopOnWeb-Honed\\.hone\\scenarios\\stress-catalog.js against http://localhost:56411","data":{}}
+{"timestamp":"2026-03-31T05:16:14.0303403-07:00","experiment":0,"phase":"measure","level":"info","message":"Run 1 — p95: 1014.514115ms, RPS: 132.3","data":{"run":1,"p95":1014.514115,"rps":132.27044026054895,"errorRate":0}}
+{"timestamp":"2026-03-31T05:16:14.0376385-07:00","experiment":0,"phase":"measure","level":"info","message":"k6 completed — p95: 1014.514115ms, RPS: 132.3","data":{"p95":1014.514115,"rps":132.27044026054895,"errorRate":0,"runs":1}}
+{"timestamp":"2026-03-31T05:16:14.0835851-07:00","experiment":0,"phase":"measure","level":"info","message":"Cooldown 5s — between scenarios","data":{}}
+{"timestamp":"2026-03-31T05:16:19.0812263-07:00","experiment":0,"phase":"measure","level":"info","message":"Running scenario 'stress-auth': Authentication load: admin login, user login, invalid credentials","data":{}}
+{"timestamp":"2026-03-31T05:16:19.0978183-07:00","experiment":0,"phase":"measure","level":"info","message":"Running k6 scenario: C:\\Projects\\Hone-Group\\OptimizationTargets\\eShopOnWeb-Honed\\.hone\\scenarios\\stress-auth.js against http://localhost:56411","data":{}}
+{"timestamp":"2026-03-31T05:17:19.5553932-07:00","experiment":0,"phase":"measure","level":"info","message":"Run 1 — p95: 100.919375ms, RPS: 191","data":{"run":1,"p95":100.919375,"rps":190.97126308869753,"errorRate":0}}
+{"timestamp":"2026-03-31T05:17:19.5622737-07:00","experiment":0,"phase":"measure","level":"info","message":"k6 completed — p95: 100.919375ms, RPS: 191","data":{"p95":100.919375,"rps":190.97126308869753,"errorRate":0,"runs":1}}
+{"timestamp":"2026-03-31T05:17:19.5874189-07:00","experiment":0,"phase":"measure","level":"info","message":"Cooldown 5s — between scenarios","data":{}}
+{"timestamp":"2026-03-31T05:17:24.5951206-07:00","experiment":0,"phase":"measure","level":"info","message":"Running scenario 'warmup': JIT/EF primer: 5 VUs for 10s, lightweight reads + one auth","data":{}}
+{"timestamp":"2026-03-31T05:17:24.6093295-07:00","experiment":0,"phase":"measure","level":"info","message":"Running k6 scenario: C:\\Projects\\Hone-Group\\OptimizationTargets\\eShopOnWeb-Honed\\.hone\\scenarios\\warmup.js against http://localhost:56411","data":{}}
+{"timestamp":"2026-03-31T05:17:35.6265740-07:00","experiment":0,"phase":"measure","level":"info","message":"Run 1 — p95: 1014.97299ms, RPS: 16.5","data":{"run":1,"p95":1014.97299,"rps":16.47768395248529,"errorRate":0}}
+{"timestamp":"2026-03-31T05:17:35.6338387-07:00","experiment":0,"phase":"measure","level":"info","message":"k6 completed — p95: 1014.97299ms, RPS: 16.5","data":{"p95":1014.97299,"rps":16.47768395248529,"errorRate":0,"runs":1}}
+{"timestamp":"2026-03-31T05:17:35.6442715-07:00","experiment":0,"phase":"baseline","level":"info","message":"Scenario baseline saved: stress — p95: 1017.57986ms","data":{}}
+{"timestamp":"2026-03-31T05:17:35.6532674-07:00","experiment":0,"phase":"baseline","level":"info","message":"Scenario baseline saved: stress-catalog — p95: 1014.514115ms","data":{}}
+{"timestamp":"2026-03-31T05:17:35.6625084-07:00","experiment":0,"phase":"baseline","level":"info","message":"Scenario baseline saved: stress-auth — p95: 100.919375ms","data":{}}
+{"timestamp":"2026-03-31T05:17:35.6723252-07:00","experiment":0,"phase":"baseline","level":"info","message":"Scenario baseline saved: warmup — p95: 1014.97299ms","data":{}}
