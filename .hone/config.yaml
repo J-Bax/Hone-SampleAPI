@@ -1,0 +1,59 @@
+# ── SampleApi Target Configuration ──────────────────────────────────────────
+# Target-level config for the sample-api project.
+# Overrides engine defaults from harness-csharp/config.yaml.
+
+Name: "SampleApi"
+BaseBranch: "master"
+
+# ── Target API overrides ─────────────────────────────────────────────────────
+Api:
+  SolutionPath: "SampleApi.sln"
+  ProjectPath: "SampleApi"
+  TestProjectPath: "SampleApi.Tests"
+  SourceCodePaths:
+    - Controllers
+    - Data
+    - Models
+    - Pages
+  SourceFileGlob: "*.cs"
+  BaseUrl: "http://localhost:0"
+  HealthEndpoint: "/health"
+  GcEndpoint: "/diag/gc"
+  StartupTimeout: 90
+  ResultsPath: '.hone\results'
+  MetadataPath: '.hone\results\metadata'
+
+# ── Lifecycle Hooks ──────────────────────────────────────────────────────────
+Hooks:
+  Prepare:
+    Type: Command
+    Value: 'pwsh -NonInteractive -File .hone\hooks\prepare.ps1'
+  Start:
+    Type: BuiltIn
+    Name: dotnet-start
+  Stop:
+    Type: BuiltIn
+    Name: dotnet-stop
+  Ready:
+    Type: BuiltIn
+    Name: health-poll
+  Warmup:
+    Type: Skip
+  Active:
+    Type: BuiltIn
+    Name: k6-run
+  Cooldown:
+    Type: Http
+    Method: POST
+    Path: "/diag/gc"
+  Cleanup:
+    Type: Skip
+
+# ── Scale Test overrides ─────────────────────────────────────────────────────
+ScaleTest:
+  ScenarioPath: '.hone\scenarios\baseline.js'
+  ScenarioRegistryPath: '.hone\scenarios\thresholds.json'
+  WarmupEnabled: true
+  WarmupScenarioPath: '.hone\scenarios\warmup.js'
+  MeasuredRuns: 5
+  CooldownSeconds: 3
