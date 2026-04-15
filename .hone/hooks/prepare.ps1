@@ -1,7 +1,7 @@
 [CmdletBinding()]
 param(
-    [Parameter(Mandatory)] [string]$TargetPath,
-    [Parameter(Mandatory)] [hashtable]$Config,
+    [string]$TargetPath = (Get-Location).Path,
+    [hashtable]$Config = @{},
     [string]$BaseUrl,
     [string]$Experiment
 )
@@ -10,12 +10,7 @@ $null = $BaseUrl, $Experiment, $Config
 
 $appSettingsPath = Join-Path -Path $TargetPath -ChildPath 'SampleApi\appsettings.json'
 if (-not (Test-Path -Path $appSettingsPath)) {
-    return [PSCustomObject]@{
-        Success = $false
-        Message = "App settings not found: $appSettingsPath"
-        Duration = [timespan]::Zero
-        Artifacts = @()
-    }
+    throw "App settings not found: $appSettingsPath"
 }
 
 $appSettings = Get-Content -Path $appSettingsPath -Raw | ConvertFrom-Json
@@ -24,22 +19,12 @@ $serverMatch = [regex]::Match($connectionString, 'Server=([^;]+)')
 $dbMatch = [regex]::Match($connectionString, 'Database=([^;]+)')
 
 if (-not $serverMatch.Success -or -not $dbMatch.Success) {
-    return [PSCustomObject]@{
-        Success = $false
-        Message = 'Failed to parse database connection string'
-        Duration = [timespan]::Zero
-        Artifacts = @()
-    }
+    throw 'Failed to parse database connection string'
 }
 
 $sqlcmdPath = Get-Command sqlcmd -ErrorAction SilentlyContinue
 if (-not $sqlcmdPath) {
-    return [PSCustomObject]@{
-        Success = $false
-        Message = 'sqlcmd not found in PATH'
-        Duration = [timespan]::Zero
-        Artifacts = @()
-    }
+    throw 'sqlcmd not found in PATH'
 }
 
 $server = $serverMatch.Groups[1].Value
@@ -58,18 +43,7 @@ $exitCode = $LASTEXITCODE
 $stopwatch.Stop()
 
 if ($exitCode -ne 0) {
-    return [PSCustomObject]@{
-        Success = $false
-        Message = "sqlcmd exited with code $exitCode: $(($output | Out-String).Trim())"
-        Duration = $stopwatch.Elapsed
-        Artifacts = @()
-    }
+    throw "sqlcmd exited with code ${exitCode}: $(($output | Out-String).Trim())"
 }
 
-return [PSCustomObject]@{
-    Success = $true
-    Message = "Database '$dbName' dropped"
-    Duration = $stopwatch.Elapsed
-    Artifacts = @()
-    Database = $dbName
-}
+Write-Host "Database '$dbName' dropped in $($stopwatch.Elapsed)."
