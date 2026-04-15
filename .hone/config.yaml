@@ -28,6 +28,12 @@ Hooks:
   Prepare:
     Type: Command
     Value: 'pwsh -NonInteractive -File .hone\hooks\prepare.ps1'
+  Build:
+    Type: BuiltIn
+    Name: dotnet-build
+  Test:
+    Type: BuiltIn
+    Name: dotnet-test
   Start:
     Type: BuiltIn
     Name: dotnet-start

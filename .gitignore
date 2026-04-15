@@ -47,8 +47,9 @@ Desktop.ini
 # Default: ignore everything in .hone/results/
 .hone/results/*
 !.hone/results/.gitkeep
-!.hone/results/baseline.json
-!.hone/results/baseline-*.json
+!.hone/results/baseline/
+.hone/results/baseline/*
+!.hone/results/baseline/k6-summary.json
 !.hone/results/run-metadata.json
 !.hone/results/hone.jsonl
 !.hone/results/metadata/
