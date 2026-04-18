@@ -37,31 +37,40 @@ public class IndexModel : PageModel
         if (string.IsNullOrWhiteSpace(customer))
             return;
 
-        var allOrders = await _context.Orders.ToListAsync();
-        Orders = allOrders
-            .Where(o => o.CustomerName.Equals(customer, StringComparison.OrdinalIgnoreCase))
+        Orders = await _context.Orders
+            .Where(o => o.CustomerName == customer)
             .OrderByDescending(o => o.OrderDate)
-            .ToList();
+            .ToListAsync();
 
-        var allItems = await _context.OrderItems.ToListAsync();
+        var orderIds = Orders.Select(o => o.Id).ToList();
+
+        var items = await _context.OrderItems
+            .Where(i => orderIds.Contains(i.OrderId))
+            .ToListAsync();
+
+        var productIds = items.Select(i => i.ProductId).Distinct().ToList();
+
+        var productMap = await _context.Products
+            .Where(p => productIds.Contains(p.Id))
+            .ToDictionaryAsync(p => p.Id);
 
         foreach (var order in Orders)
         {
-            var items = allItems.Where(i => i.OrderId == order.Id).ToList();
-            var itemViews = new List<OrderItemView>();
-
-            foreach (var item in items)
-            {
-                var product = await _context.Products.FindAsync(item.ProductId);
-                itemViews.Add(new OrderItemView
+            var itemViews = items
+                .Where(i => i.OrderId == order.Id)
+                .Select(i =>
                 {
-                    ProductId = item.ProductId,
-                    ProductName = product?.Name ?? "Unknown",
-                    Quantity = item.Quantity,
-                    UnitPrice = item.UnitPrice,
-                    Subtotal = item.UnitPrice * item.Quantity
-                });
-            }
+                    productMap.TryGetValue(i.ProductId, out var product);
+                    return new OrderItemView
+                    {
+                        ProductId = i.ProductId,
+                        ProductName = product?.Name ?? "Unknown",
+                        Quantity = i.Quantity,
+                        UnitPrice = i.UnitPrice,
+                        Subtotal = i.UnitPrice * i.Quantity
+                    };
+                })
+                .ToList();
 
             OrderItemsMap[order.Id] = itemViews;
         }
