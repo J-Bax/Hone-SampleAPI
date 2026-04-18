@@ -1,6 +1,6 @@
 {
-  "targetName": "sample-api-rerun",
-  "startedAt": "2026-04-18T08:23:16.6818571\u002B00:00",
+  "targetName": "SampleApi",
+  "startedAt": "2026-04-18T08:23:34.1316549\u002B00:00",
   "machineInfo": {
     "cpuName": "AMD64 Family 23 Model 113 Stepping 0, AuthenticAMD",
     "cpuCores": 16,
@@ -8,5 +8,90 @@
     "osVersion": "Microsoft Windows 10.0.19045",
     "dotnetVersion": ".NET 10.0.6"
   },
-  "experiments": []
+  "experiments": [
+    {
+      "experiment": 1,
+      "startedAt": "2026-04-18T08:23:34.1316549\u002B00:00",
+      "completedAt": "2026-04-18T08:36:04.9312919\u002B00:00",
+      "outcome": "Improved",
+      "branchName": "hone/experiment-1",
+      "baseBranch": "master",
+      "p95": 2167.4216799999986,
+      "rps": 340.2379152212426,
+      "prNumber": 119,
+      "prUrl": "https://github.com/J-Bax/Hone-SampleAPI/pull/119",
+      "staleCount": 0,
+      "consecutiveFailures": 0
+    },
+    {
+      "experiment": 2,
+      "startedAt": "2026-04-18T08:36:34.9519885\u002B00:00",
+      "completedAt": "2026-04-18T08:51:28.1475714\u002B00:00",
+      "outcome": "Regressed",
+      "branchName": "hone/experiment-2",
+      "baseBranch": "hone/experiment-1",
+      "p95": 4163.401295,
+      "rps": 185.05720350740467,
+      "prNumber": 120,
+      "prUrl": "https://github.com/J-Bax/Hone-SampleAPI/pull/120",
+      "staleCount": 0,
+      "consecutiveFailures": 1
+    },
+    {
+      "experiment": 3,
+      "startedAt": "2026-04-18T08:51:58.1419744\u002B00:00",
+      "completedAt": "2026-04-18T09:05:55.5354410\u002B00:00",
+      "outcome": "Regressed",
+      "branchName": "hone/experiment-3",
+      "baseBranch": "hone/experiment-1",
+      "p95": 5418.209580000001,
+      "rps": 138.3790564393405,
+      "prNumber": 121,
+      "prUrl": "https://github.com/J-Bax/Hone-SampleAPI/pull/121",
+      "staleCount": 0,
+      "consecutiveFailures": 2
+    },
+    {
+      "experiment": 4,
+      "startedAt": "2026-04-18T09:06:25.5366281\u002B00:00",
+      "completedAt": "2026-04-18T09:20:24.7961461\u002B00:00",
+      "outcome": "Regressed",
+      "branchName": "hone/experiment-4",
+      "baseBranch": "hone/experiment-1",
+      "p95": 6417.1442,
+      "rps": 119.60014889105823,
+      "prNumber": 122,
+      "prUrl": "https://github.com/J-Bax/Hone-SampleAPI/pull/122",
+      "staleCount": 0,
+      "consecutiveFailures": 3
+    },
+    {
+      "experiment": 5,
+      "startedAt": "2026-04-18T09:20:54.7985578\u002B00:00",
+      "completedAt": "2026-04-18T09:36:15.6308191\u002B00:00",
+      "outcome": "Regressed",
+      "branchName": "hone/experiment-5",
+      "baseBranch": "hone/experiment-1",
+      "p95": 6793.733224999997,
+      "rps": 109.84042569200246,
+      "prNumber": 123,
+      "prUrl": "https://github.com/J-Bax/Hone-SampleAPI/pull/123",
+      "staleCount": 0,
+      "consecutiveFailures": 4
+    },
+    {
+      "experiment": 6,
+      "startedAt": "2026-04-18T09:36:45.6295325\u002B00:00",
+      "completedAt": "2026-04-18T09:50:51.5038127\u002B00:00",
+      "outcome": "Regressed",
+      "branchName": "hone/experiment-6",
+      "baseBranch": "hone/experiment-1",
+      "p95": 6954.349024999988,
+      "rps": 95.94753376022491,
+      "prNumber": 124,
+      "prUrl": "https://github.com/J-Bax/Hone-SampleAPI/pull/124",
+      "staleCount": 0,
+      "consecutiveFailures": 5
+    }
+  ]
 }
