@@ -1,0 +1,16 @@
+  Determining projects to restore...
+C:\Program Files\dotnet\sdk\10.0.202\Sdks\Microsoft.NET.Sdk\targets\Microsoft.NET.EolTargetFrameworks.targets(32,5): warning NETSDK1138: The target framework 'net6.0' is out of support and will not receive security updates in the future. Please refer to https://aka.ms/dotnet-core-support for more information about the support policy. [C:\Projects\Hone-Group\Hone\sample-api-rerun\SampleApi\SampleApi.csproj]
+  Restored C:\Projects\Hone-Group\Hone\sample-api-rerun\SampleApi.Tests\SampleApi.Tests.csproj (in 443 ms).
+  1 of 2 projects are up-to-date for restore.
+C:\Program Files\dotnet\sdk\10.0.202\Sdks\Microsoft.NET.Sdk\targets\Microsoft.NET.EolTargetFrameworks.targets(32,5): warning NETSDK1138: The target framework 'net6.0' is out of support and will not receive security updates in the future. Please refer to https://aka.ms/dotnet-core-support for more information about the support policy. [C:\Projects\Hone-Group\Hone\sample-api-rerun\SampleApi\SampleApi.csproj]
+  SampleApi -> C:\Projects\Hone-Group\Hone\sample-api-rerun\SampleApi\bin\Release\net6.0\SampleApi.dll
+  SampleApi.Tests -> C:\Projects\Hone-Group\Hone\sample-api-rerun\SampleApi.Tests\bin\Release\net6.0\SampleApi.Tests.dll
+
+Build succeeded.
+
+C:\Program Files\dotnet\sdk\10.0.202\Sdks\Microsoft.NET.Sdk\targets\Microsoft.NET.EolTargetFrameworks.targets(32,5): warning NETSDK1138: The target framework 'net6.0' is out of support and will not receive security updates in the future. Please refer to https://aka.ms/dotnet-core-support for more information about the support policy. [C:\Projects\Hone-Group\Hone\sample-api-rerun\SampleApi\SampleApi.csproj]
+C:\Program Files\dotnet\sdk\10.0.202\Sdks\Microsoft.NET.Sdk\targets\Microsoft.NET.EolTargetFrameworks.targets(32,5): warning NETSDK1138: The target framework 'net6.0' is out of support and will not receive security updates in the future. Please refer to https://aka.ms/dotnet-core-support for more information about the support policy. [C:\Projects\Hone-Group\Hone\sample-api-rerun\SampleApi\SampleApi.csproj]
+    2 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:05.04
