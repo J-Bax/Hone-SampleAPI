@@ -25,15 +25,13 @@ public class IndexModel : PageModel
 
     public async Task OnGetAsync()
     {
-        var allProducts = await _context.Products.ToListAsync();
-        FeaturedProducts = allProducts.OrderBy(_ => Guid.NewGuid()).Take(12).ToList();
-        TotalProducts = allProducts.Count;
+        TotalProducts = await _context.Products.CountAsync();
+        FeaturedProducts = await _context.Products.OrderBy(p => EF.Functions.Random()).Take(12).ToListAsync();
 
         // Separate query for categories
         Categories = await _context.Categories.ToListAsync();
         TotalCategories = Categories.Count;
 
-        var allReviews = await _context.Reviews.ToListAsync();
-        RecentReviews = allReviews.OrderByDescending(r => r.CreatedAt).Take(5).ToList();
+        RecentReviews = await _context.Reviews.OrderByDescending(r => r.CreatedAt).Take(5).ToListAsync();
     }
 }
