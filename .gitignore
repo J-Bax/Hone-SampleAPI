@@ -50,7 +50,6 @@ Desktop.ini
 !.hone/results/baseline/
 .hone/results/baseline/*
 !.hone/results/baseline/k6-summary.json
-!.hone/results/run-metadata.json
 !.hone/results/hone.jsonl
 !.hone/results/metadata/
 

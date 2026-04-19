@@ -8,6 +8,16 @@ param(
 
 $null = $BaseUrl, $Experiment, $Config
 
+# This hook is experiment-scoped only: it resets the target before validate /
+# optimize flows begin. Per-measured-run cleanup now belongs to the k6
+# scenarios, which call /diag/runs/prepare and /diag/runs/cleanup inside the
+# SampleApi app for repeatable measured runs without changing the harness.
+# When invoked by the C# harness, CWD is the target root and no params are passed.
+# Resolve TargetPath: if it's still the script dir (.hone\hooks), walk up to target root.
+if ($TargetPath -eq $PSScriptRoot) {
+    $TargetPath = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
+}
+
 $appSettingsPath = Join-Path -Path $TargetPath -ChildPath 'SampleApi\appsettings.json'
 if (-not (Test-Path -Path $appSettingsPath)) {
     throw "App settings not found: $appSettingsPath"

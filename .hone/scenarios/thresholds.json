@@ -1,43 +1,43 @@
 {
   "scenarios": {
     "baseline": {
-      "description": "Steady-state: 50 VUs for 30s",
-      "file": "..\\..\\scale-tests\\scenarios\\baseline.js",
+      "description": "Mixed storefront browse/review/cart/checkout journey with run cleanup",
+      "file": ".\\baseline.js",
       "use_for_optimization": true
     },
-    "stress": {
-      "description": "Progressive ramp: 10→200 VUs over 2 min",
-      "file": "..\\..\\scale-tests\\scenarios\\stress.js",
-      "use_for_optimization": false
-    },
-    "spike": {
-      "description": "Sudden burst: idle → 100 VUs instant",
-      "file": "..\\..\\scale-tests\\scenarios\\spike.js",
-      "use_for_optimization": false
-    },
-    "stress-products": {
-      "description": "Products CRUD lifecycle: 10→200 VUs over 2 min",
-      "file": "..\\..\\scale-tests\\scenarios\\stress-products.js",
-      "use_for_optimization": false
-    },
-    "stress-orders": {
-      "description": "Orders lifecycle (create, query, status updates): 10→200 VUs over 2 min",
-      "file": "..\\..\\scale-tests\\scenarios\\stress-orders.js",
+    "stress-storefront": {
+      "description": "Read-only storefront browsing, category, search, and detail pressure",
+      "file": ".\\stress-storefront.js",
       "use_for_optimization": false
     },
     "stress-cart": {
-      "description": "Cart operations (add, read, update qty, remove, clear): 10→200 VUs over 2 min",
-      "file": "..\\..\\scale-tests\\scenarios\\stress-cart.js",
+      "description": "Cart add/update/remove/clear lifecycle with tagged sessions",
+      "file": ".\\stress-cart.js",
       "use_for_optimization": false
     },
     "stress-reviews": {
-      "description": "Reviews CRUD lifecycle: 10→200 VUs over 2 min",
-      "file": "..\\..\\scale-tests\\scenarios\\stress-reviews.js",
+      "description": "Review create/read/aggregate/delete lifecycle with tagged reviewers",
+      "file": ".\\stress-reviews.js",
+      "use_for_optimization": false
+    },
+    "stress-orders": {
+      "description": "Checkout, order history, and status updates with run cleanup",
+      "file": ".\\stress-orders.js",
+      "use_for_optimization": false
+    },
+    "stress-products": {
+      "description": "Admin-style product CRUD with tagged catalog artifacts",
+      "file": ".\\stress-products.js",
       "use_for_optimization": false
     },
     "stress-ui": {
-      "description": "Razor Page UI journey (home→browse→cart→checkout→orders): 10→200 VUs over 2 min",
-      "file": "..\\..\\scale-tests\\scenarios\\stress-ui.js",
+      "description": "Page-rendering flow from browse to checkout with tagged UI sessions",
+      "file": ".\\stress-ui.js",
+      "use_for_optimization": false
+    },
+    "spike": {
+      "description": "Burst read-only spike against catalog, detail, reviews, and UI pages",
+      "file": ".\\spike.js",
       "use_for_optimization": false
     }
   }

@@ -88,7 +88,7 @@ dotnet test SampleApi.Tests/
 
 ## Hone target layout
 
-The sample API is configured as a Hone target through `sample-api\.hone\config.psd1`.
+The sample API is configured as a Hone target through `sample-api\.hone\config.yaml`.
 
 Baseline metrics, experiment artifacts, metadata, and `hone.jsonl` are now written under `sample-api\.hone\results\`.
 

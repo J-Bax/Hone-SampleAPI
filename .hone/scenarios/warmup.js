@@ -1,34 +1,43 @@
 import http from 'k6/http';
 import { check, sleep } from 'k6';
+import { createScenarioContext, seededCategory, seededProductId, sessionId } from './shared.js';
 
-// Warmup scenario: short burst to prime JIT, DB connections, and caches
-// before the measured baseline run begins.
+// Warmup remains experiment-scoped priming only. Per-measured-run cleanup now
+// lives in scenario setup()/teardown() through the target's /diag/runs endpoints.
 export const options = {
   vus: 5,
-  duration: '10s',
+  duration: '12s',
   thresholds: {
     http_req_failed: ['rate<0.05'],
   },
 };
 
-const BASE_URL = __ENV.BASE_URL || 'http://localhost:5000';
+export function setup() {
+  return createScenarioContext('warmup');
+}
 
-export default function () {
-  const productsRes = http.get(`${BASE_URL}/api/products`);
-  check(productsRes, { 'products: status 200': (r) => r.status === 200 });
+export default function (context) {
+  const productId = seededProductId(context, 1);
+  const category = seededCategory(context, 2);
+  const cartSession = sessionId(context, 'warmup');
 
-  const reviewsRes = http.get(`${BASE_URL}/api/reviews`);
-  check(reviewsRes, { 'reviews: status 200': (r) => r.status === 200 });
+  const responses = http.batch([
+    ['GET', `${context.baseUrl}/health`],
+    ['GET', `${context.baseUrl}/api/categories`],
+    ['GET', `${context.baseUrl}/api/products`],
+    ['GET', `${context.baseUrl}/api/products/by-category/${encodeURIComponent(category)}`],
+    ['GET', `${context.baseUrl}/api/reviews/average/${productId}`],
+    ['GET', `${context.baseUrl}/Products/Detail/${productId}`],
+    ['GET', `${context.baseUrl}/api/cart/${cartSession}`],
+  ]);
 
-  const ordersRes = http.get(`${BASE_URL}/api/orders`);
-  check(ordersRes, { 'orders: status 200': (r) => r.status === 200 });
+  check(responses[0], { 'health: status 200': (response) => response.status === 200 });
+  check(responses[1], { 'categories: status 200': (response) => response.status === 200 });
+  check(responses[2], { 'products: status 200': (response) => response.status === 200 });
+  check(responses[3], { 'category filter: status 200': (response) => response.status === 200 });
+  check(responses[4], { 'average rating: status 200': (response) => response.status === 200 });
+  check(responses[5], { 'detail page: status 200': (response) => response.status === 200 });
+  check(responses[6], { 'empty cart lookup: status 200': (response) => response.status === 200 });
 
-  const categoriesRes = http.get(`${BASE_URL}/api/categories`);
-  check(categoriesRes, { 'categories: status 200': (r) => r.status === 200 });
-
-  const sessionId = `warmup-${__VU}-${__ITER}`;
-  const cartRes = http.get(`${BASE_URL}/api/cart/${sessionId}`);
-  check(cartRes, { 'cart: status 200': (r) => r.status === 200 });
-
-  sleep(0.5);
+  sleep(0.4);
 }
