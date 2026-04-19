@@ -1,179 +1,214 @@
 import http from 'k6/http';
-import { check } from 'k6';
+import { check, sleep } from 'k6';
+import { textSummary } from 'https://jslib.k6.io/k6-summary/0.0.2/index.js';
+import { cleanupScenario, prepareScenario } from './diagnostics.js';
+import {
+  FORM_PARAMS,
+  JSON_PARAMS,
+  customerName,
+  extractAntiForgeryToken,
+  seededCategory,
+  seededProductId,
+  sessionId,
+  tryJson,
+  useCartSession,
+} from './shared.js';
+import { buildCartItemRequest, buildReviewPayload } from './payloads.js';
 
-// Baseline scenario: high-concurrency stress test exercising every endpoint.
-// Same user-journey shape as a real marketplace session (browse → review →
-// cart → order → pages → checkout) but with zero think-time so VUs fire
-// requests back-to-back, creating real server contention.
-// Includes both JSON API calls and Razor Page rendering (GET + form POSTs).
-// Warmup (JIT, DB, connection pool) is handled externally by warmup.js.
+// Baseline is now a steadier mixed storefront journey. setup()/teardown() call
+// target-owned diagnostics so every measured run starts and ends with a clean,
+// run-scoped set of reviews, carts, checkout orders, and any admin artifacts.
 export const options = {
   stages: [
-    { duration: '15s', target: 10 },   // Warm-up
-    { duration: '30s', target: 100 },   // Normal load
-    { duration: '30s', target: 300 },   // High load
-    { duration: '30s', target: 500 },   // Stress load
-    { duration: '15s', target: 0 },     // Cool-down
+    { duration: '15s', target: 8 },
+    { duration: '45s', target: 24 },
+    { duration: '30s', target: 36 },
+    { duration: '20s', target: 18 },
+    { duration: '10s', target: 0 },
   ],
   thresholds: {
-    http_req_duration: ['p(95)<2000'],  // p95 under 2s (stress test)
-    http_req_failed: ['rate<0.05'],      // error rate under 5%
+    http_req_duration: ['p(95)<1500'],
+    http_req_failed: ['rate<0.03'],
   },
 };
 
-const BASE_URL = __ENV.BASE_URL || 'http://localhost:5000';
-
-// Extract ASP.NET anti-forgery token from a Razor Page HTML response.
-function extractAntiForgeryToken(response) {
-  const match = response.body.match(/name="__RequestVerificationToken"[^>]*value="([^"]+)"/);
-  return match ? match[1] : '';
+export function setup() {
+  return prepareScenario('baseline');
 }
 
-// Deterministic ID generation for reproducible traffic patterns.
-// Same VU + iteration + salt always produces the same ID across runs.
-function seededId(max, salt) {
-  const h = ((__VU * 997 + __ITER * 8191 + salt * 127) * 2654435761) >>> 0;
-  return (h % max) + 1;
-}
+export default function (context) {
+  const category = seededCategory(context, 1);
+  const productId = seededProductId(context, 2);
+  const secondaryProductId = seededProductId(context, 3);
+  const cartSession = sessionId(context, 'cart');
+  const checkoutCustomer = customerName(context, 'checkout');
+  const reviewRating = ((__VU + __ITER) % 5) + 1;
+  useCartSession(context, cartSession);
 
-export default function () {
-  const randomId = seededId(100, 1);
-  const sessionId = `k6-session-${__VU}-${__ITER}`;
+  const homeResponse = http.get(`${context.baseUrl}/`);
+  check(homeResponse, {
+    'home: status 200': (response) => response.status === 200,
+  });
+  sleep(0.3);
 
-  // ── Product endpoints ──
+  const productsPageResponse = http.get(`${context.baseUrl}/Products?page=1`);
+  check(productsPageResponse, {
+    'products page: status 200': (response) => response.status === 200,
+  });
+  sleep(0.3);
 
-  const listRes = http.get(`${BASE_URL}/api/products`);
-  check(listRes, {
-    'list products: status 200': (r) => r.status === 200,
-    'list products: has data': (r) => {
-      const body = r.json();
-      return Array.isArray(body) && body.length > 0;
+  const searchResponse = http.get(`${context.baseUrl}/api/products/search?q=${encodeURIComponent('Product 00')}`);
+  check(searchResponse, {
+    'product search: status 200': (response) => response.status === 200,
+    'product search: has matches': (response) => (tryJson(response, null, []).length || 0) > 0,
+  });
+  sleep(0.2);
+
+  const categoryPageResponse = http.get(`${context.baseUrl}/Products?category=${encodeURIComponent(category)}&page=1`);
+  check(categoryPageResponse, {
+    'category page: status 200': (response) => response.status === 200,
+  });
+
+  const categoryApiResponse = http.get(`${context.baseUrl}/api/products/by-category/${encodeURIComponent(category)}`);
+  check(categoryApiResponse, {
+    'category api: status 200': (response) => response.status === 200,
+  });
+  sleep(0.2);
+
+  const detailPageResponse = http.get(`${context.baseUrl}/Products/Detail/${productId}`);
+  check(detailPageResponse, {
+    'detail page: status 200': (response) => response.status === 200,
+  });
+  sleep(0.2);
+
+  const createReviewResponse = http.post(
+    `${context.baseUrl}/api/reviews`,
+    JSON.stringify(buildReviewPayload(context, productId, reviewRating, 'baseline')),
+    JSON_PARAMS,
+  );
+  check(createReviewResponse, {
+    'create review: status 201': (response) => response.status === 201,
+  });
+  const reviewId = tryJson(createReviewResponse, 'id', null);
+  sleep(0.2);
+
+  const reviewsResponse = http.get(`${context.baseUrl}/api/reviews/by-product/${productId}`);
+  check(reviewsResponse, {
+    'reviews by product: status 200': (response) => response.status === 200,
+  });
+
+  const averageResponse = http.get(`${context.baseUrl}/api/reviews/average/${productId}`);
+  check(averageResponse, {
+    'average rating: status 200': (response) => response.status === 200,
+  });
+
+  if (reviewId) {
+    const deleteReviewResponse = http.del(`${context.baseUrl}/api/reviews/${reviewId}`);
+    check(deleteReviewResponse, {
+      'delete review: status 204': (response) => response.status === 204,
+    });
+  }
+  sleep(0.2);
+
+  const addPrimaryResponse = http.post(
+    `${context.baseUrl}/api/cart`,
+    JSON.stringify(buildCartItemRequest(cartSession, productId, 1)),
+    JSON_PARAMS,
+  );
+  check(addPrimaryResponse, {
+    'add primary cart item: status 200 or 201': (response) => response.status === 200 || response.status === 201,
+  });
+  const primaryCartItemId = tryJson(addPrimaryResponse, 'id', null);
+
+  const addSecondaryResponse = http.post(
+    `${context.baseUrl}/api/cart`,
+    JSON.stringify(buildCartItemRequest(cartSession, secondaryProductId, 2)),
+    JSON_PARAMS,
+  );
+  check(addSecondaryResponse, {
+    'add secondary cart item: status 200 or 201': (response) => response.status === 200 || response.status === 201,
+  });
+  const secondaryCartItemId = tryJson(addSecondaryResponse, 'id', null);
+
+  const cartResponse = http.get(`${context.baseUrl}/api/cart/${cartSession}`);
+  check(cartResponse, {
+    'cart api: status 200': (response) => response.status === 200,
+    'cart api: has items': (response) => (tryJson(response, 'itemCount', 0) || 0) >= 2,
+  });
+
+  if (primaryCartItemId) {
+    const updateCartResponse = http.put(
+      `${context.baseUrl}/api/cart/${primaryCartItemId}`,
+      JSON.stringify(3),
+      JSON_PARAMS,
+    );
+    check(updateCartResponse, {
+      'update cart quantity: status 204': (response) => response.status === 204,
+    });
+  }
+
+  if (secondaryCartItemId) {
+    const removeCartResponse = http.del(`${context.baseUrl}/api/cart/${secondaryCartItemId}`);
+    check(removeCartResponse, {
+      'remove cart item: status 204': (response) => response.status === 204,
+    });
+  }
+  sleep(0.3);
+
+  const cartPageResponse = http.get(`${context.baseUrl}/Cart`);
+  check(cartPageResponse, {
+    'cart page: status 200': (response) => response.status === 200,
+    'cart page: shows cart': (response) => response.body.includes('Shopping Cart'),
+  });
+
+  const checkoutPageResponse = http.get(`${context.baseUrl}/Checkout`);
+  check(checkoutPageResponse, {
+    'checkout page: status 200': (response) => response.status === 200,
+  });
+  const checkoutToken = extractAntiForgeryToken(checkoutPageResponse);
+
+  const checkoutSubmitResponse = http.post(
+    `${context.baseUrl}/Checkout`,
+    {
+      customerName: checkoutCustomer,
+      __RequestVerificationToken: checkoutToken,
     },
-  });
-
-  const getRes = http.get(`${BASE_URL}/api/products/${randomId}`);
-  check(getRes, {
-    'get product: status 200 or 404': (r) => r.status === 200 || r.status === 404,
-  });
-
-  const searchRes = http.get(`${BASE_URL}/api/products/search?q=Product`);
-  check(searchRes, {
-    'search: status 200': (r) => r.status === 200,
-  });
-
-  const categoryRes = http.get(`${BASE_URL}/api/products/by-category/Electronics`);
-  check(categoryRes, {
-    'category filter: status 200': (r) => r.status === 200,
-  });
-
-  // ── Review endpoints ──
-
-  const reviewProductId = seededId(500, 2);
-  const reviewsRes = http.get(`${BASE_URL}/api/reviews/by-product/${reviewProductId}`);
-  check(reviewsRes, {
-    'reviews by product: status 200': (r) => r.status === 200,
-  });
-
-  const avgRes = http.get(`${BASE_URL}/api/reviews/average/${reviewProductId}`);
-  check(avgRes, {
-    'average rating: status 200': (r) => r.status === 200,
-  });
-
-  // ── Cart flow ──
-
-  const addCartRes = http.post(`${BASE_URL}/api/cart`,
-    JSON.stringify({ sessionId, productId: randomId, quantity: 1 }),
-    { headers: { 'Content-Type': 'application/json' } }
+    FORM_PARAMS,
   );
-  check(addCartRes, {
-    'add to cart: status 200 or 201': (r) => r.status === 200 || r.status === 201,
+  check(checkoutSubmitResponse, {
+    'checkout submit: status 200': (response) => response.status === 200,
+    'checkout submit: order placed': (response) => response.body.includes('Order Placed Successfully'),
   });
+  sleep(0.3);
 
-  const cartRes = http.get(`${BASE_URL}/api/cart/${sessionId}`);
-  check(cartRes, {
-    'get cart: status 200': (r) => r.status === 200,
-  });
-
-  http.del(`${BASE_URL}/api/cart/session/${sessionId}`);
-
-  // ── Order flow ──
-
-  const orderRes = http.post(`${BASE_URL}/api/orders`,
-    JSON.stringify({
-      customerName: `k6-user-${__VU}`,
-      items: [
-        { productId: seededId(100, 3), quantity: 1 },
-        { productId: seededId(100, 4), quantity: 2 },
-      ],
-    }),
-    { headers: { 'Content-Type': 'application/json' } }
+  const ordersApiResponse = http.get(
+    `${context.baseUrl}/api/orders/by-customer/${encodeURIComponent(checkoutCustomer)}`,
   );
-  check(orderRes, {
-    'create order: status 201': (r) => r.status === 201,
+  const orders = tryJson(ordersApiResponse, null, []);
+  check(ordersApiResponse, {
+    'orders api: status 200': (response) => response.status === 200,
+    'orders api: has order': () => Array.isArray(orders) && orders.length > 0,
   });
 
-  // ── Razor Pages (browsing) ──
-
-  const homeRes = http.get(`${BASE_URL}/`);
-  check(homeRes, {
-    'home page: status 200': (r) => r.status === 200,
-  });
-
-  const productsPageRes = http.get(`${BASE_URL}/Products`);
-  check(productsPageRes, {
-    'products page: status 200': (r) => r.status === 200,
-  });
-
-  const detailPageRes = http.get(`${BASE_URL}/Products/Detail/${randomId}`);
-  check(detailPageRes, {
-    'product detail page: status 200': (r) => r.status === 200,
-  });
-
-  // ── Razor Pages (transactional: cart → checkout → orders) ──
-  // Exercises server-side rendering with heavy DB operations:
-  // N+1 queries in LoadCart/LoadCartSummary, multiple SaveChangesAsync in checkout.
-
-  // Add to cart via the product detail page form (sets CartSessionId cookie)
-  const cartProductId = seededId(100, 5);
-  const addToCartToken = extractAntiForgeryToken(detailPageRes);
-  const addToCartPageRes = http.post(
-    `${BASE_URL}/Products/Detail/${cartProductId}`,
-    { productId: String(cartProductId), quantity: '1', __RequestVerificationToken: addToCartToken }
+  const ordersPageResponse = http.get(
+    `${context.baseUrl}/Orders?customer=${encodeURIComponent(checkoutCustomer)}`,
   );
-  check(addToCartPageRes, {
-    'add to cart (page): status 200': (r) => r.status === 200,
+  check(ordersPageResponse, {
+    'orders page: status 200': (response) => response.status === 200,
+    'orders page: includes customer': (response) => response.body.includes(checkoutCustomer),
   });
 
-  // View cart page (N+1 product lookups in LoadCart)
-  const cartPageRes = http.get(`${BASE_URL}/Cart`);
-  check(cartPageRes, {
-    'cart page: status 200': (r) => r.status === 200,
+  const postCheckoutCartResponse = http.get(`${context.baseUrl}/api/cart/${cartSession}`);
+  check(postCheckoutCartResponse, {
+    'post-checkout cart empty: status 200': (response) => response.status === 200,
+    'post-checkout cart empty: itemCount 0': (response) => (tryJson(response, 'itemCount', -1) || 0) === 0,
   });
 
-  // View checkout page (same N+1 in LoadCartSummary)
-  const checkoutPageRes = http.get(`${BASE_URL}/Checkout`);
-  check(checkoutPageRes, {
-    'checkout page: status 200': (r) => r.status === 200,
-  });
+  sleep(0.5);
+}
 
-  // Submit order via checkout form (heaviest operation: N+1 + per-item SaveChanges)
-  const customerName = `k6-checkout-${__VU}`;
-  const checkoutToken = extractAntiForgeryToken(checkoutPageRes);
-  const checkoutSubmitRes = http.post(
-    `${BASE_URL}/Checkout`,
-    { customerName: customerName, __RequestVerificationToken: checkoutToken }
-  );
-  check(checkoutSubmitRes, {
-    'checkout submit: status 200': (r) => r.status === 200,
-  });
-
-  // View order history page (N+1 product name lookups)
-  const ordersPageRes = http.get(
-    `${BASE_URL}/Orders?customer=${encodeURIComponent(customerName)}`
-  );
-  check(ordersPageRes, {
-    'orders page: status 200': (r) => r.status === 200,
-  });
+export function teardown(context) {
+  cleanupScenario(context);
 }
 
 export function handleSummary(data) {
@@ -181,6 +216,3 @@ export function handleSummary(data) {
     stdout: textSummary(data, { indent: '  ', enableColors: true }),
   };
 }
-
-// k6 built-in text summary helper
-import { textSummary } from 'https://jslib.k6.io/k6-summary/0.0.2/index.js';

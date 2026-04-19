@@ -24,6 +24,9 @@ Api:
   MetadataPath: '.hone\results\metadata'
 
 # ── Lifecycle Hooks ──────────────────────────────────────────────────────────
+# Prepare is experiment-scoped: it resets the target once before validate /
+# optimize flows. Per-measured-run cleanup now lives inside the k6 scripts via
+# /diag/runs/prepare and /diag/runs/cleanup so measured runs stay repeatable.
 Hooks:
   Prepare:
     Type: Command
