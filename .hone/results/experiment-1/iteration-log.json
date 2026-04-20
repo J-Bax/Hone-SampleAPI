@@ -1,0 +1,21 @@
+{
+  "experiment": 1,
+  "totalAttempts": 1,
+  "finalOutcome": "success",
+  "attempts": [
+    {
+      "attempt": 1,
+      "stage": "test",
+      "outcome": "passed",
+      "durationSec": 65.41,
+      "diffLines": 44,
+      "artifacts": {
+        "fixPrompt": null,
+        "fixResponse": null,
+        "buildLog": ".hone/results/experiment-1/iterations/attempt-1/build.log",
+        "e2eLog": ".hone/results/experiment-1/iterations/attempt-1/e2e-tests.log",
+        "e2eResults": ".hone/results/experiment-1/iterations/attempt-1/e2e-results.trx"
+      }
+    }
+  ]
+}

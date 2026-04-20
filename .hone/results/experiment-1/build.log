@@ -1,0 +1,15 @@
+  Determining projects to restore...
+C:\Program Files\dotnet\sdk\10.0.202\Sdks\Microsoft.NET.Sdk\targets\Microsoft.NET.EolTargetFrameworks.targets(32,5): warning NETSDK1138: The target framework 'net6.0' is out of support and will not receive security updates in the future. Please refer to https://aka.ms/dotnet-core-support for more information about the support policy. [C:\Projects\Hone-Group\OptimizationTargets\sample-api\SampleApi\SampleApi.csproj]
+  All projects are up-to-date for restore.
+C:\Program Files\dotnet\sdk\10.0.202\Sdks\Microsoft.NET.Sdk\targets\Microsoft.NET.EolTargetFrameworks.targets(32,5): warning NETSDK1138: The target framework 'net6.0' is out of support and will not receive security updates in the future. Please refer to https://aka.ms/dotnet-core-support for more information about the support policy. [C:\Projects\Hone-Group\OptimizationTargets\sample-api\SampleApi\SampleApi.csproj]
+  SampleApi -> C:\Projects\Hone-Group\OptimizationTargets\sample-api\SampleApi\bin\Release\net6.0\SampleApi.dll
+  SampleApi.Tests -> C:\Projects\Hone-Group\OptimizationTargets\sample-api\SampleApi.Tests\bin\Release\net6.0\SampleApi.Tests.dll
+
+Build succeeded.
+
+C:\Program Files\dotnet\sdk\10.0.202\Sdks\Microsoft.NET.Sdk\targets\Microsoft.NET.EolTargetFrameworks.targets(32,5): warning NETSDK1138: The target framework 'net6.0' is out of support and will not receive security updates in the future. Please refer to https://aka.ms/dotnet-core-support for more information about the support policy. [C:\Projects\Hone-Group\OptimizationTargets\sample-api\SampleApi\SampleApi.csproj]
+C:\Program Files\dotnet\sdk\10.0.202\Sdks\Microsoft.NET.Sdk\targets\Microsoft.NET.EolTargetFrameworks.targets(32,5): warning NETSDK1138: The target framework 'net6.0' is out of support and will not receive security updates in the future. Please refer to https://aka.ms/dotnet-core-support for more information about the support policy. [C:\Projects\Hone-Group\OptimizationTargets\sample-api\SampleApi\SampleApi.csproj]
+    2 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:04.33

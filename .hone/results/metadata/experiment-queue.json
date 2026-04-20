@@ -1,0 +1,39 @@
+﻿{
+  "generatedByExperiment": 1,
+  "generatedAt": "2026-04-20T06:38:53.8464083+00:00",
+  "items": [
+    {
+      "id": "1",
+      "filePath": "SampleApi/Controllers/CartController.cs",
+      "title": "Cart endpoints load entire CartItems table and N\u002B1 query products",
+      "explanation": "Cart endpoints load entire CartItems table and N\u002B1 query products",
+      "scope": "narrow",
+      "rootCausePath": "C:\\Projects\\Hone-Group\\OptimizationTargets\\sample-api\\.hone\\results\\metadata\\root-causes\\rca-1.md",
+      "status": "in_progress",
+      "triedByExperiment": null,
+      "outcome": null
+    },
+    {
+      "id": "2",
+      "filePath": "SampleApi/Pages/Checkout/Index.cshtml.cs",
+      "title": "Checkout OnPostAsync has excessive SaveChangesAsync calls and N\u002B1 queries",
+      "explanation": "Checkout OnPostAsync has excessive SaveChangesAsync calls and N\u002B1 queries",
+      "scope": "narrow",
+      "rootCausePath": "C:\\Projects\\Hone-Group\\OptimizationTargets\\sample-api\\.hone\\results\\metadata\\root-causes\\rca-2.md",
+      "status": "pending",
+      "triedByExperiment": null,
+      "outcome": null
+    },
+    {
+      "id": "3",
+      "filePath": "SampleApi/Controllers/ReviewsController.cs",
+      "title": "Reviews endpoints load all reviews into memory and perform unnecessary post-create query",
+      "explanation": "Reviews endpoints load all reviews into memory and perform unnecessary post-create query",
+      "scope": "narrow",
+      "rootCausePath": "C:\\Projects\\Hone-Group\\OptimizationTargets\\sample-api\\.hone\\results\\metadata\\root-causes\\rca-3.md",
+      "status": "pending",
+      "triedByExperiment": null,
+      "outcome": null
+    }
+  ]
+}

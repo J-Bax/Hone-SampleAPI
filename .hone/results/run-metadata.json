@@ -1,0 +1,12 @@
+{
+  "targetName": "SampleApi",
+  "startedAt": "2026-04-20T06:37:33.8093960\u002B00:00",
+  "machineInfo": {
+    "cpuName": "AMD64 Family 23 Model 113 Stepping 0, AuthenticAMD",
+    "cpuCores": 16,
+    "totalRamGB": 63.9,
+    "osVersion": "Microsoft Windows 10.0.19045",
+    "dotnetVersion": ".NET 10.0.6"
+  },
+  "experiments": []
+}
