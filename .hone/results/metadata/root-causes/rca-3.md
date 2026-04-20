@@ -1,41 +1,34 @@
-﻿# Reviews endpoints load all reviews into memory and perform unnecessary post-create query
+﻿# Eliminate full-table loads in product detail page
 
-> **File:** `SampleApi/Controllers/ReviewsController.cs` | **Scope:** narrow
+> **File:** `SampleApi/Pages/Products/Detail.cshtml.cs` | **Scope:** narrow
 
 ## Evidence
 
-At `ReviewsController.cs:54-55`, `GetReviewsByProduct` loads every review then filters in memory:
+At `Detail.cshtml.cs:34-37`, ALL reviews are loaded to find those for one product:
 
 ```csharp
-var allReviews = await _context.Reviews.ToListAsync();
-var filtered = allReviews.Where(r => r.ProductId == productId).ToList();
+var allReviews = await _context.Reviews.ToListAsync(); // line 34
+Reviews = allReviews.Where(r => r.ProductId == id).OrderByDescending(r => r.CreatedAt).ToList();
 ```
 
-The same pattern at lines 70-71 in `GetAverageRating`:
+At lines 41-46, ALL products are loaded to find related ones:
 
 ```csharp
-var allReviews = await _context.Reviews.ToListAsync();
-var productReviews = allReviews.Where(r => r.ProductId == productId).ToList();
-```
-
-At lines 95-97 in `CreateReview`, after saving the review, all reviews are re-loaded just to compute an average that is never returned:
-
-```csharp
-var allReviews = await _context.Reviews.ToListAsync();
-var productReviews = allReviews.Where(r => r.ProductId == review.ProductId).ToList();
-var _ = productReviews.Average(r => r.Rating);
+var allProducts = await _context.Products.ToListAsync(); // line 41
+RelatedProducts = allProducts.Where(p => p.Category == Product.Category && p.Id != id)...
 ```
 
 ## Theory
 
-Review endpoints are hit 4 times per VU iteration (~20% of traffic): POST create, GET by-product, GET average, DELETE. Each of the read endpoints loads the entire Reviews table. As reviews accumulate during the test, these full-table loads become increasingly expensive. The wasted re-query in `CreateReview` adds an unnecessary full-table scan to every review creation. Using server-side `WHERE` filters would push filtering to the database and return only relevant rows.
+The detail page is hit once per VU iteration. Under load, each request materializes the entire Reviews and Products tables into memory just to filter down to a handful of rows. This creates unnecessary DB I/O, memory pressure, and GC pauses. Server-side filtering would return only the needed rows.
 
 ## Proposed Fixes
 
-1. **Server-side filtering:** Replace `_context.Reviews.ToListAsync()` + `.Where()` with `_context.Reviews.Where(r => r.ProductId == productId).ToListAsync()` at lines 54-55 and 70-71.
-2. **Remove dead code in CreateReview:** Delete lines 95-97 entirely — the loaded reviews and computed average are assigned to a discard variable and never used.
+1. **Filter reviews server-side:** Replace with `_context.Reviews.Where(r => r.ProductId == id).OrderByDescending(r => r.CreatedAt).ToListAsync()`.
+2. **Filter related products server-side:** Replace with `_context.Products.Where(p => p.Category == Product.Category && p.Id != id).Take(4).ToListAsync()`.
 
 ## Expected Impact
 
-- p95 latency: reduction of ~2-3ms on review-related requests.
-- Overall p95 improvement: ~2-3% given reviews are ~20% of traffic.
+- p95 latency: ~2-3ms reduction per detail page request
+- Reduces memory allocations significantly
+- Overall p95 improvement: ~1-2%
