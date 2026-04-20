@@ -58,8 +58,7 @@ public class IndexModel : PageModel
     {
         var sessionId = GetSessionId();
 
-        var allCartItems = await _context.CartItems.ToListAsync();
-        var sessionItems = allCartItems.Where(c => c.SessionId == sessionId).ToList();
+        var sessionItems = await _context.CartItems.Where(c => c.SessionId == sessionId).ToListAsync();
 
         if (!sessionItems.Any())
         {
@@ -95,19 +94,14 @@ public class IndexModel : PageModel
             });
 
             total += price * cartItem.Quantity;
-
-            await _context.SaveChangesAsync();
         }
 
         order.TotalAmount = Math.Round(total, 2);
-        await _context.SaveChangesAsync();
+        await _context.SaveChangesAsync(); // Batch save all order items + total update
 
-        // Clear cart — one by one
-        foreach (var cartItem in sessionItems)
-        {
-            _context.CartItems.Remove(cartItem);
-            await _context.SaveChangesAsync();
-        }
+        // Clear cart in one operation
+        _context.CartItems.RemoveRange(sessionItems);
+        await _context.SaveChangesAsync();
 
         OrderPlaced = true;
         OrderId = order.Id;
@@ -121,8 +115,7 @@ public class IndexModel : PageModel
     {
         var sessionId = GetSessionId();
 
-        var allItems = await _context.CartItems.ToListAsync();
-        var sessionItems = allItems.Where(c => c.SessionId == sessionId).ToList();
+        var sessionItems = await _context.CartItems.Where(c => c.SessionId == sessionId).ToListAsync();
 
         CartItems = new List<CartItemView>();
         Total = 0m;
