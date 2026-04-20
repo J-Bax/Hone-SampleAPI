@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "stableBranch": "master",
-  "stableHeadSha": "385723a5aed524baacae0906ac51533e00e7c986",
+  "stableBranch": "hone/experiment-1",
+  "stableHeadSha": "51cae9290bf9b4478a06e7f817fd741f086686b1",
   "status": "finalizing",
   "currentExperiment": {
-    "number": 1,
-    "queueItemId": "1",
-    "branchName": "hone/experiment-1",
-    "baseBranch": "master",
-    "candidateHeadSha": "72a0ecf75e5507e4e797cd40f9abae80111bb3f6",
-    "cleanupManifestPath": ".hone\\results\\metadata\\cleanup\\experiment-1.json",
+    "number": 3,
+    "queueItemId": "3",
+    "branchName": "hone/experiment-3",
+    "baseBranch": "hone/experiment-1",
+    "candidateHeadSha": "96b06bc5ab5e85e9095b6e89e6968da51ae1e2a4",
+    "cleanupManifestPath": ".hone\\results\\metadata\\cleanup\\experiment-3.json",
     "phase": "finalizing",
     "pendingOutcome": "improved",
-    "startedAt": "2026-04-20T06:37:37.3970342\u002B00:00"
+    "startedAt": "2026-04-20T07:03:48.6469260\u002B00:00"
   }
 }

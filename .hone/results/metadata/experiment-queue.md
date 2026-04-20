@@ -6,5 +6,5 @@
 **Generated:** experiment 1 at 2026-04-20T06:38:53.8464083+00:00
 
 - [ ] **#1**`SampleApi/Controllers/CartController.cs` — Cart endpoints load entire CartItems table and N+1 query products *(in progress)*
-- [ ] **#2**`SampleApi/Pages/Checkout/Index.cshtml.cs` — Checkout OnPostAsync has excessive SaveChangesAsync calls and N+1 queries
-- [ ] **#3**`SampleApi/Controllers/ReviewsController.cs` — Reviews endpoints load all reviews into memory and perform unnecessary post-create query
+- [x] **#2**`SampleApi/Pages/Checkout/Index.cshtml.cs` — Checkout OnPostAsync has excessive SaveChangesAsync calls and N+1 queries *(experiment 2 — stale)*
+- [ ] **#3**`SampleApi/Controllers/ReviewsController.cs` — Reviews endpoints load all reviews into memory and perform unnecessary post-create query *(in progress)*
