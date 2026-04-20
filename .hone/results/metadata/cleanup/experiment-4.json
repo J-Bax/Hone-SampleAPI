@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "experiment": 4,
+  "branchName": "hone/experiment-4",
+  "baseBranch": "hone/experiment-3",
+  "candidateHeadSha": "47c23e359304200c33b2ba6f5544d33783aa5c27",
+  "expectedStableHeadSha": "49a657562f0e7daa31784e9277a95f506b576a21",
+  "trackedPaths": [
+    ".hone/results/metadata/experiment-queue.json",
+    ".hone/results/metadata/experiment-queue.md",
+    ".hone/results/metadata/root-causes/rca-1.md",
+    ".hone/results/metadata/root-causes/rca-2.md",
+    ".hone/results/metadata/root-causes/rca-3.md",
+    ".hone/results/metadata/run-state.json",
+    ".hone/results/run-metadata.json",
+    "SampleApi/Pages/Checkout/Index.cshtml.cs"
+  ],
+  "untrackedPaths": [
+    ".hone/results/experiment-3/k6-run0.log",
+    ".hone/results/experiment-3/k6-run1.log",
+    ".hone/results/experiment-3/k6-run2.log",
+    ".hone/results/experiment-3/k6-run3.log",
+    ".hone/results/experiment-3/k6-run4.log",
+    ".hone/results/experiment-3/k6-run5.log",
+    ".hone/results/experiment-3/k6-summary-run0.json",
+    ".hone/results/experiment-3/k6-summary-run1.json",
+    ".hone/results/experiment-3/k6-summary-run2.json",
+    ".hone/results/experiment-3/k6-summary-run3.json",
+    ".hone/results/experiment-3/k6-summary-run4.json",
+    ".hone/results/experiment-3/k6-summary-run5.json",
+    ".hone/results/experiment-4",
+    ".hone/results/experiment-4/"
+  ]
+}

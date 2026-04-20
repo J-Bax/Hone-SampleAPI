@@ -1,12 +1,12 @@
 ﻿{
-  "generatedByExperiment": 1,
-  "generatedAt": "2026-04-20T06:38:53.8464083+00:00",
+  "generatedByExperiment": 5,
+  "generatedAt": "2026-04-20T07:30:31.0131446+00:00",
   "items": [
     {
       "id": "1",
-      "filePath": "SampleApi/Controllers/CartController.cs",
-      "title": "Cart endpoints load entire CartItems table and N\u002B1 query products",
-      "explanation": "Cart endpoints load entire CartItems table and N\u002B1 query products",
+      "filePath": "SampleApi/Pages/Checkout/Index.cshtml.cs",
+      "title": "Batch SaveChangesAsync calls in checkout flow",
+      "explanation": "Batch SaveChangesAsync calls in checkout flow",
       "scope": "narrow",
       "rootCausePath": "C:\\Projects\\Hone-Group\\OptimizationTargets\\sample-api\\.hone\\results\\metadata\\root-causes\\rca-1.md",
       "status": "in_progress",
@@ -15,23 +15,23 @@
     },
     {
       "id": "2",
-      "filePath": "SampleApi/Pages/Checkout/Index.cshtml.cs",
-      "title": "Checkout OnPostAsync has excessive SaveChangesAsync calls and N\u002B1 queries",
-      "explanation": "Checkout OnPostAsync has excessive SaveChangesAsync calls and N\u002B1 queries",
+      "filePath": "SampleApi/Controllers/ProductsController.cs",
+      "title": "Server-side filtering for category and search queries",
+      "explanation": "Server-side filtering for category and search queries",
       "scope": "narrow",
       "rootCausePath": "C:\\Projects\\Hone-Group\\OptimizationTargets\\sample-api\\.hone\\results\\metadata\\root-causes\\rca-2.md",
-      "status": "done",
-      "triedByExperiment": 2,
-      "outcome": "stale"
+      "status": "pending",
+      "triedByExperiment": null,
+      "outcome": null
     },
     {
       "id": "3",
-      "filePath": "SampleApi/Controllers/ReviewsController.cs",
-      "title": "Reviews endpoints load all reviews into memory and perform unnecessary post-create query",
-      "explanation": "Reviews endpoints load all reviews into memory and perform unnecessary post-create query",
+      "filePath": "SampleApi/Pages/Products/Detail.cshtml.cs",
+      "title": "Eliminate full-table loads in product detail page",
+      "explanation": "Eliminate full-table loads in product detail page",
       "scope": "narrow",
       "rootCausePath": "C:\\Projects\\Hone-Group\\OptimizationTargets\\sample-api\\.hone\\results\\metadata\\root-causes\\rca-3.md",
-      "status": "in_progress",
+      "status": "pending",
       "triedByExperiment": null,
       "outcome": null
     }
